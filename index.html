@@ -1,0 +1,1203 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mejorador de Sitios</title>
+<script>
+  /* Modo visor: si el link trae un sitio mejorado (#v=...), no se muestra la herramienta. */
+  if (location.hash.indexOf('#v=') === 0) document.documentElement.setAttribute('data-viewer', '1');
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: banco de trabajo — columna de entrada a la izquierda, taller de resultados a la derecha; en móvil, una columna. */
+:root {
+  --bg: #f3f5f2;
+  --surface: #ffffff;
+  --surface-2: #e8ece7;
+  --fg: #16201c;
+  --muted: #5a6761;
+  --line: #d3dad4;
+  --accent: #0b6b62;
+  --accent-fg: #ffffff;
+  --accent-soft: #d6ebe7;
+  --after: #b86e00;
+  --good: #1c7c3a;
+  --warn: #a86400;
+  --bad: #b3261e;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1513; --surface: #161e1b; --surface-2: #1e2825; --fg: #e4ebe7; --muted: #95a39d;
+    --line: #2c3833; --accent: #4fc2b3; --accent-fg: #06201c; --accent-soft: #173a35;
+    --after: #f0a940; --good: #5cc97a; --warn: #f0a940; --bad: #ff8a80; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1513; --surface: #161e1b; --surface-2: #1e2825; --fg: #e4ebe7; --muted: #95a39d;
+  --line: #2c3833; --accent: #4fc2b3; --accent-fg: #06201c; --accent-soft: #173a35;
+  --after: #f0a940; --good: #5cc97a; --warn: #f0a940; --bad: #ff8a80; color-scheme: dark;
+}
+html[data-viewer] body > * { display: none !important; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.55 var(--font-body);
+  padding-inline: 16px; padding-block: 0 48px;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+.wrap { max-width: 1320px; margin-inline: auto; }
+header.top {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px;
+  padding-block: 28px 20px; border-bottom: 1px solid var(--line); margin-bottom: 24px;
+}
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand h1 { font: 700 clamp(26px, 4vw, 34px)/1.1 var(--font-display); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.brand h1 span { color: var(--accent); }
+.brand p { margin: 0; color: var(--muted); max-width: 60ch; }
+.env { font: 500 12px var(--font-mono); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.panel h2 { font: 600 13px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+
+.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 8px; }
+.tabs button {
+  flex: 1; border: 0; background: transparent; color: var(--muted); padding: 8px 6px; border-radius: 6px;
+  font: 500 13px var(--font-body); cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+
+label.field { display: flex; flex-direction: column; gap: 6px; font-weight: 500; font-size: 13px; }
+input[type="url"], input[type="text"], input[type="password"], textarea, select {
+  width: 100%; font: 14px var(--font-body); color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+}
+input[type="url"] { font-family: var(--font-mono); font-size: 13px; }
+textarea { font: 12px/1.5 var(--font-mono); min-height: 150px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible, .drop:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.drop {
+  border: 1.5px dashed var(--line); border-radius: 8px; padding: 22px 14px; text-align: center; color: var(--muted);
+  cursor: pointer; background: var(--bg);
+}
+.drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--fg); }
+.drop strong { color: var(--fg); display: block; margin-bottom: 4px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+
+.styles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.styles label {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+  cursor: pointer; font-size: 13px; background: var(--bg);
+}
+.styles label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.styles input { position: absolute; opacity: 0; pointer-events: none; }
+.styles b { font-weight: 600; }
+.styles small { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+
+button.primary, button.ghost, a.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px;
+  font: 600 14px var(--font-body); padding: 11px 16px; cursor: pointer; text-decoration: none; border: 1px solid transparent;
+}
+button.primary { background: var(--accent); color: var(--accent-fg); width: 100%; font-size: 15px; padding: 13px 16px; }
+button.primary:disabled { opacity: 0.55; cursor: progress; }
+button.ghost, a.btn { background: var(--surface); color: var(--fg); border-color: var(--line); }
+button.ghost:hover, a.btn:hover { border-color: var(--accent); }
+
+details.ai summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+details.ai .stack { margin-top: 12px; }
+
+/* Log del proceso */
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font: 12.5px/1.45 var(--font-mono); }
+.log li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; color: var(--muted); }
+.log li.done { color: var(--fg); }
+.log li.err { color: var(--bad); }
+.log li::before { content: "·"; text-align: center; }
+.log li.done::before { content: "✓"; color: var(--good); }
+.log li.err::before { content: "!"; }
+.log li.run::before { content: "◐"; color: var(--accent); animation: spin 1s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .log li.run::before { animation: none; } }
+
+/* Resultados */
+.result-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+.result-head h2 { margin: 0; }
+.site { font: 500 13px var(--font-mono); color: var(--muted); word-break: break-all; }
+.scoreline { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.big { display: flex; align-items: baseline; gap: 8px; font-family: var(--font-display); }
+.big .n { font-size: 44px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.big .before { color: var(--muted); }
+.big .after { color: var(--after); }
+.big .arrow { color: var(--muted); font-size: 22px; }
+.big .lbl { font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: block; }
+
+.cats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 18px; }
+.cat { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--bg); }
+.cat .name { font-size: 12.5px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.cat .name span { font: 500 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cat .name span b { color: var(--after); font-weight: 600; }
+.bar { position: relative; height: 6px; background: var(--surface-2); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.bar i.b { background: var(--muted); opacity: 0.45; }
+.bar i.a { background: var(--after); height: 3px; top: auto; }
+
+.share { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; align-items: stretch; }
+.share input { flex: 1 1 260px; min-width: 0; font-family: var(--font-mono); font-size: 12px; }
+
+.compare-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-block: 20px 10px; }
+.seg { display: inline-flex; background: var(--surface-2); padding: 3px; border-radius: 8px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; border-radius: 6px; font: 500 13px var(--font-body); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); }
+.frames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.frames.solo { grid-template-columns: minmax(0, 1fr); }
+.frames.solo .f-before { display: none; }
+@media (max-width: 700px) { .frames { grid-template-columns: minmax(0, 1fr); } }
+.frame { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); min-width: 0; }
+.frame .cap { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); font: 500 12px var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.frame .cap b { color: var(--after); font-weight: 600; }
+.frame .vp { background: var(--surface-2); display: flex; justify-content: center; overflow: auto; }
+.frame iframe { border: 0; width: 100%; height: 640px; background: #fff; display: block; }
+.frames.mobile iframe { width: 390px; max-width: 100%; }
+
+.changes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+@media (max-width: 800px) { .changes { grid-template-columns: minmax(0, 1fr); } }
+.changes h3 { font: 700 18px var(--font-display); margin: 0 0 10px; }
+.changes ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.changes li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; font-size: 13.5px; align-items: baseline; }
+.tag { font: 600 10.5px var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.tag.ok { background: var(--accent-soft); color: var(--accent); }
+.tag.warn { color: var(--warn); }
+.tag.bad { color: var(--bad); }
+
+.empty { text-align: left; padding: 8px 4px; }
+.empty h2 { font: 700 clamp(22px, 3vw, 28px)/1.2 var(--font-display); text-transform: none; letter-spacing: -0.01em; color: var(--fg); margin: 0 0 10px; text-wrap: balance; }
+.empty ol { margin: 14px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
+.empty ol b { color: var(--fg); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 13.5px; z-index: 10; max-width: calc(100% - 32px); }
+.note { font-size: 12.5px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 12px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Mejorador de <span>Sitios</span></h1>
+      <p>Pegá un link o subí tu HTML. La herramienta visita el sitio, lo analiza y genera una versión mejorada con su propio link.</p>
+    </div>
+    <div class="env" id="envLabel">Motor local activo</div>
+  </header>
+
+  <div class="grid">
+    <!-- Entrada -->
+    <section class="stack" aria-label="Sitio a mejorar">
+      <form class="panel stack" id="form" novalidate>
+        <h2>1 · Sitio original</h2>
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" id="tab-url" aria-selected="true" data-mode="url">Link</button>
+          <button type="button" role="tab" id="tab-file" aria-selected="false" data-mode="file">Subir archivo</button>
+          <button type="button" role="tab" id="tab-code" aria-selected="false" data-mode="code">Pegar código</button>
+        </div>
+        <div data-pane="url">
+          <label class="field">Dirección del sitio
+            <input type="url" id="url" placeholder="https://ejemplo.com" autocomplete="url" inputmode="url">
+          </label>
+        </div>
+        <div data-pane="file" hidden>
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Elegir archivo HTML">
+            <strong>Soltá acá tu archivo .html</strong>
+            o hacé clic para elegirlo
+            <div id="fileName" class="hint"></div>
+          </div>
+          <input type="file" id="file" accept=".html,.htm,text/html" hidden>
+        </div>
+        <div data-pane="code" hidden>
+          <label class="field">Código HTML
+            <textarea id="code" spellcheck="false" placeholder="<!doctype html>&#10;<html>…"></textarea>
+          </label>
+        </div>
+
+        <h2 style="margin-top:6px">2 · Estilo de la mejora</h2>
+        <div class="styles" role="radiogroup" aria-label="Estilo">
+          <label><input type="radio" name="preset" id="p-keep" value="keep"><b>Conservar</b><small>Corrige sin tocar la estética</small></label>
+          <label><input type="radio" name="preset" id="p-modern" value="modern" checked><b>Moderno</b><small>Tipografía y espaciado actuales</small></label>
+          <label><input type="radio" name="preset" id="p-elegant" value="elegant"><b>Elegante</b><small>Serif editorial, tonos sobrios</small></label>
+          <label><input type="radio" name="preset" id="p-bold" value="bold"><b>Audaz</b><small>Contraste alto, botones grandes</small></label>
+        </div>
+
+        <details class="ai" id="aiBox">
+          <summary>Rediseño con IA de Claude (opcional)</summary>
+          <div class="stack">
+            <label class="check"><input type="checkbox" id="useAI"> <span>Además de las correcciones automáticas, pedirle a Claude que reescriba el sitio completo.</span></label>
+            <div id="keyRow">
+              <label class="field">Clave de API de Anthropic
+                <input type="password" id="apiKey" placeholder="sk-ant-…" autocomplete="off">
+              </label>
+              <p class="hint">Se guarda solo en este navegador y se envía directo a Anthropic. Conseguila en console.anthropic.com.</p>
+            </div>
+            <label class="field">Instrucciones extra (opcional)
+              <input type="text" id="aiNotes" placeholder="Ej: más profesional, colores azules, destacar el WhatsApp">
+            </label>
+          </div>
+        </details>
+
+        <button class="primary" type="submit" id="go">Mejorar sitio</button>
+        <ul class="log" id="log" aria-live="polite"></ul>
+      </form>
+    </section>
+
+    <!-- Resultados -->
+    <section class="panel" id="out" aria-live="polite">
+      <div class="empty" id="empty">
+        <h2>Tu sitio, mejorado en segundos</h2>
+        <p style="margin:0;color:var(--muted);max-width:62ch">Cuando proceses un sitio vas a ver acá el puntaje antes y después, la comparación lado a lado y un link nuevo para abrir o compartir la versión mejorada.</p>
+        <ol>
+          <li><b>Visita el sitio</b> y lo renderiza como lo vería una persona, midiendo colores, tamaños y contraste.</li>
+          <li><b>Audita 6 áreas:</b> SEO, accesibilidad, velocidad, móvil, diseño y seguridad.</li>
+          <li><b>Aplica las mejoras</b> y genera un link propio, sin dominio ni servidor.</li>
+        </ol>
+        <p class="note">¿Querés probar ya? <button type="button" class="ghost" id="demo" style="padding:4px 10px;font-size:12.5px">Cargar sitio de ejemplo</button></p>
+      </div>
+
+      <div id="result" hidden>
+        <div class="result-head">
+          <div>
+            <h2>Resultado</h2>
+            <div class="site" id="siteName"></div>
+          </div>
+          <div class="scoreline">
+            <div class="big"><span><span class="lbl">Antes</span><span class="n before" id="sBefore">0</span></span><span class="arrow">→</span><span><span class="lbl">Después</span><span class="n after" id="sAfter">0</span></span></div>
+          </div>
+        </div>
+        <div class="cats" id="cats"></div>
+
+        <div class="share">
+          <input type="text" id="shareLink" readonly aria-label="Link del sitio mejorado">
+          <button class="ghost" type="button" id="copy">Copiar link</button>
+          <a class="btn" id="openNew" href="#" target="_blank" rel="noopener">Abrir sitio mejorado</a>
+          <button class="ghost" type="button" id="download">Descargar .html</button>
+        </div>
+        <p class="note" id="shareNote"></p>
+
+        <div class="compare-bar">
+          <div class="seg" role="group" aria-label="Vista">
+            <button type="button" aria-pressed="true" data-view="split">Antes / Después</button>
+            <button type="button" aria-pressed="false" data-view="solo">Solo mejorado</button>
+          </div>
+          <div class="seg" role="group" aria-label="Dispositivo">
+            <button type="button" aria-pressed="true" data-dev="desktop">Escritorio</button>
+            <button type="button" aria-pressed="false" data-dev="mobile">Celular</button>
+          </div>
+        </div>
+        <div class="frames" id="frames">
+          <div class="frame f-before"><div class="cap">Original <span id="capB"></span></div><div class="vp"><iframe id="fBefore" title="Sitio original" sandbox="allow-scripts allow-popups" referrerpolicy="no-referrer"></iframe></div></div>
+          <div class="frame f-after"><div class="cap">Mejorado <b id="capA"></b></div><div class="vp"><iframe id="fAfter" title="Sitio mejorado" sandbox="allow-scripts allow-popups allow-forms" referrerpolicy="no-referrer"></iframe></div></div>
+        </div>
+
+        <div class="changes">
+          <div><h3>Mejoras aplicadas</h3><ul id="applied"></ul></div>
+          <div><h3>Pendientes para vos</h3><ul id="pending"></ul></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ============================================================
+   Utilidades
+   ============================================================ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+const isArtifact = !!(window.claude && typeof window.claude.use === 'function');
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+/* ---------- Compresión para el link (deflate + base64url) ---------- */
+async function compress(text) {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function decompress(b64) {
+  const s = b64.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(s + '==='.slice((s.length + 3) % 4));
+  const buf = Uint8Array.from(bin, c => c.charCodeAt(0));
+  const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return await new Response(stream).text();
+}
+
+/* ---------- Modo visor: #v=... ---------- */
+if (location.hash.indexOf('#v=') === 0) {
+  decompress(location.hash.slice(3)).then(html => {
+    document.open(); document.write(html); document.close();
+  }).catch(() => {
+    document.documentElement.removeAttribute('data-viewer');
+    document.body.innerHTML = '<p style="padding:24px;font-family:system-ui">Este link está incompleto o dañado. Pedí que te lo vuelvan a copiar completo.</p>';
+  });
+  return;
+}
+
+/* ============================================================
+   Color y contraste
+   ============================================================ */
+function parseColor(str) {
+  const m = /rgba?\(([^)]+)\)/.exec(str || '');
+  if (!m) return null;
+  const p = m[1].split(/[ ,/]+/).filter(Boolean).map(parseFloat);
+  return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+}
+function lum({ r, g, b }) {
+  const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+function contrast(a, b) { const l1 = lum(a), l2 = lum(b); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); }
+const hex = ({ r, g, b }) => '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+function mix(c, t, amt) { return { r: c.r + (t.r - c.r) * amt, g: c.g + (t.g - c.g) * amt, b: c.b + (t.b - c.b) * amt }; }
+function fixContrast(fg, bg, target = 4.6) {
+  const toward = lum(bg) > 0.4 ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 };
+  for (let t = 0.1; t <= 1.001; t += 0.1) { const c = mix(fg, toward, t); if (contrast(c, bg) >= target) return c; }
+  return toward;
+}
+
+/* ============================================================
+   Obtener el sitio
+   ============================================================ */
+function normalizeUrl(u) {
+  u = (u || '').trim();
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  try { return new URL(u).href; } catch { return ''; }
+}
+async function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, redirect: 'follow' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const text = await r.text();
+    if (!/<(html|body|head|div|p|!doctype)/i.test(text)) throw new Error('La respuesta no es HTML');
+    return text;
+  } finally { clearTimeout(t); }
+}
+async function fetchSite(url) {
+  const routes = [
+    ['directo', url],
+    ['puente 1', 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url)],
+    ['puente 2', 'https://corsproxy.io/?url=' + encodeURIComponent(url)],
+    ['puente 3', 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)],
+  ];
+  let last;
+  for (const [name, u] of routes) {
+    try { return { html: await fetchWithTimeout(u, 15000), via: name }; }
+    catch (e) { last = e; }
+  }
+  throw new Error('No se pudo visitar el sitio (' + (last && last.message || 'bloqueado') + '). Probá subiendo el archivo o pegando el código.');
+}
+
+/* ============================================================
+   "Ver" el sitio: renderizarlo sin scripts y medir estilos reales
+   ============================================================ */
+function renderForInspection(html, width = 1280) {
+  return new Promise(resolve => {
+    const f = document.createElement('iframe');
+    f.setAttribute('sandbox', 'allow-same-origin');
+    f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = `position:fixed;left:-99999px;top:0;width:${width}px;height:900px;border:0;visibility:hidden`;
+    let done = false;
+    const finish = () => { if (done) return; done = true; resolve(f); };
+    f.onload = () => setTimeout(finish, 600);
+    setTimeout(finish, 9000);
+    f.srcdoc = html;
+    document.body.appendChild(f);
+  });
+}
+
+function effectiveBg(el, win) {
+  for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+    const cs = win.getComputedStyle(n);
+    if (cs.backgroundImage && cs.backgroundImage !== 'none') return null; // imagen de fondo: no se puede medir
+    const c = parseColor(cs.backgroundColor);
+    if (c && c.a > 0.85) return c;
+  }
+  return { r: 255, g: 255, b: 255, a: 1 };
+}
+
+function inspectRendered(frame) {
+  const doc = frame.contentDocument, win = frame.contentWindow;
+  const res = { ok: false };
+  if (!doc || !doc.body) return res;
+  res.ok = true;
+  const bcs = win.getComputedStyle(doc.body);
+  res.bodyFont = bcs.fontFamily;
+  res.bodySize = parseFloat(bcs.fontSize);
+  res.lineHeight = bcs.lineHeight;
+  res.defaultFont = /times|serif$/i.test(bcs.fontFamily.split(',')[0].trim()) && !/sans/i.test(bcs.fontFamily);
+  res.bodyBg = effectiveBg(doc.body, win) || { r: 255, g: 255, b: 255 };
+  res.textLen = (doc.body.innerText || '').trim().length;
+  res.pageWidth = doc.documentElement.scrollWidth;
+
+  // Color de marca: el color más usado en enlaces y botones
+  const tally = {};
+  $$('a, button, [class*="btn"], [class*="button"]', doc).slice(0, 300).forEach(el => {
+    const cs = win.getComputedStyle(el);
+    [cs.color, cs.backgroundColor].forEach(v => {
+      const c = parseColor(v); if (!c || c.a < 0.5) return;
+      const max = Math.max(c.r, c.g, c.b), min = Math.min(c.r, c.g, c.b);
+      if (max - min < 40) return; // gris
+      const k = hex(c);
+      if (k === '#0000ee' || k === '#551a8b' || k === '#0000ff') return; // colores por defecto del navegador tally[k] = (tally[k] || 0) + 1;
+    });
+  });
+  const brand = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+  res.brand = brand ? brand[0] : null;
+
+  // Contraste y texto chico
+  res.lowContrast = []; res.smallText = 0; res.checkedText = 0;
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  const seen = new Set(); let n;
+  while ((n = walker.nextNode()) && seen.size < 1500) {
+    if (!n.nodeValue.trim()) continue;
+    const el = n.parentElement; if (!el || seen.has(el)) continue; seen.add(el);
+    if (/^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
+    const cs = win.getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    res.checkedText++;
+    const size = parseFloat(cs.fontSize);
+    if (size < 13) res.smallText++;
+    const fg = parseColor(cs.color), bg = effectiveBg(el, win);
+    if (!fg || !bg) continue;
+    const large = size >= 24 || (size >= 18.5 && parseInt(cs.fontWeight) >= 700);
+    const ratio = contrast(fg, bg);
+    if (ratio < (large ? 3 : 4.5)) {
+      const id = 'ms' + res.lowContrast.length;
+      el.setAttribute('data-ms-c', id);
+      res.lowContrast.push({ id, fix: hex(fixContrast(fg, bg, large ? 3.2 : 4.6)), ratio });
+    }
+  }
+  // Tomar el HTML con las marcas de contraste para poder corregirlas
+  res.markedHtml = res.lowContrast.length ? '<!doctype html>\n' + doc.documentElement.outerHTML : null;
+  // Imágenes que desbordan
+  res.overflowImgs = $$('img', doc).filter(i => i.getBoundingClientRect().width > 1280).length;
+  return res;
+}
+
+/* ============================================================
+   Auditoría (puntajes por área)
+   ============================================================ */
+const CATS = [
+  ['seo', 'SEO'], ['a11y', 'Accesibilidad'], ['perf', 'Velocidad'],
+  ['mobile', 'Móvil'], ['design', 'Diseño'], ['sec', 'Seguridad'],
+];
+function audit(doc, vis) {
+  const issues = [];
+  const add = (cat, weight, ok, msg) => issues.push({ cat, weight, ok: !!ok, msg });
+  const title = (doc.title || '').trim();
+  const desc = doc.querySelector('meta[name="description"]');
+  const imgs = $$('img', doc);
+  const noAlt = imgs.filter(i => !i.hasAttribute('alt'));
+  const h1 = $$('h1', doc);
+  const vp = doc.querySelector('meta[name="viewport"]');
+  const vpc = vp ? (vp.getAttribute('content') || '') : '';
+
+  add('seo', 3, title.length >= 10 && title.length <= 65, 'Título de página claro (10–65 caracteres)');
+  add('seo', 3, desc && (desc.getAttribute('content') || '').trim().length >= 50, 'Meta descripción para Google');
+  add('seo', 2, h1.length === 1, 'Un único encabezado H1');
+  add('seo', 1, doc.querySelector('link[rel="canonical"]'), 'URL canónica');
+  add('seo', 1, doc.querySelector('meta[property="og:title"]'), 'Vista previa para redes (Open Graph)');
+  add('seo', 1, doc.documentElement.getAttribute('lang'), 'Idioma declarado');
+
+  add('a11y', 3, noAlt.length === 0, `Texto alternativo en imágenes${noAlt.length ? ` (faltan ${noAlt.length})` : ''}`);
+  add('a11y', 2, doc.documentElement.getAttribute('lang'), 'Idioma para lectores de pantalla');
+  const unl = $$('input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea', doc)
+    .filter(el => !(el.id && doc.querySelector(`label[for="${CSS.escape(el.id)}"]`)) && !el.closest('label') && !el.getAttribute('aria-label'));
+  add('a11y', 2, unl.length === 0, `Campos de formulario con etiqueta${unl.length ? ` (faltan ${unl.length})` : ''}`);
+  const emptyCtl = $$('a[href], button', doc).filter(el => !el.textContent.trim() && !el.getAttribute('aria-label') && !el.querySelector('img[alt]:not([alt=""])'));
+  add('a11y', 2, emptyCtl.length === 0, `Botones y enlaces con nombre${emptyCtl.length ? ` (faltan ${emptyCtl.length})` : ''}`);
+  add('a11y', 3, !vis || !vis.lowContrast || vis.lowContrast.length === 0, `Contraste de texto legible${vis && vis.lowContrast && vis.lowContrast.length ? ` (${vis.lowContrast.length} elementos)` : ''}`);
+  add('a11y', 1, doc.querySelector('main, [role=main]'), 'Región principal (main)');
+  add('a11y', 1, !/user-scalable\s*=\s*(no|0)|maximum-scale\s*=\s*1(\.0)?\b/i.test(vpc), 'Permite hacer zoom');
+
+  const lazy = imgs.slice(1).filter(i => i.getAttribute('loading') !== 'lazy');
+  add('perf', 3, lazy.length === 0, `Carga diferida de imágenes${lazy.length ? ` (${lazy.length} sin lazy)` : ''}`);
+  const blockingJs = $$('head script[src]:not([async]):not([defer]):not([type=module])', doc);
+  add('perf', 2, blockingJs.length <= 1, `Scripts que no bloquean la carga${blockingJs.length > 1 ? ` (${blockingJs.length} bloqueantes)` : ''}`);
+  const noDims = imgs.filter(i => !i.getAttribute('width') && !i.getAttribute('height'));
+  add('perf', 1, noDims.length <= 2, 'Imágenes con decodificación asíncrona y medidas');
+  add('perf', 1, $$('link[rel=stylesheet]', doc).length <= 6, 'Pocas hojas de estilo');
+  add('perf', 1, doc.querySelector('link[rel=preconnect], link[rel=dns-prefetch]') || !$$('link[href*="fonts.googleapis"]', doc).length, 'Conexiones anticipadas a fuentes');
+
+  add('mobile', 4, vp && /width\s*=\s*device-width/i.test(vpc), 'Adaptado a celulares (viewport)');
+  add('mobile', 2, !vis || vis.pageWidth <= 1300, 'Sin desplazamiento horizontal');
+  const tables = $$('table', doc).filter(t => !t.querySelector('table') && !(t.parentElement && (t.parentElement.classList.contains('ms-table') || /overflow/.test(t.parentElement.getAttribute('style') || ''))));
+  add('mobile', 1, tables.length === 0, 'Tablas desplazables en pantallas chicas');
+  add('mobile', 1, !vis || !vis.overflowImgs, 'Imágenes que no desbordan');
+
+  const deprecated = $$('font, center, marquee, blink, big, strike, tt', doc);
+  add('design', 2, deprecated.length === 0, `Sin etiquetas obsoletas${deprecated.length ? ` (${deprecated.length})` : ''}`);
+  add('design', 2, !vis || !vis.defaultFont, 'Tipografía elegida (no la del navegador)');
+  add('design', 2, !vis || !vis.smallText || vis.smallText / Math.max(1, vis.checkedText) < 0.15, 'Tamaño de texto cómodo');
+  add('design', 1, !vis || !/^normal$/.test(vis.lineHeight), 'Interlineado para lectura');
+  add('design', 1, doc.querySelector('link[rel~="icon"]'), 'Ícono de pestaña (favicon)');
+
+  const blanks = $$('a[target=_blank]', doc).filter(a => !/noopener|noreferrer/.test(a.getAttribute('rel') || ''));
+  add('sec', 2, blanks.length === 0, `Enlaces externos seguros (rel=noopener)${blanks.length ? ` (${blanks.length})` : ''}`);
+  const insecure = $$('[src^="http:"], link[href^="http:"]', doc);
+  add('sec', 2, insecure.length === 0 || doc.querySelector('meta[http-equiv="Content-Security-Policy"][content*="upgrade-insecure"]'), 'Recursos cargados por HTTPS');
+  add('sec', 1, doc.querySelector('meta[name="referrer"]'), 'Política de referencia');
+
+  const scores = {};
+  CATS.forEach(([k]) => {
+    const list = issues.filter(i => i.cat === k);
+    const tot = list.reduce((s, i) => s + i.weight, 0);
+    const got = list.filter(i => i.ok).reduce((s, i) => s + i.weight, 0);
+    scores[k] = tot ? Math.round((got / tot) * 100) : 100;
+  });
+  const total = Math.round(CATS.reduce((s, [k]) => s + scores[k], 0) / CATS.length);
+  return { scores, total, issues };
+}
+
+/* ============================================================
+   Motor de mejoras
+   ============================================================ */
+const PRESETS = {
+  keep: null,
+  modern: {
+    font: '"Inter Tight", "Segoe UI", system-ui, -apple-system, sans-serif',
+    head: '"Inter Tight", "Segoe UI", system-ui, sans-serif',
+    gf: 'Inter+Tight:wght@400;500;600;700',
+    radius: '10px', lh: 1.65, size: '17px', accentFallback: '#2457d6',
+  },
+  elegant: {
+    font: '"Source Serif 4", Georgia, "Times New Roman", serif',
+    head: '"Fraunces", Georgia, serif',
+    gf: 'Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600',
+    radius: '2px', lh: 1.7, size: '18px', accentFallback: '#7a4b2a',
+  },
+  bold: {
+    font: '"Figtree", "Segoe UI", system-ui, sans-serif',
+    head: '"Archivo Black", "Arial Black", system-ui, sans-serif',
+    gf: 'Archivo+Black&family=Figtree:wght@400;600;800',
+    radius: '14px', lh: 1.6, size: '18px', accentFallback: '#e0401a',
+  },
+};
+
+function guessLang(text) {
+  const t = ' ' + text.toLowerCase().slice(0, 4000) + ' ';
+  const count = ws => ws.reduce((s, w) => s + (t.split(' ' + w + ' ').length - 1), 0);
+  const es = count(['el', 'la', 'de', 'que', 'y', 'en', 'los', 'para', 'con', 'una', 'por']);
+  const en = count(['the', 'and', 'of', 'to', 'in', 'is', 'for', 'with', 'you', 'on']);
+  const pt = count(['não', 'você', 'com', 'uma', 'são', 'mais', 'para', 'dos']);
+  if (pt > es && pt > en) return 'pt';
+  return es >= en ? 'es' : 'en';
+}
+function altFromSrc(src) {
+  try {
+    const name = decodeURIComponent((src || '').split(/[?#]/)[0].split('/').pop() || '')
+      .replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').replace(/\b(img|image|foto|photo|pic|dsc|\d{3,})\b/gi, '').replace(/\s+/g, ' ').trim();
+    return name.length > 2 ? name.charAt(0).toUpperCase() + name.slice(1) : '';
+  } catch { return ''; }
+}
+function el(doc, tag, attrs) { const e = doc.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+function improve(doc, vis, opts) {
+  const log = [];
+  const done = (cat, msg) => log.push({ cat, msg });
+  const head = doc.head || doc.documentElement.insertBefore(doc.createElement('head'), doc.body);
+  const text = (doc.body && doc.body.innerText || doc.body && doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+
+  // Charset + viewport
+  if (!doc.querySelector('meta[charset]')) { head.prepend(el(doc, 'meta', { charset: 'utf-8' })); }
+  let vp = doc.querySelector('meta[name="viewport"]');
+  if (!vp) { vp = el(doc, 'meta', { name: 'viewport', content: 'width=device-width, initial-scale=1' }); head.prepend(vp); done('mobile', 'Se agregó la configuración para celulares (viewport).'); }
+  else {
+    const c = vp.getAttribute('content') || '';
+    let nc = c;
+    if (!/width\s*=\s*device-width/i.test(nc)) nc = 'width=device-width, initial-scale=1';
+    nc = nc.replace(/,?\s*user-scalable\s*=\s*(no|0)/i, '').replace(/,?\s*maximum-scale\s*=\s*1(\.0)?\b/i, '');
+    if (nc !== c) { vp.setAttribute('content', nc); done('a11y', 'Se habilitó el zoom y el ajuste a pantalla en celulares.'); }
+  }
+
+  // Base para recursos relativos
+  if (opts.baseUrl && !doc.querySelector('base[href]')) head.prepend(el(doc, 'base', { href: opts.baseUrl }));
+
+  // Idioma
+  if (!doc.documentElement.getAttribute('lang')) {
+    const l = guessLang(text); doc.documentElement.setAttribute('lang', l);
+    done('seo', `Se declaró el idioma de la página (${l}).`);
+  }
+
+  // H1
+  const h1s = $$('h1', doc);
+  if (h1s.length === 0) {
+    const h = doc.querySelector('h2, [class*="title"], [class*="hero"] strong');
+    if (h && h.tagName === 'H2') {
+      const n = doc.createElement('h1'); for (const a of h.attributes) n.setAttribute(a.name, a.value);
+      n.innerHTML = h.innerHTML; h.replaceWith(n); done('seo', 'El primer título pasó a ser el encabezado principal (H1).');
+    }
+  } else if (h1s.length > 1) {
+    h1s.slice(1).forEach(h => { const n = doc.createElement('h2'); for (const a of h.attributes) n.setAttribute(a.name, a.value); n.innerHTML = h.innerHTML; h.replaceWith(n); });
+    done('seo', `Se dejó un solo H1; los otros ${h1s.length - 1} pasaron a H2.`);
+  }
+  const h1 = doc.querySelector('h1');
+  const h1Text = h1 ? h1.textContent.replace(/\s+/g, ' ').trim() : '';
+  let host = ''; try { host = opts.baseUrl ? new URL(opts.baseUrl).hostname.replace(/^www\./, '') : ''; } catch {}
+
+  // Título
+  let title = (doc.title || '').trim();
+  if (title.length < 10) {
+    const nt = [h1Text || title, host].filter(Boolean).join(' | ').slice(0, 65);
+    if (nt && nt !== title) { let t = doc.querySelector('title'); if (!t) { t = doc.createElement('title'); head.appendChild(t); } t.textContent = nt; title = nt; done('seo', `Título de página nuevo: “${nt}”.`); }
+  } else if (title.length > 65) {
+    const nt = title.slice(0, 62).replace(/\s+\S*$/, '') + '…';
+    doc.querySelector('title').textContent = nt; title = nt; done('seo', 'Se acortó el título para que Google lo muestre completo.');
+  }
+
+  // Descripción
+  let desc = doc.querySelector('meta[name="description"]');
+  let descText = desc ? (desc.getAttribute('content') || '').trim() : '';
+  if (descText.length < 50) {
+    const p = $$('p', doc).map(p => p.textContent.replace(/\s+/g, ' ').trim()).find(t => t.length > 60) || text.slice(0, 300);
+    if (p) {
+      descText = p.length > 155 ? p.slice(0, 152).replace(/\s+\S*$/, '') + '…' : p;
+      if (!desc) { desc = el(doc, 'meta', { name: 'description' }); head.appendChild(desc); }
+      desc.setAttribute('content', descText); done('seo', 'Se escribió una meta descripción a partir del contenido.');
+    }
+  }
+
+  // Open Graph + canónica
+  const firstImg = $$('img', doc).find(i => i.getAttribute('src') && !/\.svg($|\?)/i.test(i.getAttribute('src')));
+  if (!doc.querySelector('meta[property="og:title"]')) {
+    const add = (p, c) => c && head.appendChild(el(doc, 'meta', { property: p, content: c }));
+    add('og:title', title); add('og:description', descText); add('og:type', 'website');
+    if (opts.baseUrl) add('og:url', opts.baseUrl);
+    if (firstImg) { try { add('og:image', new URL(firstImg.getAttribute('src'), opts.baseUrl || location.href).href); } catch {} }
+    head.appendChild(el(doc, 'meta', { name: 'twitter:card', content: firstImg ? 'summary_large_image' : 'summary' }));
+    done('seo', 'Se agregó la vista previa para WhatsApp, Facebook y X (Open Graph).');
+  }
+  if (opts.baseUrl && !doc.querySelector('link[rel="canonical"]')) { head.appendChild(el(doc, 'link', { rel: 'canonical', href: opts.baseUrl })); done('seo', 'Se agregó la URL canónica.'); }
+
+  // Imágenes
+  let alts = 0, lazies = 0;
+  $$('img', doc).forEach((img, i) => {
+    if (!img.hasAttribute('alt')) {
+      const a = img.getAttribute('title') || altFromSrc(img.getAttribute('src')) || '';
+      img.setAttribute('alt', a); alts++;
+    }
+    if (i > 0 && !img.getAttribute('loading')) { img.setAttribute('loading', 'lazy'); lazies++; }
+    if (!img.getAttribute('decoding')) img.setAttribute('decoding', 'async');
+  });
+  if (alts) done('a11y', `Se agregó texto alternativo a ${alts} ${alts > 1 ? 'imágenes' : 'imagen'}.`);
+  if (lazies) done('perf', `${lazies} ${lazies > 1 ? 'imágenes cargan' : 'imagen carga'} solo cuando se ve${lazies > 1 ? 'n' : ''} (lazy loading).`);
+  $$('iframe', doc).forEach(f => { if (!f.getAttribute('loading')) f.setAttribute('loading', 'lazy'); if (!f.getAttribute('title')) f.setAttribute('title', 'Contenido incrustado'); });
+
+  // Formularios y controles sin nombre
+  let labeled = 0;
+  $$('input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea', doc).forEach(f => {
+    const has = (f.id && doc.querySelector(`label[for="${CSS.escape(f.id)}"]`)) || f.closest('label') || f.getAttribute('aria-label');
+    if (!has) { const n = f.getAttribute('placeholder') || f.getAttribute('name') || f.getAttribute('type') || 'Campo'; f.setAttribute('aria-label', n.replace(/[_-]/g, ' ')); labeled++; }
+  });
+  if (labeled) done('a11y', `${labeled} campo${labeled > 1 ? 's' : ''} de formulario ahora tiene${labeled > 1 ? 'n' : ''} nombre para lectores de pantalla.`);
+  let named = 0;
+  $$('a[href], button', doc).forEach(c => {
+    if (c.textContent.trim() || c.getAttribute('aria-label') || c.querySelector('img[alt]:not([alt=""])')) return;
+    const href = c.getAttribute('href') || '';
+    const guess = /wa\.me|whatsapp/i.test(href) ? 'WhatsApp' : /instagram/i.test(href) ? 'Instagram' : /facebook/i.test(href) ? 'Facebook'
+      : /twitter|x\.com/i.test(href) ? 'X (Twitter)' : /linkedin/i.test(href) ? 'LinkedIn' : /youtube/i.test(href) ? 'YouTube'
+      : /tiktok/i.test(href) ? 'TikTok' : /^mailto:/i.test(href) ? 'Enviar correo' : /^tel:/i.test(href) ? 'Llamar'
+      : c.getAttribute('title') || (c.className && String(c.className).match(/menu|burger|nav/i) ? 'Menú' : 'Enlace');
+    c.setAttribute('aria-label', guess); named++;
+  });
+  if (named) done('a11y', `${named} botón${named > 1 ? 'es' : ''} o enlace${named > 1 ? 's' : ''} con ícono ahora tiene${named > 1 ? 'n' : ''} nombre.`);
+
+  // Landmark main + salto al contenido
+  if (!doc.querySelector('main, [role=main]')) {
+    const cand = doc.querySelector('#content, #main, .content, .main, article') || (h1 && h1.parentElement !== doc.body ? h1.parentElement : null);
+    if (cand && cand !== doc.body) { cand.setAttribute('role', 'main'); done('a11y', 'Se marcó la región principal para navegación con teclado.'); }
+    else if (vis && vis.defaultFont && doc.body && !doc.querySelector('header, nav, footer')) {
+      // Sitio sin estructura ni estilos propios: envolver el contenido en <main> es seguro
+      const m = doc.createElement('main');
+      Array.from(doc.body.childNodes).forEach(n => { if (!(n.nodeType === 1 && n.tagName === 'SCRIPT')) m.appendChild(n); });
+      doc.body.prepend(m); done('a11y', 'Se agregó la región principal (main) para navegación con teclado.');
+    }
+  }
+  const mainEl = doc.querySelector('main, [role=main]') || h1;
+  if (mainEl && doc.body) {
+    if (!mainEl.id) mainEl.id = 'contenido';
+    const skip = el(doc, 'a', { href: '#' + mainEl.id, class: 'ms-skip' }); skip.textContent = 'Saltar al contenido';
+    doc.body.prepend(skip);
+  }
+
+  // Etiquetas obsoletas
+  let dep = 0;
+  // Reemplaza una etiqueta conservando sus atributos (incluidas las marcas de contraste)
+  const swap = (old, tag, skip = []) => {
+    const n = doc.createElement(tag);
+    for (const a of old.attributes) if (!skip.includes(a.name)) n.setAttribute(a.name, a.value);
+    n.innerHTML = old.innerHTML; old.replaceWith(n); dep++; return n;
+  };
+  $$('center', doc).forEach(c => { swap(c, 'div').style.textAlign = 'center'; });
+  $$('font', doc).forEach(f => {
+    const color = f.getAttribute('color'), face = f.getAttribute('face'), size = f.getAttribute('size');
+    const s = swap(f, 'span', ['color', 'face', 'size']);
+    if (color) s.style.color = color;
+    if (face) s.style.fontFamily = face;
+    const sz = { 1: '0.75em', 2: '0.875em', 3: '1em', 4: '1.15em', 5: '1.5em', 6: '2em', 7: '3em' }[size];
+    if (sz) s.style.fontSize = sz;
+  });
+  $$('marquee, blink', doc).forEach(m => swap(m, 'div', ['behavior', 'direction', 'scrollamount', 'scrolldelay', 'loop']));
+  $$('big', doc).forEach(m => { swap(m, 'span').style.fontSize = '1.2em'; });
+  $$('strike', doc).forEach(m => swap(m, 's'));
+  $$('tt', doc).forEach(m => swap(m, 'code'));
+  if (dep) done('design', `Se reemplazaron ${dep} etiquetas HTML obsoletas por equivalentes modernos.`);
+
+  // Tablas desplazables
+  let tw = 0;
+  $$('table', doc).forEach(t => {
+    if (t.parentElement && t.parentElement.classList.contains('ms-table')) return;
+    if (t.querySelector('table')) return; // tablas de maquetación anidadas: no tocar
+    const w = doc.createElement('div'); w.className = 'ms-table'; t.parentNode.insertBefore(w, t); w.appendChild(t); tw++;
+  });
+  if (tw) done('mobile', `${tw} tabla${tw > 1 ? 's' : ''} ahora se desplaza${tw > 1 ? 'n' : ''} en celulares sin romper la página.`);
+
+  // Seguridad
+  let rel = 0;
+  $$('a[target=_blank]', doc).forEach(a => { const r = a.getAttribute('rel') || ''; if (!/noopener/.test(r)) { a.setAttribute('rel', (r + ' noopener noreferrer').trim()); rel++; } });
+  if (rel) done('sec', `${rel} enlace${rel > 1 ? 's' : ''} externo${rel > 1 ? 's' : ''} protegido${rel > 1 ? 's' : ''} con rel="noopener".`);
+  if ($$('[src^="http:"], link[href^="http:"]', doc).length && !doc.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
+    head.appendChild(el(doc, 'meta', { 'http-equiv': 'Content-Security-Policy', content: 'upgrade-insecure-requests' }));
+    done('sec', 'Los recursos por HTTP se fuerzan a HTTPS.');
+  }
+  if (!doc.querySelector('meta[name="referrer"]')) head.appendChild(el(doc, 'meta', { name: 'referrer', content: 'strict-origin-when-cross-origin' }));
+
+  // Rendimiento: scripts bloqueantes independientes (analítica, píxeles, widgets)
+  let def = 0;
+  $$('head script[src]:not([async]):not([defer]):not([type=module])', doc).forEach(s => {
+    if (/googletagmanager|google-analytics|gtag|analytics|pixel|hotjar|clarity|facebook\.net|tawk|crisp|intercom|recaptcha/i.test(s.getAttribute('src'))) { s.setAttribute('async', ''); def++; }
+  });
+  if (def) done('perf', `${def} script${def > 1 ? 's' : ''} de terceros ya no bloquea${def > 1 ? 'n' : ''} la carga.`);
+  const fontLinks = $$('link[href*="fonts.googleapis.com"]', doc);
+  if (fontLinks.length && !doc.querySelector('link[rel=preconnect][href*="fonts.gstatic"]')) {
+    head.insertBefore(el(doc, 'link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }), fontLinks[0]);
+    head.insertBefore(el(doc, 'link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }), fontLinks[0]);
+    done('perf', 'Conexión anticipada a Google Fonts para que el texto aparezca antes.');
+  }
+
+  // Favicon
+  if (!doc.querySelector('link[rel~="icon"]')) {
+    const letter = (title || host || 'S').trim().charAt(0).toUpperCase().replace(/[<&"]/g, 'S');
+    const col = (vis && vis.brand) || '#2457d6';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${col}"/><text x="32" y="44" font-family="Arial,sans-serif" font-size="36" font-weight="700" text-anchor="middle" fill="#fff">${letter}</text></svg>`;
+    head.appendChild(el(doc, 'link', { rel: 'icon', href: 'data:image/svg+xml,' + encodeURIComponent(svg) }));
+    done('design', 'Se creó un ícono de pestaña con la inicial y el color del sitio.');
+  }
+
+  // Contraste (medido al renderizar)
+  let contrastCss = '';
+  if (vis && vis.lowContrast && vis.lowContrast.length) {
+    vis.lowContrast.forEach(c => { contrastCss += `[data-ms-c="${c.id}"]{color:${c.fix} !important}`; });
+    done('a11y', `Se corrigió el contraste de ${vis.lowContrast.length} texto${vis.lowContrast.length > 1 ? 's' : ''} difícil${vis.lowContrast.length > 1 ? 'es' : ''} de leer.`);
+  }
+
+  // Capa de diseño
+  const P = PRESETS[opts.preset];
+  const accent = (vis && vis.brand) || (P && P.accentFallback) || '#2457d6';
+  let css = `
+/* === Capa de mejoras (Mejorador de Sitios) === */
+.ms-skip{position:absolute;left:8px;top:-60px;z-index:2147483647;background:#111;color:#fff;padding:10px 14px;border-radius:6px;font:600 14px system-ui,sans-serif;text-decoration:none;transition:top .15s}
+.ms-skip:focus{top:8px}
+.ms-table{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+:where(img,video,iframe,svg){max-width:100%}
+:where(img,video){height:auto}
+:where(html){-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (prefers-reduced-motion:no-preference){:where(html){scroll-behavior:smooth}}
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid ${accent};outline-offset:2px}
+:where(h1,h2,h3){text-wrap:balance}
+:where(p,li){text-wrap:pretty;overflow-wrap:break-word}
+${contrastCss}`;
+  if (vis && vis.bodySize && vis.bodySize < 15) { css += `\n:where(body){font-size:16px}`; done('design', `El texto base subió de ${Math.round(vis.bodySize)}px a 16px para leerse mejor.`); }
+  if (vis && /^normal$/.test(vis.lineHeight || '')) { css += `\n:where(body){line-height:1.6}`; done('design', 'Se mejoró el interlineado del texto.'); }
+
+  if (P) {
+    const gfHref = 'https://fonts.googleapis.com/css2?family=' + P.gf + '&display=swap';
+    if (!doc.querySelector('link[rel=preconnect][href*="fonts.gstatic"]')) head.appendChild(el(doc, 'link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }));
+    head.appendChild(el(doc, 'link', { rel: 'stylesheet', href: gfHref }));
+    const plain = !vis || vis.defaultFont;
+    css += `
+:root{--ms-accent:${accent};--ms-radius:${P.radius}}
+body{font-family:${P.font}${plain ? '' : ''};line-height:${P.lh};-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+:where(h1,h2,h3,h4){font-family:${P.head};line-height:1.15;letter-spacing:${opts.preset === 'elegant' ? '-0.01em' : '-0.02em'}}
+:where(h1){font-size:clamp(2rem,4.5vw,3.25rem)}
+:where(h2){font-size:clamp(1.5rem,3vw,2.2rem)}
+:where(p){max-width:72ch}
+:where(a){text-underline-offset:.18em;text-decoration-thickness:.08em}
+:where(button,input[type=submit],input[type=button],.btn,.button,[class*="btn-"]){border-radius:var(--ms-radius);transition:transform .15s ease,box-shadow .15s ease,filter .15s ease;cursor:pointer}
+:where(button,input[type=submit],.btn,.button,[class*="btn-"]):hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 6px 18px -8px rgba(0,0,0,.35)}
+:where(input:not([type=checkbox]):not([type=radio]),select,textarea){border-radius:calc(var(--ms-radius) * .7);padding:.6em .8em;font:inherit}
+:where(img){border-radius:${opts.preset === 'elegant' ? '0' : 'calc(var(--ms-radius) * .6)'}}
+:where(table){border-collapse:collapse}
+:where(th,td){padding:.55em .8em}
+::selection{background:${accent};color:#fff}
+`;
+    if (plain) {
+      css += `
+body{font-size:${P.size};color:#1d1f23;max-width:1080px;margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+:where(section,article,header,footer,main){padding-block:clamp(16px,3vw,32px)}
+:where(a){color:${accent}}
+:where(button,input[type=submit]){background:${accent};color:#fff;border:0;padding:.7em 1.3em;font-weight:600}
+`;
+      done('design', 'El sitio usaba la tipografía por defecto del navegador: se aplicó un diseño completo con márgenes, ancho de lectura y botones.');
+    }
+    if (opts.preset === 'bold') css += `\n:where(button,input[type=submit],.btn,.button,[class*="btn-"]){padding:.85em 1.6em;font-weight:800;font-size:1.05em}\n:where(h1){text-transform:none;font-size:clamp(2.4rem,6vw,4.2rem)}`;
+    done('design', `Se aplicó el estilo “${{ modern: 'Moderno', elegant: 'Elegante', bold: 'Audaz' }[opts.preset]}”: tipografía, jerarquía de títulos, botones con transición y foco visible, usando el color de marca ${accent}.`);
+  } else {
+    done('design', 'Estilo conservado: solo se agregaron ajustes invisibles (foco visible, imágenes fluidas, títulos balanceados).');
+  }
+  const style = doc.createElement('style'); style.id = 'mejorador-estilos'; style.textContent = css;
+  head.appendChild(style);
+
+  return log;
+}
+
+function serialize(doc) { return '<!doctype html>\n' + doc.documentElement.outerHTML; }
+
+/* ============================================================
+   IA: rediseño completo con Claude
+   ============================================================ */
+const AI_SYSTEM = `Sos un diseñador y desarrollador web senior. Recibís el HTML de un sitio real y una auditoría. Devolvé UNA versión mejorada del sitio como documento HTML completo y autocontenido.
+Reglas:
+- Conservá todo el contenido real: textos, precios, teléfonos, direcciones, enlaces, formularios, imágenes (con sus URLs absolutas). No inventes datos del negocio.
+- Mejorá el diseño visual (tipografía, jerarquía, espaciado, color a partir de la marca existente), la adaptación a celulares, la accesibilidad (contraste, alt, etiquetas), el SEO (title, meta description, Open Graph, un solo h1) y la velocidad (lazy loading, sin CSS/JS innecesario).
+- CSS en un <style> dentro del documento. Podés usar Google Fonts. JavaScript solo si es imprescindible y mínimo.
+- Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html>. Sin explicaciones ni bloques de código.`;
+
+function aiPrompt(html, auditRes, notes) {
+  const fails = auditRes.issues.filter(i => !i.ok).map(i => '- ' + i.msg).join('\n') || '- (sin problemas graves detectados)';
+  return `Problemas detectados por la auditoría:\n${fails}\n\n${notes ? 'Pedido del dueño del sitio: ' + notes + '\n\n' : ''}HTML actual del sitio:\n\n${html}`;
+}
+function extractHtml(text) {
+  const fence = /```(?:html)?\s*([\s\S]*?)```/i.exec(text);
+  if (fence) text = fence[1];
+  const i = text.search(/<!doctype html|<html/i);
+  return i >= 0 ? text.slice(i).trim() : null;
+}
+function slimForAI(html) {
+  // Quitar lo que no aporta al diseño (scripts inline largos, svg enormes, comentarios) para ahorrar tokens.
+  return html
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => body.length > 400 ? m.replace(body, '/* script omitido */') : m)
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, m => m.length > 1500 ? '<svg><!-- ícono --></svg>' : m)
+    .replace(/(src|href)="data:[^"]{200,}"/gi, '$1="data:,"');
+}
+async function aiRedesign(html, auditRes, notes, onProgress) {
+  const slim = slimForAI(html);
+  const MAX = 400000;
+  if (slim.length > MAX) throw new Error(`El HTML tiene ${Math.round(slim.length / 1000)} mil caracteres, demasiado para un rediseño completo con IA. Se mantienen las mejoras automáticas.`);
+  const prompt = aiPrompt(slim, auditRes, notes);
+
+  if (isArtifact) {
+    const sample = await window.claude.use('sample');
+    if (!sample) throw new Error('La IA de Claude no está disponible en esta vista.');
+    const r = await sample([{ role: 'user', content: AI_SYSTEM + '\n\n' + prompt }], {
+      modelTier: 'complex', cache: false,
+      onText: ({ text }) => onProgress && onProgress(text.length),
+    });
+    return extractHtml(r.text);
+  }
+
+  const key = $('#apiKey').value.trim();
+  if (!key) throw new Error('Falta la clave de API de Anthropic para el rediseño con IA.');
+  const { default: Anthropic } = await import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk/+esm');
+  const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
+  const stream = client.beta.messages.stream({
+    model: 'claude-opus-5-5',
+    max_tokens: 64000,
+    thinking: { type: 'adaptive' },
+    output_config: { effort: 'medium' },
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    system: AI_SYSTEM,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  let chars = 0;
+  stream.on('text', delta => { chars += delta.length; onProgress && onProgress(chars); });
+  const msg = await stream.finalMessage();
+  if (msg.stop_reason === 'refusal') throw new Error('Claude no pudo procesar este sitio.');
+  if (msg.stop_reason === 'max_tokens') throw new Error('El sitio es demasiado largo: la respuesta de la IA quedó incompleta.');
+  const text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  return extractHtml(text);
+}
+
+/* ============================================================
+   Interfaz
+   ============================================================ */
+let mode = 'url', fileHtml = '', fileLabel = '', current = null;
+
+$$('.tabs button').forEach(b => b.addEventListener('click', () => {
+  mode = b.dataset.mode;
+  $$('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+  $$('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== mode; });
+}));
+
+const drop = $('#drop'), fileIn = $('#file');
+drop.addEventListener('click', () => fileIn.click());
+drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileIn.click(); } });
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+fileIn.addEventListener('change', () => { if (fileIn.files[0]) readFile(fileIn.files[0]); });
+function readFile(f) {
+  const r = new FileReader();
+  r.onload = () => { fileHtml = String(r.result); fileLabel = f.name; $('#fileName').textContent = `${f.name} · ${Math.round(f.size / 1024)} KB`; };
+  r.readAsText(f);
+}
+
+// IA: en claude.ai se usa la IA integrada; en la web, la clave del usuario.
+if (isArtifact) {
+  $('#keyRow').hidden = true;
+  $('#envLabel').textContent = 'Motor local + IA de Claude';
+} else {
+  const k = store.get('ms-key'); if (k) $('#apiKey').value = k;
+  $('#apiKey').addEventListener('change', e => store.set('ms-key', e.target.value.trim()));
+}
+const savedUrl = store.get('ms-url'); if (savedUrl) $('#url').value = savedUrl;
+
+const logEl = $('#log');
+function step(msg) {
+  const li = document.createElement('li'); li.className = 'run'; li.textContent = msg; logEl.appendChild(li);
+  return {
+    ok(m) { li.className = 'done'; if (m) li.textContent = m; },
+    err(m) { li.className = 'err'; li.textContent = m; },
+    set(m) { li.textContent = m; },
+  };
+}
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const go = $('#go'); go.disabled = true; go.textContent = 'Trabajando…';
+  logEl.innerHTML = '';
+  try { await run(); }
+  catch (err) { step('').err(err.message || String(err)); }
+  finally { go.disabled = false; go.textContent = 'Mejorar sitio'; }
+});
+
+async function run() {
+  const preset = (document.querySelector('input[name=preset]:checked') || {}).value || 'modern';
+  let html = '', baseUrl = '', label = '';
+
+  if (mode === 'url') {
+    const url = normalizeUrl($('#url').value);
+    if (!url) throw new Error('Escribí una dirección válida, por ejemplo https://tusitio.com');
+    store.set('ms-url', url);
+    const s = step(`Visitando ${url}…`);
+    try { const r = await fetchSite(url); html = r.html; s.ok(`Sitio descargado (${Math.round(html.length / 1024)} KB, vía ${r.via}).`); }
+    catch (e) {
+      if (isArtifact) throw new Error('Desde claude.ai no se pueden visitar sitios externos. Abrí la versión web de la herramienta (link en el README) o subí el archivo HTML.');
+      throw e;
+    }
+    baseUrl = url; label = url;
+  } else if (mode === 'file') {
+    if (!fileHtml) throw new Error('Elegí un archivo .html primero.');
+    html = fileHtml; label = fileLabel;
+  } else {
+    html = $('#code').value;
+    if (!/<[a-z!]/i.test(html)) throw new Error('Pegá el código HTML del sitio.');
+    label = 'Código pegado';
+  }
+  await processHtml(html, baseUrl, label, preset);
+}
+
+async function processHtml(html, baseUrl, label, preset) {
+  // 1. Ver el sitio como lo vería una persona
+  const s1 = step('Renderizando el sitio para verlo…');
+  const withBase = baseUrl && !/<base\s/i.test(html) ? html.replace(/<head[^>]*>/i, m => `${m}<base href="${baseUrl}">`) : html;
+  const frame = await renderForInspection(withBase);
+  let vis = null;
+  try { vis = inspectRendered(frame); } catch { vis = null; }
+  frame.remove();
+  if (vis && vis.ok) {
+    s1.ok(`Sitio visto: ${vis.checkedText} bloques de texto medidos${vis.brand ? `, color de marca ${vis.brand}` : ''}.`);
+    if (vis.textLen < 150 && /<script/i.test(html)) step('').err('El contenido se arma con JavaScript: las mejoras de texto serán parciales.');
+  } else { s1.ok('No se pudo renderizar; se analiza solo el código.'); vis = null; }
+
+  // 2. Auditoría inicial
+  const s2 = step('Auditando SEO, accesibilidad, velocidad, móvil, diseño y seguridad…');
+  const src = vis && vis.markedHtml ? vis.markedHtml : html;
+  const docBefore = new DOMParser().parseFromString(html, 'text/html');
+  const before = audit(docBefore, vis);
+  s2.ok(`Puntaje inicial: ${before.total}/100.`);
+
+  // 3. Mejoras automáticas
+  const s3 = step('Aplicando mejoras…');
+  const doc = new DOMParser().parseFromString(src, 'text/html');
+  const applied = improve(doc, vis, { baseUrl, preset });
+  let improved = serialize(doc);
+  s3.ok(`${applied.length} mejoras aplicadas.`);
+
+  // 4. IA opcional
+  let usedAI = false;
+  if ($('#useAI').checked) {
+    const s4 = step('Claude está rediseñando el sitio…');
+    try {
+      const ai = await aiRedesign(improved, before, $('#aiNotes').value.trim(), n => s4.set(`Claude está rediseñando el sitio… (${Math.round(n / 1000)} mil caracteres escritos)`));
+      if (!ai) throw new Error('La IA no devolvió un HTML válido. Se mantienen las mejoras automáticas.');
+      // Pasar el resultado por el motor otra vez para asegurar lo básico (sin capa de estilo extra)
+      const d2 = new DOMParser().parseFromString(ai, 'text/html');
+      improve(d2, null, { baseUrl, preset: 'keep' });
+      improved = serialize(d2);
+      applied.unshift({ cat: 'design', msg: 'Rediseño completo del sitio hecho por Claude a partir del contenido original.' });
+      usedAI = true;
+      s4.ok('Rediseño con IA terminado.');
+    } catch (e) { s4.err(e.message || 'Falló el rediseño con IA; se mantienen las mejoras automáticas.'); }
+  }
+
+  // 5. Auditoría final (volviendo a ver el sitio mejorado)
+  const s5 = step('Revisando el resultado…');
+  const f2 = await renderForInspection(improved);
+  let vis2 = null; try { vis2 = inspectRendered(f2); } catch {}
+  f2.remove();
+  const after = audit(new DOMParser().parseFromString(improved, 'text/html'), vis2 && vis2.ok ? vis2 : null);
+  s5.ok(`Puntaje final: ${after.total}/100.`);
+
+  // 6. Link
+  const s6 = step('Generando link del sitio mejorado…');
+  const link = await makeLink(improved);
+  s6.ok('Link listo.');
+
+  current = { html, improved, baseUrl, label, before, after, applied, link, usedAI };
+  showResult(current);
+}
+
+async function makeLink(html) {
+  const z = await compress(html);
+  const base = location.href.split('#')[0];
+  return { url: base + '#v=' + z, size: z.length, standalone: !isArtifact && /^https?:/.test(base) };
+}
+
+function showResult(r) {
+  $('#empty').hidden = true; $('#result').hidden = false;
+  $('#siteName').textContent = r.label;
+  $('#sBefore').textContent = r.before.total; $('#sAfter').textContent = r.after.total;
+  $('#capB').textContent = r.before.total + '/100'; $('#capA').textContent = r.after.total + '/100';
+  const cats = $('#cats'); cats.innerHTML = '';
+  CATS.forEach(([k, name]) => {
+    const b = r.before.scores[k], a = r.after.scores[k];
+    const d = document.createElement('div'); d.className = 'cat';
+    d.innerHTML = `<div class="name">${name}<span>${b} → <b>${a}</b></span></div><div class="bar"><i class="b" style="width:${b}%"></i><i class="a" style="width:${a}%"></i></div>`;
+    cats.appendChild(d);
+  });
+
+  const catName = Object.fromEntries(CATS);
+  const ap = $('#applied'); ap.innerHTML = '';
+  r.applied.forEach(x => { const li = document.createElement('li'); li.innerHTML = `<span class="tag ok"></span><span></span>`; li.children[0].textContent = catName[x.cat]; li.children[1].textContent = x.msg; ap.appendChild(li); });
+  const pe = $('#pending'); pe.innerHTML = '';
+  const pend = r.after.issues.filter(i => !i.ok).sort((a, b) => b.weight - a.weight);
+  const extra = [
+    { cat: 'perf', msg: 'Comprimí las imágenes a WebP o AVIF: suele ser la mayor ganancia de velocidad.' },
+    { cat: 'seo', msg: 'Registrá el sitio en Google Search Console y Google Business Profile.' },
+  ];
+  (pend.length ? pend.map(i => ({ cat: i.cat, msg: i.msg, sev: i.weight >= 3 ? 'bad' : 'warn' })) : []).concat(extra).forEach(x => {
+    const li = document.createElement('li'); li.innerHTML = `<span class="tag ${x.sev || ''}"></span><span></span>`;
+    li.children[0].textContent = catName[x.cat]; li.children[1].textContent = x.msg; pe.appendChild(li);
+  });
+
+  // Vistas previas
+  const withBase = r.baseUrl && !/<base\s/i.test(r.html) ? r.html.replace(/<head[^>]*>/i, m => `${m}<base href="${r.baseUrl}">`) : r.html;
+  $('#fBefore').srcdoc = withBase;
+  $('#fAfter').srcdoc = r.improved;
+
+  // Link
+  const blobUrl = URL.createObjectURL(new Blob([r.improved], { type: 'text/html' }));
+  const share = $('#shareLink'), open = $('#openNew'), note = $('#shareNote');
+  if (r.link.standalone) {
+    share.value = r.link.url; open.href = r.link.url;
+    const kb = Math.round(r.link.size / 1024);
+    note.textContent = kb > 1500
+      ? `El link pesa ${kb} KB porque lleva el sitio completo adentro. Funciona en Chrome y Edge; para compartir por WhatsApp conviene descargar el .html.`
+      : `El sitio mejorado viaja dentro del link (${kb} KB comprimido): no necesita servidor ni dominio. Cualquiera que lo abra ve la versión mejorada.`;
+  } else {
+    share.value = r.link.url; open.href = blobUrl;
+    note.textContent = 'Dentro de claude.ai el link compartible no se puede abrir. Usá “Abrir sitio mejorado” para verlo, o descargá el .html y publicalo gratis en Netlify Drop o GitHub Pages.';
+  }
+  document.getElementById('result').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+
+$('#copy').addEventListener('click', async () => {
+  const inp = $('#shareLink');
+  try { await navigator.clipboard.writeText(inp.value); toast('Link copiado'); }
+  catch { inp.focus(); inp.select(); toast('Seleccioné el link: copialo con Ctrl+C'); }
+});
+$('#download').addEventListener('click', async () => {
+  if (!current) return;
+  let name = 'sitio-mejorado.html';
+  try { if (current.baseUrl) name = new URL(current.baseUrl).hostname.replace(/^www\./, '') + '-mejorado.html'; } catch {}
+  if (isArtifact) {
+    const dl = await window.claude.use('downloads');
+    if (dl) { try { await dl.save({ filename: name, data: current.improved }); } catch {} return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([current.improved], { type: 'text/html' })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+});
+$$('[data-view]').forEach(b => b.addEventListener('click', () => {
+  $$('[data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  $('#frames').classList.toggle('solo', b.dataset.view === 'solo');
+}));
+$$('[data-dev]').forEach(b => b.addEventListener('click', () => {
+  $$('[data-dev]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  $('#frames').classList.toggle('mobile', b.dataset.dev === 'mobile');
+}));
+
+/* ---------- Sitio de ejemplo (para probar sin nada) ---------- */
+const DEMO = `<html><head><title>Panaderia</title></head>
+<body bgcolor="#ffffff">
+<center><font size="6" color="#c9a36b">Panadería La Espiga</font></center>
+<h2>Pan de masa madre todos los días</h2>
+<p><font color="#bbbbbb">Horneamos desde 1987 en el barrio de Almagro, Buenos Aires. Pan de campo, medialunas de manteca, facturas y tortas por encargo. Pedidos por WhatsApp con 24 horas de anticipación.</font></p>
+<img src="https://images.unsplash.com/photo-1509440159596-0249088772ff?w=900" width="900">
+<img src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=900" width="900">
+<h2>Precios</h2>
+<table border="1"><tr><td>Pan de campo (1 kg)</td><td>$4.800</td></tr><tr><td>Docena de medialunas</td><td>$6.500</td></tr><tr><td>Torta de ricota</td><td>$12.000</td></tr></table>
+<h2>Contacto</h2>
+<p>Av. Rivadavia 4120 · Lunes a sábado de 7 a 20 h</p>
+<form><input type="text" placeholder="Tu nombre"><input type="text" placeholder="Tu pedido"><input type="submit" value="Enviar"></form>
+<a href="https://wa.me/5491100000000" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="40"></a>
+<marquee>¡Nuevo! Pan dulce todo el año</marquee>
+</body></html>`;
+$('#demo').addEventListener('click', () => {
+  $('#tab-code').click(); $('#code').value = DEMO;
+  $('#form').requestSubmit();
+});
+})();
+</script>
+</body>
+</html>
