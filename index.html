@@ -88,6 +88,7 @@ input[type="url"], input[type="text"], input[type="password"], textarea, select 
   border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
 }
 input[type="url"] { font-family: var(--font-mono); font-size: 13px; }
+input.need { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 25%, transparent); }
 textarea { font: 12px/1.5 var(--font-mono); min-height: 150px; resize: vertical; }
 input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible, .drop:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
@@ -1386,8 +1387,8 @@ if (isArtifact) {
   const pv = store.get('ms-provider'); if (pv) $('#provider').value = pv;
   const pref = store.get('ms-useai');
   if (pref === '1' || (pref === null && (gk || k))) $('#useAI').checked = true;
-  $('#apiKey').addEventListener('change', e => store.set('ms-key', e.target.value.trim()));
-  $('#geminiKey').addEventListener('change', e => { store.set('ms-gkey', e.target.value.trim()); loadGeminiModels(); });
+  $('#apiKey').addEventListener('change', e => { e.target.classList.remove('need'); store.set('ms-key', e.target.value.trim()); });
+  $('#geminiKey').addEventListener('change', e => { e.target.classList.remove('need'); store.set('ms-gkey', e.target.value.trim()); loadGeminiModels(); });
   $('#geminiModel').addEventListener('change', e => store.set('ms-gmodel', e.target.value));
   $('#provider').addEventListener('change', e => { store.set('ms-provider', e.target.value); syncProvider(); });
   $('#useAI').addEventListener('change', e => { store.set('ms-useai', e.target.checked ? '1' : '0'); syncProvider(); });
@@ -1494,7 +1495,11 @@ async function processHtml(html, baseUrl, label, preset) {
   // 4. Agentes de IA
   lastRun = { html, baseUrl, label, preset, before, localApplied: applied, localImproved: improved, ctx: null };
   $('#briefPanel').hidden = true;
-  if ($('#useAI').checked) {
+  const keyInput = isArtifact ? null : (provider() === 'gemini' ? $('#geminiKey') : $('#apiKey'));
+  if ($('#useAI').checked && keyInput && !keyInput.value.trim()) {
+    step('').err(`Los agentes de IA necesitan tu clave de ${provider() === 'gemini' ? 'Gemini' : 'Anthropic'}. Pegala en “Agentes de IA” y tocá “Mejorar sitio” otra vez. Por ahora ves las mejoras automáticas.`);
+    $('#aiBox').open = true; keyInput.classList.add('need');
+  } else if ($('#useAI').checked) {
     try {
       const ctx = await planAgents({ provider: provider(), html, baseUrl, before, notes: $('#aiNotes').value.trim(), preset });
       lastRun.ctx = ctx;
@@ -1560,7 +1565,34 @@ function withBaseTag(html, baseUrl) {
 // y muchos sitios dejan de dibujarse si su JavaScript falla al usarlos. Se simulan en memoria.
 const PREVIEW_SHIM = '<script>(function(){function S(){var d={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}' +
   'try{window.localStorage}catch(e){try{Object.defineProperty(window,"localStorage",{value:S(),configurable:true});Object.defineProperty(window,"sessionStorage",{value:S(),configurable:true})}catch(e2){}}' +
-  'try{document.cookie}catch(e){try{var c="";Object.defineProperty(document,"cookie",{get:function(){return c},set:function(v){c=v},configurable:true})}catch(e3){}}})();<\/script>';
+  'try{document.cookie}catch(e){try{var c="";Object.defineProperty(document,"cookie",{get:function(){return c},set:function(v){c=v},configurable:true})}catch(e3){}}' +
+  // A los 4 s avisa si la página quedó en blanco (por ejemplo, código que la oculta dentro de un marco)
+  'setTimeout(function(){var blank=true;try{var d=document.documentElement,b=document.body,cd=getComputedStyle(d),cb=b?getComputedStyle(b):null;' +
+  'var hid=!b||cd.display=="none"||cd.visibility=="hidden"||+cd.opacity<0.05||cb.display=="none"||cb.visibility=="hidden"||+cb.opacity<0.05;' +
+  'blank=hid||((b.innerText||"").trim().length<20&&!document.querySelector("img,video,canvas"))}catch(e){}parent.postMessage({ms:"preview",blank:blank},"*")},4000)})();<\/script>';
+// Si la vista con scripts queda en blanco, se muestra sin scripts y forzando que el contenido sea visible
+const STATIC_FIX = '<style>html,body{display:block!important;visibility:visible!important;opacity:1!important}' +
+  '[data-aos],.aos-init,.wow,[data-ms-show],.elementor-invisible{opacity:1!important;visibility:visible!important;transform:none!important}' +
+  '#preloader,.preloader,#loader-wrapper,.loader-wrapper,.page-loader,#page-loader,.loading-screen,#loading-screen{display:none!important}</style>';
+function staticPreview(html, baseUrl) {
+  const h = withBaseTag(html, baseUrl);
+  return /<\/head>/i.test(h) ? h.replace(/<\/head>/i, STATIC_FIX + '</head>') : STATIC_FIX + h;
+}
+function setPreview(f, html, baseUrl) {
+  f._html = html; f._base = baseUrl; delete f.dataset.fallback;
+  f.setAttribute('sandbox', f.id === 'fBefore' ? 'allow-scripts allow-popups' : 'allow-scripts allow-popups allow-forms');
+  f.removeAttribute('src');
+  f.srcdoc = forPreview(html, baseUrl);
+}
+window.addEventListener('message', e => {
+  if (!e.data || e.data.ms !== 'preview' || !e.data.blank) return;
+  const f = ['#fBefore', '#fAfter', '#fFull'].map(x => $(x)).find(x => x.contentWindow === e.source);
+  if (!f || f.dataset.fallback || !f._html) return;
+  f.dataset.fallback = '1';
+  f.setAttribute('sandbox', 'allow-popups');
+  f.srcdoc = staticPreview(f._html, f._base);
+  toast('Una vista previa quedó en blanco por el código del sitio: se muestra sin scripts.');
+});
 function forPreview(html, baseUrl) {
   const h = withBaseTag(html, baseUrl);
   return /<head[^>]*>/i.test(h) ? h.replace(/<head[^>]*>/i, m => m + PREVIEW_SHIM) : PREVIEW_SHIM + h;
@@ -1602,9 +1634,9 @@ function showResult(r) {
 
   // Vistas previas
   const fb = $('#fBefore');
-  if (r.html) { fb.removeAttribute('src'); fb.srcdoc = forPreview(r.html, r.baseUrl); }
-  else { fb.removeAttribute('srcdoc'); fb.src = r.baseUrl; }
-  $('#fAfter').srcdoc = forPreview(r.improved);
+  if (r.html) setPreview(fb, r.html, r.baseUrl);
+  else { fb._html = null; fb.removeAttribute('srcdoc'); fb.src = r.baseUrl; }
+  setPreview($('#fAfter'), r.improved);
 
   // Link
   const blobUrl = URL.createObjectURL(new Blob([r.improved], { type: 'text/html' }));
@@ -1677,7 +1709,7 @@ $('#download').addEventListener('click', async () => {
 function closeFull() { $('#overlay').hidden = true; $('#fFull').removeAttribute('srcdoc'); document.body.style.overflow = ''; }
 $('#fullBtn').addEventListener('click', () => {
   if (!current) return;
-  $('#fFull').srcdoc = forPreview(current.improved);
+  setPreview($('#fFull'), current.improved);
   $('#overlay').hidden = false; document.body.style.overflow = 'hidden'; $('#ovClose').focus();
 });
 $('#ovClose').addEventListener('click', closeFull);
