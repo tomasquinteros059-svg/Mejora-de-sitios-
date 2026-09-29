@@ -222,6 +222,10 @@ details.ai .stack { margin-top: 12px; }
           <label class="field">Dirección del sitio
             <input type="url" id="url" placeholder="https://ejemplo.com" autocomplete="url" inputmode="url">
           </label>
+          <div class="stack" id="webLaunch" hidden style="margin-top:12px">
+            <p class="hint">Dentro de claude.ai no se pueden leer sitios externos ni mostrar sus imágenes. La versión web sí: se abre en otra pestaña con tu sitio ya cargado.</p>
+            <a class="btn" id="webLaunchLink" href="#" target="_blank" rel="noopener">Abrir la versión web con este sitio</a>
+          </div>
         </div>
         <div data-pane="file" hidden>
           <div class="drop" id="drop" tabindex="0" role="button" aria-label="Elegir archivo HTML">
@@ -324,6 +328,10 @@ details.ai .stack { margin-top: 12px; }
           <button class="ghost" type="button" id="download">Descargar .html</button>
         </div>
         <p class="note" id="shareNote"></p>
+        <div class="note" id="aiNudge" hidden style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center">
+          <span style="flex:1 1 260px">Estas son las mejoras automáticas. Para un rediseño completo de nivel profesional, activá los agentes de IA.</span>
+          <button type="button" class="ghost" id="aiNudgeBtn" style="padding:6px 12px;font-size:13px">Activar agentes de IA</button>
+        </div>
 
         <div class="compare-bar">
           <div class="seg" role="group" aria-label="Vista">
@@ -978,7 +986,9 @@ El prompt tiene que ser concreto, accionable y en español, con estas partes:
 2. Identidad visual: paleta con códigos hex partiendo de los colores de la marca, tipografías de Google Fonts por rol (títulos, texto), estilo de imágenes, tono de la redacción.
 3. Estructura: lista ordenada de secciones. Para cada una, qué contenido del sitio original lleva (títulos, textos, ítems, precios, imágenes con su URL, enlaces) y su llamado a la acción. Incluí TODO el contenido relevado; nada se descarta.
 4. Mejoras obligatorias: los problemas de la auditoría y los que observes (SEO, accesibilidad, celular, velocidad, conversión).
-5. Restricciones: no inventar datos, no omitir contenido, todo visible sin JavaScript, un único archivo HTML con el CSS adentro.
+5. Concepto creativo: una idea visual central propia de este negocio (no una plantilla genérica) y los recursos de conversión que más le sirven (botón flotante de WhatsApp, llamadas a la acción repetidas, prueba social, preguntas frecuentes, horarios visibles).
+6. Restricciones: no inventar datos, no omitir contenido, todo visible sin JavaScript, un único archivo HTML con el CSS adentro.
+El objetivo es un sitio que parezca hecho por una agencia de primer nivel: pedí calidad visual alta y concreta.
 No escribas código. Respondé solo con el prompt, listo para usar.`;
 
 const BUILDER_SYSTEM = `Sos el Agente Constructor: diseñador y desarrollador web senior. Reconstruís un sitio real como UNA página HTML completa, autocontenida y mejorada.
@@ -991,6 +1001,14 @@ Reglas obligatorias:
 - Responsive (celular primero), menú con anclas a cada sección, accesible (contraste AA, etiquetas, foco visible), SEO (title, meta description, Open Graph, un solo h1 y JSON-LD del negocio si hay datos reales).
 - CSS en un único <style>. Podés usar Google Fonts. JavaScript solo el mínimo (por ejemplo, el menú en celular).
 - Formularios: conservá su action y method originales.
+Nivel de diseño: el resultado tiene que parecer hecho por una agencia premium, no una plantilla.
+- Encabezado fijo con logo o nombre y menú; en celular, menú desplegable accesible.
+- Portada (hero) fuerte: propuesta de valor clara, subtítulo, llamado a la acción principal y secundario, e imagen real del negocio.
+- Ritmo visual: alterná fondos entre secciones, usá grillas responsive, tarjetas con imagen para servicios o productos, testimonios destacados, preguntas frecuentes con <details> y un contacto completo con botones grandes.
+- Si hay WhatsApp o teléfono, botón flotante de contacto.
+- Sistema visual con variables CSS: paleta de marca, escala tipográfica con clamp(), espaciado consistente, sombras suaves y bordes redondeados coherentes.
+- Microinteracciones en hover y foco; animaciones solo con CSS, suaves, que nunca oculten contenido y que respeten prefers-reduced-motion.
+- Pie de página completo: datos de contacto, horarios, redes y navegación.
 - Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html> y terminando en </html>.`;
 
 const REVIEW_SYSTEM = `Sos el Agente Revisor de calidad. Recibís una página HTML generada y la lista de contenidos del sitio original que NO aparecen en ella.
@@ -1121,10 +1139,14 @@ async function claudeText(system, prompt, { onText } = {}) {
   if (isArtifact) {
     const sample = await window.claude.use('sample');
     if (!sample) throw new Error('La IA de Claude no está disponible en esta vista.');
-    const r = await sample([{ role: 'user', content: system + '\n\n' + prompt }], {
-      modelTier: 'complex', cache: false, onText: ({ text }) => onText && onText(text.length),
-    });
-    return { text: r.text, model: 'Claude' };
+    let turns = [{ role: 'user', content: system + '\n\n' + prompt }], full = '';
+    for (let round = 0; round < 3; round++) {
+      const r = await sample(turns, { modelTier: 'complex', cache: false, onText: ({ text }) => onText && onText(full.length + text.length) });
+      full += r.text;
+      if (!r.truncated) break;
+      turns = [turns[0], { role: 'assistant', content: full }, { role: 'user', content: CONTINUE_MSG }];
+    }
+    return { text: full, model: 'Claude' };
   }
   const key = $('#apiKey').value.trim();
   if (!key) throw new Error('Falta la clave de API de Anthropic.');
@@ -1352,11 +1374,18 @@ if (isArtifact) {
   $('#geminiRow').hidden = true;
   $('#keyRow').hidden = true;
   $('#envLabel').textContent = 'Motor local + IA de Claude';
+  $('#useAI').checked = store.get('ms-useai') !== '0';
+  $('#useAI').addEventListener('change', e => store.set('ms-useai', e.target.checked ? '1' : '0'));
+  $('#webLaunch').hidden = false;
+  const syncLaunch = () => { const u = normalizeUrl($('#url').value); $('#webLaunchLink').href = WEB_URL + (u ? '?url=' + encodeURIComponent(u) : ''); };
+  $('#url').addEventListener('input', syncLaunch);
+  setTimeout(syncLaunch, 0);
 } else {
   const k = store.get('ms-key'); if (k) $('#apiKey').value = k;
   const gk = store.get('ms-gkey'); if (gk) $('#geminiKey').value = gk;
   const pv = store.get('ms-provider'); if (pv) $('#provider').value = pv;
-  if (store.get('ms-useai') === '1') $('#useAI').checked = true;
+  const pref = store.get('ms-useai');
+  if (pref === '1' || (pref === null && (gk || k))) $('#useAI').checked = true;
   $('#apiKey').addEventListener('change', e => store.set('ms-key', e.target.value.trim()));
   $('#geminiKey').addEventListener('change', e => { store.set('ms-gkey', e.target.value.trim()); loadGeminiModels(); });
   $('#geminiModel').addEventListener('change', e => store.set('ms-gmodel', e.target.value));
@@ -1366,6 +1395,17 @@ if (isArtifact) {
   if (gk) loadGeminiModels();
 }
 const savedUrl = store.get('ms-url'); if (savedUrl) $('#url').value = savedUrl;
+
+// La versión web se puede abrir con un sitio ya cargado: index.html?url=https://sitio.com
+const WEB_URL = 'https://raw.githack.com/tomasquinteros059-svg/Mejora-de-sitios-/claude/website-improvement-tool-1qduro/index.html';
+if (!isArtifact) {
+  let qUrl = null; try { qUrl = new URLSearchParams(location.search).get('url'); } catch {}
+  if (qUrl && normalizeUrl(qUrl)) {
+    $('#url').value = normalizeUrl(qUrl);
+    try { history.replaceState(null, '', location.pathname); } catch {}
+    setTimeout(() => $('#form').requestSubmit(), 400);
+  }
+}
 
 const logEl = $('#log');
 function step(msg) {
@@ -1398,10 +1438,15 @@ async function run() {
     const url = normalizeUrl($('#url').value);
     if (!url) throw new Error('Escribí una dirección válida, por ejemplo https://tusitio.com');
     store.set('ms-url', url);
+    if (isArtifact) {
+      $('#webLaunchLink').href = WEB_URL + '?url=' + encodeURIComponent(url);
+      step('').err('Para leer este sitio, tocá “Abrir la versión web con este sitio”. Ahí se carga solo y lo mejora completo.');
+      $('#webLaunch').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     const s = step(`Visitando ${url}…`);
     try { const r = await fetchSite(url); html = r.html; s.ok(`Sitio descargado (${Math.round(html.length / 1024)} KB, vía ${r.via}).`); }
     catch (e) {
-      if (isArtifact) throw new Error('Desde claude.ai no se pueden visitar sitios externos. Abrí la versión web de la herramienta (link en el README) o subí el archivo HTML.');
       if ($('#useAI').checked && provider() === 'gemini' && $('#geminiKey').value.trim()) {
         s.err('El sitio bloquea la descarga directa: lo va a visitar el Agente Explorador de Gemini.');
         html = null;
@@ -1530,6 +1575,7 @@ async function makeLink(html) {
 function showResult(r) {
   $('#empty').hidden = true; $('#result').hidden = false;
   $('#siteName').textContent = r.label;
+  $('#aiNudge').hidden = !!r.usedAI;
   $('#sBefore').textContent = r.before ? r.before.total : '—'; $('#sAfter').textContent = r.after.total;
   $('#capB').textContent = r.before ? r.before.total + '/100' : ''; $('#capA').textContent = r.after.total + '/100';
   const cats = $('#cats'); cats.innerHTML = '';
@@ -1576,6 +1622,13 @@ function showResult(r) {
   document.getElementById('result').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 }
 
+$('#aiNudgeBtn').addEventListener('click', () => {
+  $('#aiBox').open = true;
+  $('#useAI').checked = true; $('#useAI').dispatchEvent(new Event('change'));
+  $('#aiBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const k = isArtifact ? null : (provider() === 'gemini' ? $('#geminiKey') : $('#apiKey'));
+  if (k && !k.value) k.focus();
+});
 $('#briefCopy').addEventListener('click', async () => {
   const t = $('#briefText');
   try { await navigator.clipboard.writeText(t.value); toast('Prompt copiado'); }
