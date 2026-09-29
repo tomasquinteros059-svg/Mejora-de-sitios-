@@ -174,7 +174,10 @@ details.ai .stack { margin-top: 12px; }
 .frame .cap { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); font: 500 12px var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .frame .cap b { color: var(--after); font-weight: 600; }
 .frame .vp { background: var(--surface-2); display: flex; justify-content: center; overflow: auto; }
-.frame iframe { border: 0; width: 100%; height: 640px; background: #fff; display: block; }
+.frame iframe { border: 0; width: 100%; height: min(80vh, 900px); background: #fff; display: block; }
+.overlay { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.ov-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--line); font: 500 12px var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.overlay iframe { flex: 1; border: 0; width: 100%; background: #fff; }
 .frames.mobile iframe { width: 390px; max-width: 100%; }
 
 .changes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
@@ -242,11 +245,26 @@ details.ai .stack { margin-top: 12px; }
           <label><input type="radio" name="preset" id="p-bold" value="bold"><b>Audaz</b><small>Contraste alto, botones grandes</small></label>
         </div>
 
-        <details class="ai" id="aiBox">
-          <summary>Rediseño con IA de Claude (opcional)</summary>
+        <details class="ai" id="aiBox" open>
+          <summary>Agentes de IA (reconstruyen el sitio completo)</summary>
           <div class="stack">
-            <label class="check"><input type="checkbox" id="useAI"> <span>Además de las correcciones automáticas, pedirle a Claude que reescriba el sitio completo.</span></label>
-            <div id="keyRow">
+            <label class="check"><input type="checkbox" id="useAI"> <span>Usar agentes de IA: visitan el sitio en vivo (incluido lo que carga con JavaScript), lo reconstruyen completo y revisan que no falte nada.</span></label>
+            <label class="field" id="provRow">Proveedor
+              <select id="provider">
+                <option value="gemini">Google Gemini (3 agentes)</option>
+                <option value="claude">Anthropic Claude</option>
+              </select>
+            </label>
+            <div id="geminiRow" class="stack">
+              <label class="field">Clave de API de Gemini
+                <input type="password" id="geminiKey" placeholder="AIza…" autocomplete="off">
+              </label>
+              <label class="field">Modelo
+                <select id="geminiModel"><option value="">Automático: el mejor disponible</option></select>
+              </label>
+              <p class="hint" id="geminiStatus">Creala gratis en aistudio.google.com/apikey. Se guarda solo en este navegador y se envía directo a Google.</p>
+            </div>
+            <div id="keyRow" hidden>
               <label class="field">Clave de API de Anthropic
                 <input type="password" id="apiKey" placeholder="sk-ant-…" autocomplete="off">
               </label>
@@ -305,6 +323,7 @@ details.ai .stack { margin-top: 12px; }
             <button type="button" aria-pressed="true" data-dev="desktop">Escritorio</button>
             <button type="button" aria-pressed="false" data-dev="mobile">Celular</button>
           </div>
+          <button type="button" class="ghost" id="fullBtn" style="padding:6px 12px;font-size:13px">Pantalla completa</button>
         </div>
         <div class="frames" id="frames">
           <div class="frame f-before"><div class="cap">Original <span id="capB"></span></div><div class="vp"><iframe id="fBefore" title="Sitio original" sandbox="allow-scripts allow-popups" referrerpolicy="no-referrer"></iframe></div></div>
@@ -318,6 +337,11 @@ details.ai .stack { margin-top: 12px; }
       </div>
     </section>
   </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="ov-bar"><span>Sitio mejorado</span><button type="button" class="ghost" id="ovClose" style="padding:6px 12px">Cerrar</button></div>
+  <iframe id="fFull" title="Sitio mejorado en pantalla completa" sandbox="allow-scripts allow-popups allow-forms" referrerpolicy="no-referrer"></iframe>
 </div>
 
 <script>
@@ -502,7 +526,18 @@ function inspectRendered(frame) {
     }
   }
   // Tomar el HTML con las marcas de contraste para poder corregirlas
-  res.markedHtml = res.lowContrast.length ? '<!doctype html>\n' + doc.documentElement.outerHTML : null;
+  // Bloques con contenido que quedan invisibles sin JavaScript (animaciones de aparición, etc.)
+  res.hiddenBlocks = 0;
+  $$('body *', doc).slice(0, 5000).forEach(el => {
+    if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|OPTION)$/i.test(el.tagName) || el instanceof win.SVGElement) return;
+    if (el.closest('[data-ms-show], nav, [role=dialog], [role=menu], [role=tooltip], dialog, .modal, .dropdown, .dropdown-menu, .submenu, .sub-menu, .mega-menu, .offcanvas, .tooltip, .popover, [aria-hidden=true]')) return;
+    const cs = win.getComputedStyle(el);
+    if (!(parseFloat(cs.opacity) < 0.05 || cs.visibility === 'hidden')) return;
+    if (cs.position === 'fixed' || cs.position === 'absolute' || cs.display === 'none') return;
+    if ((el.textContent || '').trim().length < 30 && !el.querySelector('img, picture, video')) return;
+    el.setAttribute('data-ms-show', ''); res.hiddenBlocks++;
+  });
+  res.markedHtml = (res.lowContrast.length || res.hiddenBlocks) ? '<!doctype html>\n' + doc.documentElement.outerHTML : null;
   // Imágenes que desbordan
   res.overflowImgs = $$('img', doc).filter(i => i.getBoundingClientRect().width > 1280).length;
   return res;
@@ -818,6 +853,21 @@ function improve(doc, vis, opts) {
     done('design', 'Se creó un ícono de pestaña con la inicial y el color del sitio.');
   }
 
+  // Contenido que depende de JavaScript para mostrarse
+  let unlazy = 0;
+  $$('img[data-src], img[data-lazy-src], img[data-original], img[data-srcset], source[data-srcset]', doc).forEach(i => {
+    const s = i.getAttribute('data-src') || i.getAttribute('data-lazy-src') || i.getAttribute('data-original');
+    const cur = i.getAttribute('src') || '';
+    if (s && (!cur || /^data:|placeholder|blank|spacer|lazy|loading|transparent|pixel/i.test(cur))) { i.setAttribute('src', s); unlazy++; }
+    const ss = i.getAttribute('data-srcset'); if (ss && !i.getAttribute('srcset')) { i.setAttribute('srcset', ss); unlazy++; }
+  });
+  $$('[data-bg], [data-background], [data-bg-src], [data-background-image]', doc).forEach(e => {
+    const u = e.getAttribute('data-bg') || e.getAttribute('data-background') || e.getAttribute('data-bg-src') || e.getAttribute('data-background-image');
+    if (u && !/background/i.test(e.getAttribute('style') || '')) { e.style.backgroundImage = /^url\(/i.test(u) ? u : `url("${u.replace(/"/g, '%22')}")`; unlazy++; }
+  });
+  if (unlazy) done('perf', `${unlazy} imágenes que esperaban a JavaScript ahora cargan directo y siempre se ven.`);
+  if (vis && vis.hiddenBlocks) done('design', `${vis.hiddenBlocks} bloques de contenido estaban invisibles hasta que corriera una animación: ahora se ven siempre.`);
+
   // Contraste (medido al renderizar)
   let contrastCss = '';
   if (vis && vis.lowContrast && vis.lowContrast.length) {
@@ -840,6 +890,9 @@ function improve(doc, vis, opts) {
 :where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid ${accent};outline-offset:2px}
 :where(h1,h2,h3){text-wrap:balance}
 :where(p,li){text-wrap:pretty;overflow-wrap:break-word}
+[data-ms-show]{opacity:1 !important;visibility:visible !important;transform:none !important;animation:none !important}
+[data-aos],.aos-init,.wow,.elementor-invisible,[data-sal],.sal-animate,.reveal-on-scroll,.scroll-reveal,.js-reveal,.animate-on-scroll{opacity:1 !important;visibility:visible !important;transform:none !important;animation-name:none !important}
+#preloader,.preloader,#loader-wrapper,.loader-wrapper,.page-loader,#page-loader,.loading-screen,#loading-screen,.pace,.pace-progress{display:none !important}
 ${contrastCss}`;
   if (vis && vis.bodySize && vis.bodySize < 15) { css += `\n:where(body){font-size:16px}`; done('design', `El texto base subió de ${Math.round(vis.bodySize)}px a 16px para leerse mejor.`); }
   if (vis && /^normal$/.test(vis.lineHeight || '')) { css += `\n:where(body){line-height:1.6}`; done('design', 'Se mejoró el interlineado del texto.'); }
@@ -888,70 +941,315 @@ body{font-size:${P.size};color:#1d1f23;max-width:1080px;margin:0 auto;padding:0 
 function serialize(doc) { return '<!doctype html>\n' + doc.documentElement.outerHTML; }
 
 /* ============================================================
-   IA: rediseño completo con Claude
+   Agentes de IA: Explorador, Constructor y Revisor
+   Proveedores: Google Gemini (web) y Anthropic Claude
    ============================================================ */
-const AI_SYSTEM = `Sos un diseñador y desarrollador web senior. Recibís el HTML de un sitio real y una auditoría. Devolvé UNA versión mejorada del sitio como documento HTML completo y autocontenido.
-Reglas:
-- Conservá todo el contenido real: textos, precios, teléfonos, direcciones, enlaces, formularios, imágenes (con sus URLs absolutas). No inventes datos del negocio.
-- Mejorá el diseño visual (tipografía, jerarquía, espaciado, color a partir de la marca existente), la adaptación a celulares, la accesibilidad (contraste, alt, etiquetas), el SEO (title, meta description, Open Graph, un solo h1) y la velocidad (lazy loading, sin CSS/JS innecesario).
-- CSS en un <style> dentro del documento. Podés usar Google Fonts. JavaScript solo si es imprescindible y mínimo.
-- Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html>. Sin explicaciones ni bloques de código.`;
+const STYLE_BRIEF = {
+  keep: 'Mantené la identidad visual actual (colores, tipografías, estilo general) y solo pulila.',
+  modern: 'Estilo moderno: sans-serif actual, mucho aire, secciones bien separadas, botones redondeados y el color de marca como acento.',
+  elegant: 'Estilo elegante: serif editorial en títulos, paleta sobria, detalles finos y mucho espacio en blanco.',
+  bold: 'Estilo audaz: títulos grandes y contundentes, alto contraste, botones grandes y secciones con fondos de color.',
+};
 
-function aiPrompt(html, auditRes, notes) {
-  const fails = auditRes.issues.filter(i => !i.ok).map(i => '- ' + i.msg).join('\n') || '- (sin problemas graves detectados)';
-  return `Problemas detectados por la auditoría:\n${fails}\n\n${notes ? 'Pedido del dueño del sitio: ' + notes + '\n\n' : ''}HTML actual del sitio:\n\n${html}`;
-}
+const EXPLORER_SYSTEM = `Sos el Agente Explorador. Relevás un sitio web COMPLETO para que otro agente lo reconstruya sin perder nada.
+Visitá la URL indicada y sus páginas internas principales enlazadas en el menú (hasta 5). Extraé el contenido tal como lo ve un visitante, incluido lo que se carga con JavaScript.
+Devolvé SOLO un objeto JSON válido, sin texto alrededor, con esta forma:
+{"nombre":"","rubro":"","idioma":"es","colores":["#hex"],"tipografias":[""],"logo":"",
+ "navegacion":[{"texto":"","href":""}],
+ "secciones":[{"titulo":"","tipo":"hero|servicios|productos|galeria|testimonios|precios|faq|equipo|nosotros|contacto|otro","texto":"texto completo literal","items":[{"titulo":"","texto":"","precio":"","imagen":"","enlace":""}],"imagenes":[{"src":"","alt":""}],"botones":[{"texto":"","href":""}]}],
+ "contacto":{"telefono":"","whatsapp":"","email":"","direccion":"","horarios":"","redes":[{"red":"","url":""}]},
+ "problemas":["problemas de diseño, contenido o usabilidad que observes"]}
+Usá URLs absolutas. Copiá los textos literalmente. No inventes nada: si un dato no existe, dejalo vacío.`;
+
+const BUILDER_SYSTEM = `Sos el Agente Constructor: diseñador y desarrollador web senior. Reconstruís un sitio real como UNA página HTML completa, autocontenida y mejorada.
+Reglas obligatorias:
+- COMPLETITUD: incluí TODAS las secciones, textos, productos, precios, servicios, preguntas, testimonios, datos de contacto, enlaces e imágenes del inventario y del HTML original. No resumas ni omitas nada. Podés mejorar la redacción de títulos, pero no quites información.
+- No inventes datos del negocio (precios, teléfonos, direcciones, reseñas). Si algo no está, no lo pongas.
+- Imágenes con sus URLs absolutas originales, alt descriptivo y loading="lazy" (salvo la primera).
+- Todo el contenido debe verse sin depender de JavaScript: nada oculto con opacity:0 esperando animaciones y sin pantallas de carga.
+- Responsive (celular primero), menú con anclas a cada sección, accesible (contraste AA, etiquetas, foco visible), SEO (title, meta description, Open Graph, un solo h1 y JSON-LD del negocio si hay datos reales).
+- CSS en un único <style>. Podés usar Google Fonts. JavaScript solo el mínimo (por ejemplo, el menú en celular).
+- Formularios: conservá su action y method originales.
+- Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html> y terminando en </html>.`;
+
+const REVIEW_SYSTEM = `Sos el Agente Revisor de calidad. Recibís una página HTML generada y la lista de contenidos del sitio original que NO aparecen en ella.
+Devolvé la página HTML COMPLETA corregida: agregá cada contenido faltante en la sección que corresponda, con el mismo estilo, y no quites nada de lo que ya está.
+Revisá también que nada quede oculto, que las anclas del menú existan y que el HTML esté bien cerrado.
+Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html>.`;
+
+const CONTINUE_MSG = 'La respuesta se cortó por largo. Seguí exactamente desde el último carácter, sin repetir nada y sin explicaciones.';
+const kchars = n => n < 1000 ? `${n} caracteres` : `${Math.round(n / 1000)} mil caracteres`;
+
 function extractHtml(text) {
-  const fence = /```(?:html)?\s*([\s\S]*?)```/i.exec(text);
-  if (fence) text = fence[1];
+  if (!text) return null;
+  const fence = /```(?:html)?\s*([\s\S]*?)(```|$)/i.exec(text);
+  if (fence && /<html|<!doctype/i.test(fence[1])) text = fence[1];
   const i = text.search(/<!doctype html|<html/i);
-  return i >= 0 ? text.slice(i).trim() : null;
+  if (i < 0) return null;
+  text = text.slice(i).replace(/```\s*$/, '').trim();
+  const end = text.search(/<\/html>/i);
+  return end >= 0 ? text.slice(0, end + 7) : text;
+}
+function parseJson(text) {
+  if (!text) return null;
+  const a = text.indexOf('{'), b = text.lastIndexOf('}');
+  if (a < 0 || b <= a) return null;
+  try { return JSON.parse(text.slice(a, b + 1)); } catch { return null; }
 }
 function slimForAI(html) {
   // Quitar lo que no aporta al diseño (scripts inline largos, svg enormes, comentarios) para ahorrar tokens.
   return html
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => body.length > 400 ? m.replace(body, '/* script omitido */') : m)
+    .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (m, body) => body.length > 20000 ? m.replace(body, body.slice(0, 20000) + '/* resto omitido */') : m)
     .replace(/<svg\b[\s\S]*?<\/svg>/gi, m => m.length > 1500 ? '<svg><!-- ícono --></svg>' : m)
     .replace(/(src|href)="data:[^"]{200,}"/gi, '$1="data:,"');
 }
-async function aiRedesign(html, auditRes, notes, onProgress) {
-  const slim = slimForAI(html);
-  const MAX = 400000;
-  if (slim.length > MAX) throw new Error(`El HTML tiene ${Math.round(slim.length / 1000)} mil caracteres, demasiado para un rediseño completo con IA. Se mantienen las mejoras automáticas.`);
-  const prompt = aiPrompt(slim, auditRes, notes);
 
+/* ---------- Google Gemini (API REST, llamada directa desde el navegador) ---------- */
+const GEMINI = 'https://generativelanguage.googleapis.com/v1beta';
+const GEMINI_FALLBACK = 'gemini-3.1-pro-preview';
+let geminiList = null;
+
+function geminiError(status, body) {
+  let msg = '';
+  try { msg = JSON.parse(body).error.message; } catch { msg = (body || '').slice(0, 200); }
+  if (status === 400 && /api key/i.test(msg)) return new Error('La clave de Gemini no es válida. Revisala en aistudio.google.com/apikey.');
+  if (status === 403) return new Error('La clave de Gemini no tiene permiso para este modelo o la API no está habilitada.');
+  if (status === 404) return new Error('Ese modelo de Gemini no está disponible para tu clave. Elegí “Automático”.');
+  if (status === 429) return new Error('Gemini alcanzó el límite de uso de tu clave. Esperá un minuto o revisá tu cuota.');
+  return new Error(`Gemini respondió con error ${status}: ${msg}`);
+}
+async function geminiModels(key) {
+  const r = await fetch(`${GEMINI}/models?pageSize=1000`, { headers: { 'x-goog-api-key': key } });
+  if (!r.ok) throw geminiError(r.status, await r.text());
+  const j = await r.json();
+  const ver = id => parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(id) || [])[1] || 0);
+  const tier = id => /-pro/.test(id) ? 2 : /-flash/.test(id) ? 1 : 0;
+  return (j.models || [])
+    .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map(m => ({ id: m.name.replace(/^models\//, ''), label: m.displayName || m.name, out: m.outputTokenLimit || 8192 }))
+    .filter(m => /^gemini-\d/.test(m.id) && !/(tts|image|embed|live|audio|robotics|computer|lite|learnlm|aqa|native|thinking-exp|customtools)/i.test(m.id))
+    // El mejor primero: Pro antes que Flash, luego la versión más nueva, luego estable antes que alias
+    .sort((a, b) => tier(b.id) - tier(a.id) || ver(b.id) - ver(a.id) || (/latest/.test(a.id) - /latest/.test(b.id)));
+}
+async function geminiPick(key) {
+  const chosen = $('#geminiModel').value;
+  if (!geminiList) { try { geminiList = await geminiModels(key); } catch (e) { if (/clave/.test(e.message)) throw e; geminiList = []; } }
+  const m = geminiList.find(x => x.id === chosen) || geminiList[0];
+  return m || { id: chosen || GEMINI_FALLBACK, label: chosen || GEMINI_FALLBACK, out: 65536 };
+}
+async function geminiStream({ key, model, system, contents, tools, maxOut, onText }) {
+  const body = {
+    systemInstruction: { parts: [{ text: system }] },
+    contents,
+    generationConfig: { maxOutputTokens: maxOut, thinkingConfig: { thinkingLevel: 'high' } },
+  };
+  if (tools) body.tools = tools;
+  const post = () => fetch(`${GEMINI}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body),
+  });
+  let r = await post();
+  if (r.status === 400) {
+    const t = await r.text();
+    if (!/thinking/i.test(t)) throw geminiError(400, t);
+    delete body.generationConfig.thinkingConfig; // modelos anteriores a Gemini 3 no aceptan thinkingLevel
+    r = await post();
+  }
+  if (!r.ok) throw geminiError(r.status, await r.text());
+
+  const reader = r.body.getReader(), dec = new TextDecoder();
+  let buf = '', text = '', finish = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+      if (!line.startsWith('data:')) continue;
+      let j; try { j = JSON.parse(line.slice(5)); } catch { continue; }
+      if (j.error) throw new Error('Gemini: ' + j.error.message);
+      const c = (j.candidates || [])[0];
+      if (!c) { if (j.promptFeedback && j.promptFeedback.blockReason) throw new Error('Gemini bloqueó el pedido (' + j.promptFeedback.blockReason + ').'); continue; }
+      for (const part of (c.content && c.content.parts) || []) if (part.text && !part.thought) { text += part.text; onText && onText(text.length); }
+      if (c.finishReason) finish = c.finishReason;
+    }
+  }
+  if (finish && !/^(STOP|MAX_TOKENS|FINISH_REASON_UNSPECIFIED)$/.test(finish) && !text) throw new Error(`Gemini cortó la respuesta (${finish}).`);
+  return { text, finish };
+}
+async function geminiText(system, prompt, { web, onText } = {}) {
+  const key = $('#geminiKey').value.trim();
+  if (!key) throw new Error('Falta la clave de API de Gemini.');
+  const m = await geminiPick(key);
+  const tools = web ? [{ url_context: {} }, { google_search: {} }] : undefined;
+  const first = [{ role: 'user', parts: [{ text: prompt }] }];
+  let contents = first, full = '';
+  for (let round = 0; round < 4; round++) {
+    const r = await geminiStream({ key, model: m.id, system, contents, tools, maxOut: Math.min(m.out || 65536, 65536), onText: n => onText && onText(full.length + n) });
+    full += r.text;
+    if (r.finish !== 'MAX_TOKENS') break;
+    contents = [...first, { role: 'model', parts: [{ text: full }] }, { role: 'user', parts: [{ text: CONTINUE_MSG }] }];
+  }
+  return { text: full, model: m.id };
+}
+
+/* ---------- Anthropic Claude ---------- */
+async function claudeText(system, prompt, { onText } = {}) {
   if (isArtifact) {
     const sample = await window.claude.use('sample');
     if (!sample) throw new Error('La IA de Claude no está disponible en esta vista.');
-    const r = await sample([{ role: 'user', content: AI_SYSTEM + '\n\n' + prompt }], {
-      modelTier: 'complex', cache: false,
-      onText: ({ text }) => onProgress && onProgress(text.length),
+    const r = await sample([{ role: 'user', content: system + '\n\n' + prompt }], {
+      modelTier: 'complex', cache: false, onText: ({ text }) => onText && onText(text.length),
     });
-    return extractHtml(r.text);
+    return { text: r.text, model: 'Claude' };
   }
-
   const key = $('#apiKey').value.trim();
-  if (!key) throw new Error('Falta la clave de API de Anthropic para el rediseño con IA.');
+  if (!key) throw new Error('Falta la clave de API de Anthropic.');
   const { default: Anthropic } = await import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk/+esm');
   const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
-  const stream = client.beta.messages.stream({
-    model: 'claude-opus-5-5',
-    max_tokens: 64000,
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'medium' },
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    system: AI_SYSTEM,
-    messages: [{ role: 'user', content: prompt }],
+  let messages = [{ role: 'user', content: prompt }], full = '';
+  for (let round = 0; round < 3; round++) {
+    const stream = client.beta.messages.stream({
+      model: 'claude-opus-5-5', max_tokens: 64000,
+      thinking: { type: 'adaptive' }, output_config: { effort: 'medium' },
+      betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      system, messages,
+    });
+    stream.on('text', d => { full += d; onText && onText(full.length); });
+    const msg = await stream.finalMessage();
+    if (msg.stop_reason === 'refusal') throw new Error('Claude no pudo procesar este sitio.');
+    if (msg.stop_reason !== 'max_tokens') break;
+    messages = [...messages, { role: 'assistant', content: msg.content }, { role: 'user', content: CONTINUE_MSG }];
+  }
+  return { text: full, model: 'claude-opus-5-5' };
+}
+
+function llm(provider, system, prompt, opts) {
+  return provider === 'gemini' ? geminiText(system, prompt, opts) : claudeText(system, prompt, opts);
+}
+
+/* ---------- Control de completitud: ¿está todo el contenido original? ---------- */
+const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9ñ@.+$]+/g, ' ').trim();
+const absUrl = (u, base) => { try { return new URL(u, base || location.href).href; } catch { return u || ''; } };
+function fragmentsFromDoc(doc, baseUrl) {
+  const texts = [], imgs = [];
+  if (!doc || !doc.body) return { texts, imgs };
+  $$('h1,h2,h3,h4,h5,p,li,td,th,blockquote,figcaption,dt,dd,address,a[href^="tel:"],a[href^="mailto:"]', doc).forEach(e => {
+    if (e.closest('script,style,noscript,template,[aria-hidden=true]')) return;
+    if (e.querySelector('p,li,h1,h2,h3,h4,td')) return; // solo el bloque más interno
+    const t = e.textContent.replace(/\s+/g, ' ').trim();
+    if (t.length >= 8) texts.push(t);
   });
-  let chars = 0;
-  stream.on('text', delta => { chars += delta.length; onProgress && onProgress(chars); });
-  const msg = await stream.finalMessage();
-  if (msg.stop_reason === 'refusal') throw new Error('Claude no pudo procesar este sitio.');
-  if (msg.stop_reason === 'max_tokens') throw new Error('El sitio es demasiado largo: la respuesta de la IA quedó incompleta.');
-  const text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
-  return extractHtml(text);
+  $$('img', doc).forEach(i => {
+    const src = i.getAttribute('data-src') || i.getAttribute('src');
+    if (src && !/^data:/.test(src) && !/\.svg(\?|$)/i.test(src)) imgs.push(absUrl(src, baseUrl));
+  });
+  return { texts, imgs };
+}
+function fragmentsFromInventory(inv) {
+  const texts = [], imgs = [];
+  const walk = (v, k) => {
+    if (typeof v === 'string') {
+      if (/^(src|imagen|logo)$/.test(k) && /^https?:/.test(v) && !/\.svg(\?|$)/i.test(v)) imgs.push(v);
+      else if (/^(titulo|texto|precio|telefono|whatsapp|email|direccion|horarios)$/.test(k) && v.trim().length >= 6) texts.push(v.trim());
+    } else if (Array.isArray(v)) v.forEach(x => walk(x, k));
+    else if (v && typeof v === 'object') for (const kk in v) if (kk !== 'problemas') walk(v[kk], kk);
+  };
+  walk(inv, '');
+  return { texts, imgs };
+}
+function coverage(frags, html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const hay = ' ' + norm((doc.body ? doc.body.textContent : '') + ' ' + $$('a[href]', doc).map(a => a.getAttribute('href')).join(' ')) + ' ';
+  const seen = new Set(), missingTexts = [];
+  let total = 0, found = 0;
+  for (const t of frags.texts) {
+    const n = norm(t); if (n.length < 6 || seen.has(n)) continue; seen.add(n);
+    total++;
+    const w = n.split(' ');
+    // Presente si aparece el inicio, el medio o el final (tolera cambios menores de redacción)
+    const probes = w.length <= 6 ? [n] : [w.slice(0, 5), w.slice(Math.floor(w.length / 2) - 2, Math.floor(w.length / 2) + 3), w.slice(-5)].map(x => x.join(' '));
+    if (probes.some(p => hay.includes(p))) found++; else missingTexts.push(t.length > 600 ? t.slice(0, 600) + '…' : t);
+  }
+  const imgSeen = new Set(), missingImgs = [];
+  for (const u of frags.imgs) {
+    const file = (u.split(/[?#]/)[0].split('/').pop() || '').toLowerCase();
+    if (!file || imgSeen.has(file)) continue; imgSeen.add(file);
+    total++;
+    if (html.toLowerCase().includes(file)) found++; else missingImgs.push(u);
+  }
+  return { total, ratio: total ? found / total : 1, missingTexts, missingImgs };
+}
+
+/* ---------- Orquestación de los agentes ---------- */
+async function runAgents({ provider, html, baseUrl, before, notes, preset }) {
+  const P = provider === 'gemini' ? 'Gemini' : 'Claude';
+  const slim = html ? slimForAI(html) : '';
+  const htmlForAI = slim.length <= 400000 ? slim : '';
+  if (slim && !htmlForAI) step('').err(`El HTML es muy grande (${kchars(slim.length)}): los agentes trabajan con el inventario del sitio.`);
+  let inventory = null, model = '';
+
+  // Agente 1 · Explorador (visita el sitio en vivo con URL context + Google Search)
+  if (provider === 'gemini') {
+    const s = step(`Agente Explorador (${P}) recorriendo el sitio…`);
+    try {
+      const prompt = [
+        baseUrl ? `URL del sitio: ${baseUrl}` : 'El sitio no tiene URL pública: trabajá solo con el HTML.',
+        htmlForAI ? `HTML descargado de la página principal (puede estar incompleto si el sitio arma su contenido con JavaScript):\n\n${htmlForAI}` : 'No se pudo descargar el HTML: obtené todo visitando la URL.',
+      ].join('\n\n');
+      const r = await llm(provider, EXPLORER_SYSTEM, prompt, { web: !!baseUrl, onText: n => s.set(`Agente Explorador (${P}) recorriendo el sitio… (${kchars(n)})`) });
+      model = r.model;
+      inventory = parseJson(r.text) || (r.text.trim() ? r.text.trim() : null);
+      const nSec = inventory && inventory.secciones ? inventory.secciones.length : 0;
+      s.ok(nSec ? `Explorador (${model}): ${nSec} secciones relevadas${inventory.nombre ? ` de “${inventory.nombre}”` : ''}.` : `Explorador (${model}): contenido relevado.`);
+    } catch (e) {
+      if (!html) throw e;
+      s.err(`Explorador: ${e.message} Se sigue con el HTML descargado.`);
+    }
+  }
+  if (!html && !inventory) throw new Error('No hay contenido del sitio para reconstruir.');
+
+  // Agente 2 · Constructor
+  const s2 = step(`Agente Constructor (${P}) armando el sitio completo…`);
+  const fails = before ? before.issues.filter(i => !i.ok).map(i => '- ' + i.msg).join('\n') : '';
+  const prompt2 = [
+    `Estilo pedido: ${STYLE_BRIEF[preset] || STYLE_BRIEF.modern}`,
+    notes ? `Pedido del dueño del sitio: ${notes}` : '',
+    baseUrl ? `URL original: ${baseUrl} (usala para convertir rutas relativas en absolutas).` : '',
+    fails ? `Problemas detectados por la auditoría:\n${fails}` : '',
+    inventory ? `Inventario completo del sitio (fuente principal de contenido):\n${typeof inventory === 'string' ? inventory : JSON.stringify(inventory)}` : '',
+    htmlForAI ? `HTML original:\n${htmlForAI}` : '',
+  ].filter(Boolean).join('\n\n');
+  const r2 = await llm(provider, BUILDER_SYSTEM, prompt2, { onText: n => s2.set(`Agente Constructor (${P}) armando el sitio completo… (${kchars(n)})`) });
+  model = model || r2.model;
+  let out = extractHtml(r2.text);
+  if (!out) throw new Error('El Agente Constructor no devolvió una página válida. Se mantienen las mejoras automáticas.');
+  s2.ok(`Constructor: página nueva de ${kchars(out.length)}.`);
+
+  // Agente 3 · Revisor (control automático + corrección con IA si falta contenido)
+  const s3 = step('Agente Revisor comprobando que no falte nada…');
+  const a = html ? fragmentsFromDoc(new DOMParser().parseFromString(html, 'text/html'), baseUrl) : { texts: [], imgs: [] };
+  const b = inventory && typeof inventory === 'object' ? fragmentsFromInventory(inventory) : { texts: [], imgs: [] };
+  const frags = { texts: a.texts.concat(b.texts), imgs: a.imgs.concat(b.imgs) };
+  let cov = coverage(frags, out);
+  if (cov.total && cov.ratio < 0.97 && (cov.missingTexts.length || cov.missingImgs.length)) {
+    s3.set(`Agente Revisor: falta ${Math.round((1 - cov.ratio) * 100)}% del contenido, completando…`);
+    const prompt3 = [
+      cov.missingTexts.length ? 'Textos del sitio original que faltan en la página:\n' + cov.missingTexts.slice(0, 200).map(t => '- ' + t).join('\n') : '',
+      cov.missingImgs.length ? 'Imágenes que faltan:\n' + cov.missingImgs.slice(0, 80).map(u => '- ' + u).join('\n') : '',
+      'Página actual:\n' + out,
+    ].filter(Boolean).join('\n\n');
+    try {
+      const r3 = await llm(provider, REVIEW_SYSTEM, prompt3, { onText: n => s3.set(`Agente Revisor completando el contenido faltante… (${kchars(n)})`) });
+      const fixed = extractHtml(r3.text);
+      if (fixed) { const c2 = coverage(frags, fixed); if (c2.ratio >= cov.ratio) { out = fixed; cov = c2; } }
+    } catch (e) { step('').err(`Revisor: ${e.message}`); }
+  }
+  const pctOk = Math.round(cov.ratio * 100);
+  s3.ok(cov.total ? `Revisor: ${pctOk}% del contenido original está en la página nueva.` : 'Revisor: página revisada.');
+  return { html: out, coverage: cov, model, provider: P };
 }
 
 /* ============================================================
@@ -978,13 +1276,47 @@ function readFile(f) {
   r.readAsText(f);
 }
 
-// IA: en claude.ai se usa la IA integrada; en la web, la clave del usuario.
+// IA: en claude.ai se usa la IA integrada de Claude; en la web, Gemini o Claude con la clave del usuario.
+const provider = () => isArtifact ? 'claude' : $('#provider').value;
+function syncProvider() {
+  const g = provider() === 'gemini';
+  $('#geminiRow').hidden = !g || isArtifact;
+  $('#keyRow').hidden = g || isArtifact;
+  $('#envLabel').textContent = $('#useAI').checked ? (g ? 'Motor local + agentes Gemini' : 'Motor local + Claude') : 'Motor local activo';
+}
+async function loadGeminiModels() {
+  const key = $('#geminiKey').value.trim(), st = $('#geminiStatus'), sel = $('#geminiModel');
+  if (!key) return;
+  st.textContent = 'Conectando con Gemini…';
+  geminiList = null;
+  try {
+    geminiList = await geminiModels(key);
+    const saved = store.get('ms-gmodel') || '';
+    sel.innerHTML = '<option value="">Automático: el mejor disponible</option>' +
+      geminiList.map(m => `<option value="${m.id}">${m.label.replace(/</g, '&lt;')} · ${m.id}</option>`).join('');
+    if (geminiList.some(m => m.id === saved)) sel.value = saved;
+    st.textContent = geminiList.length
+      ? `Conectado. ${geminiList.length} modelos disponibles; en automático se usa ${geminiList[0].id}.`
+      : 'Conectado, pero la clave no lista modelos compatibles.';
+  } catch (e) { st.textContent = e.message; }
+}
 if (isArtifact) {
+  $('#provRow').hidden = true;
+  $('#geminiRow').hidden = true;
   $('#keyRow').hidden = true;
   $('#envLabel').textContent = 'Motor local + IA de Claude';
 } else {
   const k = store.get('ms-key'); if (k) $('#apiKey').value = k;
+  const gk = store.get('ms-gkey'); if (gk) $('#geminiKey').value = gk;
+  const pv = store.get('ms-provider'); if (pv) $('#provider').value = pv;
+  if (store.get('ms-useai') === '1') $('#useAI').checked = true;
   $('#apiKey').addEventListener('change', e => store.set('ms-key', e.target.value.trim()));
+  $('#geminiKey').addEventListener('change', e => { store.set('ms-gkey', e.target.value.trim()); loadGeminiModels(); });
+  $('#geminiModel').addEventListener('change', e => store.set('ms-gmodel', e.target.value));
+  $('#provider').addEventListener('change', e => { store.set('ms-provider', e.target.value); syncProvider(); });
+  $('#useAI').addEventListener('change', e => { store.set('ms-useai', e.target.checked ? '1' : '0'); syncProvider(); });
+  syncProvider();
+  if (gk) loadGeminiModels();
 }
 const savedUrl = store.get('ms-url'); if (savedUrl) $('#url').value = savedUrl;
 
@@ -1023,7 +1355,10 @@ async function run() {
     try { const r = await fetchSite(url); html = r.html; s.ok(`Sitio descargado (${Math.round(html.length / 1024)} KB, vía ${r.via}).`); }
     catch (e) {
       if (isArtifact) throw new Error('Desde claude.ai no se pueden visitar sitios externos. Abrí la versión web de la herramienta (link en el README) o subí el archivo HTML.');
-      throw e;
+      if ($('#useAI').checked && provider() === 'gemini' && $('#geminiKey').value.trim()) {
+        s.err('El sitio bloquea la descarga directa: lo va a visitar el Agente Explorador de Gemini.');
+        html = null;
+      } else throw new Error(e.message + ' También podés activar los agentes de Gemini para que lo visiten directamente.');
     }
     baseUrl = url; label = url;
   } else if (mode === 'file') {
@@ -1038,48 +1373,51 @@ async function run() {
 }
 
 async function processHtml(html, baseUrl, label, preset) {
-  // 1. Ver el sitio como lo vería una persona
-  const s1 = step('Renderizando el sitio para verlo…');
-  const withBase = baseUrl && !/<base\s/i.test(html) ? html.replace(/<head[^>]*>/i, m => `${m}<base href="${baseUrl}">`) : html;
-  const frame = await renderForInspection(withBase);
-  let vis = null;
-  try { vis = inspectRendered(frame); } catch { vis = null; }
-  frame.remove();
-  if (vis && vis.ok) {
-    s1.ok(`Sitio visto: ${vis.checkedText} bloques de texto medidos${vis.brand ? `, color de marca ${vis.brand}` : ''}.`);
-    if (vis.textLen < 150 && /<script/i.test(html)) step('').err('El contenido se arma con JavaScript: las mejoras de texto serán parciales.');
-  } else { s1.ok('No se pudo renderizar; se analiza solo el código.'); vis = null; }
+  let before = null, applied = [], improved = null, vis = null, usedAI = null;
 
-  // 2. Auditoría inicial
-  const s2 = step('Auditando SEO, accesibilidad, velocidad, móvil, diseño y seguridad…');
-  const src = vis && vis.markedHtml ? vis.markedHtml : html;
-  const docBefore = new DOMParser().parseFromString(html, 'text/html');
-  const before = audit(docBefore, vis);
-  s2.ok(`Puntaje inicial: ${before.total}/100.`);
+  if (html) {
+    // 1. Ver el sitio como lo vería una persona
+    const s1 = step('Renderizando el sitio para verlo…');
+    const frame = await renderForInspection(withBaseTag(html, baseUrl));
+    try { vis = inspectRendered(frame); } catch { vis = null; }
+    frame.remove();
+    if (vis && vis.ok) {
+      s1.ok(`Sitio visto: ${vis.checkedText} bloques de texto medidos${vis.brand ? `, color de marca ${vis.brand}` : ''}.`);
+      if (vis.textLen < 150 && /<script/i.test(html)) step('').err(`El contenido se arma con JavaScript${$('#useAI').checked ? ': los agentes de IA lo reconstruirán.' : '. Activá los agentes de IA para reconstruirlo completo.'}`);
+    } else { s1.ok('No se pudo renderizar; se analiza solo el código.'); vis = null; }
 
-  // 3. Mejoras automáticas
-  const s3 = step('Aplicando mejoras…');
-  const doc = new DOMParser().parseFromString(src, 'text/html');
-  const applied = improve(doc, vis, { baseUrl, preset });
-  let improved = serialize(doc);
-  s3.ok(`${applied.length} mejoras aplicadas.`);
+    // 2. Auditoría inicial
+    const s2 = step('Auditando SEO, accesibilidad, velocidad, móvil, diseño y seguridad…');
+    before = audit(new DOMParser().parseFromString(html, 'text/html'), vis);
+    s2.ok(`Puntaje inicial: ${before.total}/100.`);
 
-  // 4. IA opcional
-  let usedAI = false;
-  if ($('#useAI').checked) {
-    const s4 = step('Claude está rediseñando el sitio…');
-    try {
-      const ai = await aiRedesign(improved, before, $('#aiNotes').value.trim(), n => s4.set(`Claude está rediseñando el sitio… (${Math.round(n / 1000)} mil caracteres escritos)`));
-      if (!ai) throw new Error('La IA no devolvió un HTML válido. Se mantienen las mejoras automáticas.');
-      // Pasar el resultado por el motor otra vez para asegurar lo básico (sin capa de estilo extra)
-      const d2 = new DOMParser().parseFromString(ai, 'text/html');
-      improve(d2, null, { baseUrl, preset: 'keep' });
-      improved = serialize(d2);
-      applied.unshift({ cat: 'design', msg: 'Rediseño completo del sitio hecho por Claude a partir del contenido original.' });
-      usedAI = true;
-      s4.ok('Rediseño con IA terminado.');
-    } catch (e) { s4.err(e.message || 'Falló el rediseño con IA; se mantienen las mejoras automáticas.'); }
+    // 3. Mejoras automáticas
+    const s3 = step('Aplicando mejoras…');
+    const doc = new DOMParser().parseFromString(vis && vis.markedHtml ? vis.markedHtml : html, 'text/html');
+    applied = improve(doc, vis, { baseUrl, preset });
+    improved = serialize(doc);
+    s3.ok(`${applied.length} mejoras aplicadas.`);
   }
+
+  // 4. Agentes de IA
+  if ($('#useAI').checked) {
+    try {
+      const r = await runAgents({ provider: provider(), html, baseUrl, before, notes: $('#aiNotes').value.trim(), preset });
+      // Pasar el resultado por el motor otra vez para asegurar lo básico (sin capa de estilo extra)
+      const d2 = new DOMParser().parseFromString(r.html, 'text/html');
+      const fixes = improve(d2, null, { baseUrl, preset: 'keep' }).filter(x => !/Estilo conservado/.test(x.msg));
+      improved = serialize(d2);
+      const who = r.provider === 'Gemini' ? `3 agentes de Gemini (${r.model})` : 'Claude';
+      applied = [{ cat: 'design', msg: `Sitio reconstruido completo por ${who}${r.coverage.total ? `: ${Math.round(r.coverage.ratio * 100)}% del contenido original presente` : ''}.` }]
+        .concat(fixes, applied.filter(x => x.cat !== 'design'));
+      usedAI = r;
+    } catch (e) {
+      step('').err(e.message || 'Fallaron los agentes de IA.');
+      if (!improved) throw new Error('No se pudo generar la versión mejorada.');
+      step('').ok('Se mantienen las mejoras automáticas.');
+    }
+  }
+  if (!improved) throw new Error('No se pudo generar la versión mejorada.');
 
   // 5. Auditoría final (volviendo a ver el sitio mejorado)
   const s5 = step('Revisando el resultado…');
@@ -1098,6 +1436,20 @@ async function processHtml(html, baseUrl, label, preset) {
   showResult(current);
 }
 
+function withBaseTag(html, baseUrl) {
+  if (!baseUrl || /<base\s/i.test(html)) return html;
+  return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => `${m}<base href="${baseUrl}">`) : `<base href="${baseUrl}">` + html;
+}
+// Para las vistas previas: los marcos aislados no tienen almacenamiento ni cookies,
+// y muchos sitios dejan de dibujarse si su JavaScript falla al usarlos. Se simulan en memoria.
+const PREVIEW_SHIM = '<script>(function(){function S(){var d={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}' +
+  'try{window.localStorage}catch(e){try{Object.defineProperty(window,"localStorage",{value:S(),configurable:true});Object.defineProperty(window,"sessionStorage",{value:S(),configurable:true})}catch(e2){}}' +
+  'try{document.cookie}catch(e){try{var c="";Object.defineProperty(document,"cookie",{get:function(){return c},set:function(v){c=v},configurable:true})}catch(e3){}}})();<\/script>';
+function forPreview(html, baseUrl) {
+  const h = withBaseTag(html, baseUrl);
+  return /<head[^>]*>/i.test(h) ? h.replace(/<head[^>]*>/i, m => m + PREVIEW_SHIM) : PREVIEW_SHIM + h;
+}
+
 async function makeLink(html) {
   const z = await compress(html);
   const base = location.href.split('#')[0];
@@ -1107,13 +1459,13 @@ async function makeLink(html) {
 function showResult(r) {
   $('#empty').hidden = true; $('#result').hidden = false;
   $('#siteName').textContent = r.label;
-  $('#sBefore').textContent = r.before.total; $('#sAfter').textContent = r.after.total;
-  $('#capB').textContent = r.before.total + '/100'; $('#capA').textContent = r.after.total + '/100';
+  $('#sBefore').textContent = r.before ? r.before.total : '—'; $('#sAfter').textContent = r.after.total;
+  $('#capB').textContent = r.before ? r.before.total + '/100' : ''; $('#capA').textContent = r.after.total + '/100';
   const cats = $('#cats'); cats.innerHTML = '';
   CATS.forEach(([k, name]) => {
-    const b = r.before.scores[k], a = r.after.scores[k];
+    const b = r.before ? r.before.scores[k] : null, a = r.after.scores[k];
     const d = document.createElement('div'); d.className = 'cat';
-    d.innerHTML = `<div class="name">${name}<span>${b} → <b>${a}</b></span></div><div class="bar"><i class="b" style="width:${b}%"></i><i class="a" style="width:${a}%"></i></div>`;
+    d.innerHTML = `<div class="name">${name}<span>${b === null ? '—' : b} → <b>${a}</b></span></div><div class="bar"><i class="b" style="width:${b || 0}%"></i><i class="a" style="width:${a}%"></i></div>`;
     cats.appendChild(d);
   });
 
@@ -1132,9 +1484,10 @@ function showResult(r) {
   });
 
   // Vistas previas
-  const withBase = r.baseUrl && !/<base\s/i.test(r.html) ? r.html.replace(/<head[^>]*>/i, m => `${m}<base href="${r.baseUrl}">`) : r.html;
-  $('#fBefore').srcdoc = withBase;
-  $('#fAfter').srcdoc = r.improved;
+  const fb = $('#fBefore');
+  if (r.html) { fb.removeAttribute('src'); fb.srcdoc = forPreview(r.html, r.baseUrl); }
+  else { fb.removeAttribute('srcdoc'); fb.src = r.baseUrl; }
+  $('#fAfter').srcdoc = forPreview(r.improved);
 
   // Link
   const blobUrl = URL.createObjectURL(new Blob([r.improved], { type: 'text/html' }));
@@ -1168,6 +1521,14 @@ $('#download').addEventListener('click', async () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([current.improved], { type: 'text/html' })); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
 });
+function closeFull() { $('#overlay').hidden = true; $('#fFull').removeAttribute('srcdoc'); document.body.style.overflow = ''; }
+$('#fullBtn').addEventListener('click', () => {
+  if (!current) return;
+  $('#fFull').srcdoc = forPreview(current.improved);
+  $('#overlay').hidden = false; document.body.style.overflow = 'hidden'; $('#ovClose').focus();
+});
+$('#ovClose').addEventListener('click', closeFull);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#overlay').hidden) closeFull(); });
 $$('[data-view]').forEach(b => b.addEventListener('click', () => {
   $$('[data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   $('#frames').classList.toggle('solo', b.dataset.view === 'solo');

@@ -21,13 +21,18 @@ Herramienta web que toma un sitio (por link, archivo `.html` o código pegado), 
    - Móvil: viewport, tablas desplazables, imágenes fluidas.
    - Diseño: reemplazo de etiquetas obsoletas (`<font>`, `<center>`, `<marquee>`…), favicon con el color de marca y 4 estilos: **Conservar, Moderno, Elegante, Audaz**.
    - Seguridad: `rel="noopener"`, forzado a HTTPS, política de referencia.
-4. **Rediseño con IA (opcional).** Con una clave de API de Anthropic, Claude reescribe el sitio completo conservando el contenido real. La clave queda solo en tu navegador.
+4. **Agentes de IA (opcional, recomendado para sitios completos).** Con una clave de Gemini, tres agentes trabajan en cadena:
+   - **Explorador:** visita el sitio en vivo con las herramientas *URL context* y *Google Search* de Gemini y releva todo el contenido: secciones, textos, precios, imágenes, contacto y colores. También funciona con sitios que arman su contenido con JavaScript o que bloquean la descarga directa.
+   - **Constructor:** rehace el sitio completo como una página nueva, mejorada y responsive, sin inventar datos. Si la respuesta se corta por largo, la retoma sola.
+   - **Revisor:** compara la página nueva con el original y, si falta contenido, lo agrega.
+
+   El modelo se elige solo (el Gemini Pro más nuevo que habilite tu clave) o se puede fijar a mano. También se puede usar Claude (Anthropic) como proveedor. Las claves quedan solo en tu navegador. La clave de Gemini se crea gratis en https://aistudio.google.com/apikey.
 5. **Genera el link del sitio mejorado.** El HTML mejorado se comprime y viaja dentro del propio link (`index.html#v=…`). Quien lo abra ve el sitio mejorado, sin servidor ni dominio. También se puede descargar el `.html`.
 
 ## Límites conocidos
 
 - Algunos sitios bloquean las descargas desde otros dominios; en ese caso conviene subir el archivo o pegar el código (en el navegador: clic derecho → *Ver código fuente*).
-- Los sitios que arman todo su contenido con JavaScript (SPA) reciben mejoras parciales.
+- Sin agentes de IA, los sitios que arman todo su contenido con JavaScript reciben mejoras parciales. El motor local sí muestra el contenido que queda oculto a la espera de animaciones, las imágenes con carga diferida y las pantallas de carga.
 - Los links de sitios muy grandes pueden ser largos; para compartirlos por mensajería conviene descargar el `.html` y subirlo gratis a Netlify Drop o GitHub Pages.
 
 ## Estructura
