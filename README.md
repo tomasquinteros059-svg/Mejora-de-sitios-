@@ -21,9 +21,10 @@ Herramienta web que toma un sitio (por link, archivo `.html` o código pegado), 
    - Móvil: viewport, tablas desplazables, imágenes fluidas.
    - Diseño: reemplazo de etiquetas obsoletas (`<font>`, `<center>`, `<marquee>`…), favicon con el color de marca y 4 estilos: **Conservar, Moderno, Elegante, Audaz**.
    - Seguridad: `rel="noopener"`, forzado a HTTPS, política de referencia.
-4. **Agentes de IA (opcional, recomendado para sitios completos).** Con una clave de Gemini, tres agentes trabajan en cadena:
+4. **Agentes de IA (opcional, recomendado para sitios completos).** Con una clave de Gemini, cuatro agentes trabajan en cadena:
    - **Explorador:** visita el sitio en vivo con las herramientas *URL context* y *Google Search* de Gemini y releva todo el contenido: secciones, textos, precios, imágenes, contacto y colores. También funciona con sitios que arman su contenido con JavaScript o que bloquean la descarga directa.
-   - **Constructor:** rehace el sitio completo como una página nueva, mejorada y responsive, sin inventar datos. Si la respuesta se corta por largo, la retoma sola.
+   - **Estratega:** con ese relevamiento y la auditoría escribe el *prompt del sitio*: objetivo, público, paleta con códigos hex, tipografías, estructura sección por sección con su contenido y llamados a la acción, mejoras obligatorias y restricciones. El prompt aparece en pantalla: se puede copiar, editar y rehacer el sitio con él. Si marcás *Quiero leer y editar el prompt*, el proceso se detiene hasta que lo confirmes.
+   - **Constructor:** sigue el prompt del Estratega y rehace el sitio completo como una página nueva, mejorada y responsive, sin inventar datos. Si la respuesta se corta por largo, la retoma sola.
    - **Revisor:** compara la página nueva con el original y, si falta contenido, lo agrega.
 
    El modelo se elige solo (el Gemini Pro más nuevo que habilite tu clave) o se puede fijar a mano. También se puede usar Claude (Anthropic) como proveedor. Las claves quedan solo en tu navegador. La clave de Gemini se crea gratis en https://aistudio.google.com/apikey.

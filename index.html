@@ -273,12 +273,23 @@ details.ai .stack { margin-top: 12px; }
             <label class="field">Instrucciones extra (opcional)
               <input type="text" id="aiNotes" placeholder="Ej: más profesional, colores azules, destacar el WhatsApp">
             </label>
+            <label class="check"><input type="checkbox" id="reviewPrompt"> <span>Quiero leer y editar el prompt del sitio antes de que se construya.</span></label>
           </div>
         </details>
 
         <button class="primary" type="submit" id="go">Mejorar sitio</button>
         <ul class="log" id="log" aria-live="polite"></ul>
       </form>
+
+      <div class="panel stack" id="briefPanel" hidden>
+        <h2>Prompt del sitio · Agente Estratega</h2>
+        <p class="hint" id="briefHint">Esta es la orden que recibe el Agente Constructor. Podés editarla, copiarla para usarla en otra herramienta o rehacer el sitio con ella.</p>
+        <textarea id="briefText" spellcheck="false" aria-label="Prompt del sitio" style="min-height:320px"></textarea>
+        <div class="share" style="margin-top:0">
+          <button class="primary" type="button" id="briefGo" style="width:auto;flex:1 1 200px">Rehacer sitio con este prompt</button>
+          <button class="ghost" type="button" id="briefCopy">Copiar prompt</button>
+        </div>
+      </div>
     </section>
 
     <!-- Resultados -->
@@ -961,7 +972,17 @@ Devolvé SOLO un objeto JSON válido, sin texto alrededor, con esta forma:
  "problemas":["problemas de diseño, contenido o usabilidad que observes"]}
 Usá URLs absolutas. Copiá los textos literalmente. No inventes nada: si un dato no existe, dejalo vacío.`;
 
+const STRATEGIST_SYSTEM = `Sos el Agente Estratega: director creativo e ingeniero de prompts. A partir del relevamiento de un sitio real, escribís el PROMPT que va a recibir el Agente Constructor para crear la versión mejorada del sitio.
+El prompt tiene que ser concreto, accionable y en español, con estas partes:
+1. Objetivo: qué es el negocio, a quién le habla y qué tiene que hacer el visitante (llamar, escribir por WhatsApp, comprar, reservar…).
+2. Identidad visual: paleta con códigos hex partiendo de los colores de la marca, tipografías de Google Fonts por rol (títulos, texto), estilo de imágenes, tono de la redacción.
+3. Estructura: lista ordenada de secciones. Para cada una, qué contenido del sitio original lleva (títulos, textos, ítems, precios, imágenes con su URL, enlaces) y su llamado a la acción. Incluí TODO el contenido relevado; nada se descarta.
+4. Mejoras obligatorias: los problemas de la auditoría y los que observes (SEO, accesibilidad, celular, velocidad, conversión).
+5. Restricciones: no inventar datos, no omitir contenido, todo visible sin JavaScript, un único archivo HTML con el CSS adentro.
+No escribas código. Respondé solo con el prompt, listo para usar.`;
+
 const BUILDER_SYSTEM = `Sos el Agente Constructor: diseñador y desarrollador web senior. Reconstruís un sitio real como UNA página HTML completa, autocontenida y mejorada.
+Seguí el prompt del Agente Estratega cuando lo recibas. Si el prompt contradice al inventario o al HTML original, manda la completitud del contenido real.
 Reglas obligatorias:
 - COMPLETITUD: incluí TODAS las secciones, textos, productos, precios, servicios, preguntas, testimonios, datos de contacto, enlaces e imágenes del inventario y del HTML original. No resumas ni omitas nada. Podés mejorar la redacción de títulos, pero no quites información.
 - No inventes datos del negocio (precios, teléfonos, direcciones, reseñas). Si algo no está, no lo pongas.
@@ -1184,14 +1205,15 @@ function coverage(frags, html) {
 }
 
 /* ---------- Orquestación de los agentes ---------- */
-async function runAgents({ provider, html, baseUrl, before, notes, preset }) {
+// Etapa 1: Explorador (solo Gemini, visita el sitio en vivo) y Estratega (escribe el prompt del sitio)
+async function planAgents({ provider, html, baseUrl, before, notes, preset }) {
   const P = provider === 'gemini' ? 'Gemini' : 'Claude';
   const slim = html ? slimForAI(html) : '';
   const htmlForAI = slim.length <= 400000 ? slim : '';
   if (slim && !htmlForAI) step('').err(`El HTML es muy grande (${kchars(slim.length)}): los agentes trabajan con el inventario del sitio.`);
-  let inventory = null, model = '';
+  const ctx = { provider, P, html, baseUrl, before, notes, preset, htmlForAI, inventory: null, model: '', agents: [] };
 
-  // Agente 1 · Explorador (visita el sitio en vivo con URL context + Google Search)
+  // Agente Explorador
   if (provider === 'gemini') {
     const s = step(`Agente Explorador (${P}) recorriendo el sitio…`);
     try {
@@ -1200,35 +1222,61 @@ async function runAgents({ provider, html, baseUrl, before, notes, preset }) {
         htmlForAI ? `HTML descargado de la página principal (puede estar incompleto si el sitio arma su contenido con JavaScript):\n\n${htmlForAI}` : 'No se pudo descargar el HTML: obtené todo visitando la URL.',
       ].join('\n\n');
       const r = await llm(provider, EXPLORER_SYSTEM, prompt, { web: !!baseUrl, onText: n => s.set(`Agente Explorador (${P}) recorriendo el sitio… (${kchars(n)})`) });
-      model = r.model;
-      inventory = parseJson(r.text) || (r.text.trim() ? r.text.trim() : null);
-      const nSec = inventory && inventory.secciones ? inventory.secciones.length : 0;
-      s.ok(nSec ? `Explorador (${model}): ${nSec} secciones relevadas${inventory.nombre ? ` de “${inventory.nombre}”` : ''}.` : `Explorador (${model}): contenido relevado.`);
+      ctx.model = r.model; ctx.agents.push('Explorador');
+      ctx.inventory = parseJson(r.text) || (r.text.trim() ? r.text.trim() : null);
+      const inv = ctx.inventory, nSec = inv && inv.secciones ? inv.secciones.length : 0;
+      s.ok(nSec ? `Explorador (${ctx.model}): ${nSec} secciones relevadas${inv.nombre ? ` de “${inv.nombre}”` : ''}.` : `Explorador (${ctx.model}): contenido relevado.`);
     } catch (e) {
       if (!html) throw e;
       s.err(`Explorador: ${e.message} Se sigue con el HTML descargado.`);
     }
   }
-  if (!html && !inventory) throw new Error('No hay contenido del sitio para reconstruir.');
+  if (!html && !ctx.inventory) throw new Error('No hay contenido del sitio para reconstruir.');
 
-  // Agente 2 · Constructor
+  // Agente Estratega: escribe el prompt con el que se va a construir el sitio
+  const s2 = step(`Agente Estratega (${P}) escribiendo el prompt del sitio…`);
+  const fails = before ? before.issues.filter(i => !i.ok).map(i => '- ' + i.msg).join('\n') : '';
+  const prompt = [
+    `Estilo elegido por el dueño: ${STYLE_BRIEF[preset] || STYLE_BRIEF.modern}`,
+    notes ? `Pedido del dueño del sitio: ${notes}` : '',
+    baseUrl ? `URL original: ${baseUrl}` : '',
+    fails ? `Problemas detectados por la auditoría automática:\n${fails}` : '',
+    ctx.inventory ? `Relevamiento del sitio hecho por el Agente Explorador:\n${typeof ctx.inventory === 'string' ? ctx.inventory : JSON.stringify(ctx.inventory)}` : '',
+    htmlForAI ? `HTML original del sitio:\n${htmlForAI}` : '',
+  ].filter(Boolean).join('\n\n');
+  try {
+    const r = await llm(provider, STRATEGIST_SYSTEM, prompt, { onText: n => s2.set(`Agente Estratega (${P}) escribiendo el prompt del sitio… (${kchars(n)})`) });
+    ctx.model = ctx.model || r.model;
+    ctx.brief = r.text.replace(/^```[a-z]*\s*|```\s*$/g, '').trim();
+    if (!ctx.brief) throw new Error('devolvió un prompt vacío.');
+    ctx.agents.push('Estratega');
+    s2.ok(`Estratega: prompt del sitio listo (${kchars(ctx.brief.length)}).`);
+  } catch (e) {
+    ctx.brief = '';
+    s2.err(`Estratega: ${e.message} El Constructor trabaja sin prompt previo.`);
+  }
+  return ctx;
+}
+
+// Etapa 2: Constructor (arma la página siguiendo el prompt) y Revisor (verifica que no falte contenido)
+async function buildAgents(ctx, brief) {
+  const { provider, P, html, baseUrl, before, notes, preset, htmlForAI, inventory } = ctx;
   const s2 = step(`Agente Constructor (${P}) armando el sitio completo…`);
   const fails = before ? before.issues.filter(i => !i.ok).map(i => '- ' + i.msg).join('\n') : '';
   const prompt2 = [
-    `Estilo pedido: ${STYLE_BRIEF[preset] || STYLE_BRIEF.modern}`,
+    brief ? `PROMPT DEL SITIO (escrito por el Agente Estratega):\n${brief}` : `Estilo pedido: ${STYLE_BRIEF[preset] || STYLE_BRIEF.modern}`,
     notes ? `Pedido del dueño del sitio: ${notes}` : '',
     baseUrl ? `URL original: ${baseUrl} (usala para convertir rutas relativas en absolutas).` : '',
-    fails ? `Problemas detectados por la auditoría:\n${fails}` : '',
+    !brief && fails ? `Problemas detectados por la auditoría:\n${fails}` : '',
     inventory ? `Inventario completo del sitio (fuente principal de contenido):\n${typeof inventory === 'string' ? inventory : JSON.stringify(inventory)}` : '',
     htmlForAI ? `HTML original:\n${htmlForAI}` : '',
   ].filter(Boolean).join('\n\n');
   const r2 = await llm(provider, BUILDER_SYSTEM, prompt2, { onText: n => s2.set(`Agente Constructor (${P}) armando el sitio completo… (${kchars(n)})`) });
-  model = model || r2.model;
+  const model = ctx.model || r2.model;
   let out = extractHtml(r2.text);
-  if (!out) throw new Error('El Agente Constructor no devolvió una página válida. Se mantienen las mejoras automáticas.');
+  if (!out) throw new Error('El Agente Constructor no devolvió una página válida.');
   s2.ok(`Constructor: página nueva de ${kchars(out.length)}.`);
 
-  // Agente 3 · Revisor (control automático + corrección con IA si falta contenido)
   const s3 = step('Agente Revisor comprobando que no falte nada…');
   const a = html ? fragmentsFromDoc(new DOMParser().parseFromString(html, 'text/html'), baseUrl) : { texts: [], imgs: [] };
   const b = inventory && typeof inventory === 'object' ? fragmentsFromInventory(inventory) : { texts: [], imgs: [] };
@@ -1247,15 +1295,14 @@ async function runAgents({ provider, html, baseUrl, before, notes, preset }) {
       if (fixed) { const c2 = coverage(frags, fixed); if (c2.ratio >= cov.ratio) { out = fixed; cov = c2; } }
     } catch (e) { step('').err(`Revisor: ${e.message}`); }
   }
-  const pctOk = Math.round(cov.ratio * 100);
-  s3.ok(cov.total ? `Revisor: ${pctOk}% del contenido original está en la página nueva.` : 'Revisor: página revisada.');
-  return { html: out, coverage: cov, model, provider: P };
+  s3.ok(cov.total ? `Revisor: ${Math.round(cov.ratio * 100)}% del contenido original está en la página nueva.` : 'Revisor: página revisada.');
+  return { html: out, coverage: cov, model, provider: P, agents: ctx.agents.concat(['Constructor', 'Revisor']) };
 }
 
 /* ============================================================
    Interfaz
    ============================================================ */
-let mode = 'url', fileHtml = '', fileLabel = '', current = null;
+let mode = 'url', fileHtml = '', fileLabel = '', current = null, lastRun = null;
 
 $$('.tabs button').forEach(b => b.addEventListener('click', () => {
   mode = b.dataset.mode;
@@ -1400,16 +1447,15 @@ async function processHtml(html, baseUrl, label, preset) {
   }
 
   // 4. Agentes de IA
+  lastRun = { html, baseUrl, label, preset, before, localApplied: applied, localImproved: improved, ctx: null };
+  $('#briefPanel').hidden = true;
   if ($('#useAI').checked) {
     try {
-      const r = await runAgents({ provider: provider(), html, baseUrl, before, notes: $('#aiNotes').value.trim(), preset });
-      // Pasar el resultado por el motor otra vez para asegurar lo básico (sin capa de estilo extra)
-      const d2 = new DOMParser().parseFromString(r.html, 'text/html');
-      const fixes = improve(d2, null, { baseUrl, preset: 'keep' }).filter(x => !/Estilo conservado/.test(x.msg));
-      improved = serialize(d2);
-      const who = r.provider === 'Gemini' ? `3 agentes de Gemini (${r.model})` : 'Claude';
-      applied = [{ cat: 'design', msg: `Sitio reconstruido completo por ${who}${r.coverage.total ? `: ${Math.round(r.coverage.ratio * 100)}% del contenido original presente` : ''}.` }]
-        .concat(fixes, applied.filter(x => x.cat !== 'design'));
+      const ctx = await planAgents({ provider: provider(), html, baseUrl, before, notes: $('#aiNotes').value.trim(), preset });
+      lastRun.ctx = ctx;
+      const brief = await briefCheckpoint(ctx.brief);
+      const r = await buildAgents(ctx, brief);
+      ({ improved, applied } = mergeAI(lastRun, r));
       usedAI = r;
     } catch (e) {
       step('').err(e.message || 'Fallaron los agentes de IA.');
@@ -1434,6 +1480,31 @@ async function processHtml(html, baseUrl, label, preset) {
 
   current = { html, improved, baseUrl, label, before, after, applied, link, usedAI };
   showResult(current);
+}
+
+// Combina la página de los agentes con las correcciones básicas del motor local
+function mergeAI(run, r) {
+  const d2 = new DOMParser().parseFromString(r.html, 'text/html');
+  const fixes = improve(d2, null, { baseUrl: run.baseUrl, preset: 'keep' }).filter(x => !/Estilo conservado/.test(x.msg));
+  const who = r.provider === 'Gemini' ? `${r.agents.length} agentes de Gemini (${r.agents.join(', ')}; ${r.model})` : `Claude (${r.agents.join(', ')})`;
+  const applied = [{ cat: 'design', msg: `Sitio reconstruido completo por ${who}${r.coverage.total ? `: ${Math.round(r.coverage.ratio * 100)}% del contenido original presente` : ''}.` }]
+    .concat(fixes, (run.localApplied || []).filter(x => x.cat !== 'design'));
+  return { improved: serialize(d2), applied };
+}
+
+// Muestra el prompt del Estratega; si se pidió revisarlo, espera a que la persona lo confirme
+let briefResolve = null;
+function briefCheckpoint(brief) {
+  if (!brief) return Promise.resolve('');
+  $('#briefText').value = brief;
+  $('#briefPanel').hidden = false;
+  if (!$('#reviewPrompt').checked) { $('#briefGo').textContent = 'Rehacer sitio con este prompt'; return Promise.resolve(brief); }
+  $('#briefGo').textContent = 'Construir sitio con este prompt';
+  $('#briefHint').textContent = 'Revisá el prompt: podés cambiar colores, secciones, textos o el enfoque. Cuando esté listo, construí el sitio.';
+  const s = step('Esperando que revises el prompt del sitio…');
+  $('#briefPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#briefText').focus();
+  return new Promise(res => { briefResolve = v => { s.ok('Prompt confirmado.'); res(v); }; });
 }
 
 function withBaseTag(html, baseUrl) {
@@ -1504,6 +1575,35 @@ function showResult(r) {
   }
   document.getElementById('result').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 }
+
+$('#briefCopy').addEventListener('click', async () => {
+  const t = $('#briefText');
+  try { await navigator.clipboard.writeText(t.value); toast('Prompt copiado'); }
+  catch { t.focus(); t.select(); toast('Seleccioné el prompt: copialo con Ctrl+C'); }
+});
+$('#briefGo').addEventListener('click', async () => {
+  const brief = $('#briefText').value.trim();
+  if (briefResolve) { const r = briefResolve; briefResolve = null; $('#briefGo').textContent = 'Rehacer sitio con este prompt'; r(brief); return; }
+  if (!lastRun || !lastRun.ctx) return;
+  const go = $('#go'), bg = $('#briefGo');
+  go.disabled = bg.disabled = true; bg.textContent = 'Construyendo…';
+  step('Rehaciendo el sitio con el prompt editado…').ok();
+  try {
+    const r = await buildAgents(lastRun.ctx, brief);
+    const { improved, applied } = mergeAI(lastRun, r);
+    const s5 = step('Revisando el resultado…');
+    const f2 = await renderForInspection(improved);
+    let vis2 = null; try { vis2 = inspectRendered(f2); } catch {}
+    f2.remove();
+    const after = audit(new DOMParser().parseFromString(improved, 'text/html'), vis2 && vis2.ok ? vis2 : null);
+    s5.ok(`Puntaje final: ${after.total}/100.`);
+    const link = await makeLink(improved);
+    step('').ok('Link nuevo listo.');
+    current = { html: lastRun.html, improved, baseUrl: lastRun.baseUrl, label: lastRun.label, before: lastRun.before, after, applied, link, usedAI: r };
+    showResult(current);
+  } catch (e) { step('').err(e.message || 'No se pudo rehacer el sitio.'); }
+  finally { go.disabled = bg.disabled = false; bg.textContent = 'Rehacer sitio con este prompt'; }
+});
 
 $('#copy').addEventListener('click', async () => {
   const inp = $('#shareLink');
