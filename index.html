@@ -256,12 +256,15 @@ details.ai .stack { margin-top: 12px; }
             <label class="check"><input type="checkbox" id="useAI"> <span>Usar agentes de IA: visitan el sitio en vivo (incluido lo que carga con JavaScript), lo reconstruyen completo y revisan que no falte nada.</span></label>
             <label class="field" id="provRow">Proveedor
               <select id="provider">
-                <option value="gemini">Google Gemini (3 agentes)</option>
+                <option value="gemini">Google Gemini (4 agentes)</option>
                 <option value="claude">Anthropic Claude</option>
               </select>
             </label>
             <div id="geminiRow" class="stack">
-              <label class="field">Clave de API de Gemini
+              <label class="field" id="serverRow">Servidor de IA (Cloudflare)
+                <input type="url" id="iaServer" placeholder="https://mejorador-ia.tu-cuenta.workers.dev" autocomplete="off" inputmode="url">
+              </label>
+              <label class="field"><span id="geminiKeyLabel">Clave de API de Gemini</span>
                 <input type="password" id="geminiKey" placeholder="AIza…" autocomplete="off">
               </label>
               <label class="field">Modelo
@@ -1055,13 +1058,25 @@ function geminiError(status, body) {
   let msg = '';
   try { msg = JSON.parse(body).error.message; } catch { msg = (body || '').slice(0, 200); }
   if (status === 400 && /api key/i.test(msg)) return new Error('La clave de Gemini no es válida. Revisala en aistudio.google.com/apikey.');
+  if (status === 403 && /Mejorador/.test(msg)) return new Error('El servidor de IA no reconoce esta página. Agregá su dirección en ALLOWED_ORIGINS, en Cloudflare.');
   if (status === 403) return new Error('La clave de Gemini no tiene permiso para este modelo o la API no está habilitada.');
+  if (status === 500 && /GEMINI_API_KEY/.test(msg)) return new Error('Al servidor de IA le falta la clave: cargá el secreto GEMINI_API_KEY en Cloudflare.');
+  if (status === 429 && /Esperá/.test(msg)) return new Error(msg);
   if (status === 404) return new Error('Ese modelo de Gemini no está disponible para tu clave. Elegí “Automático”.');
   if (status === 429) return new Error('Gemini alcanzó el límite de uso de tu clave. Esperá un minuto o revisá tu cuota.');
   return new Error(`Gemini respondió con error ${status}: ${msg}`);
 }
-async function geminiModels(key) {
-  const r = await fetch(`${GEMINI}/models?pageSize=1000`, { headers: { 'x-goog-api-key': key } });
+// Dirección del servidor de IA publicado en Cloudflare (worker/). Con esto nadie necesita pegar una clave.
+const IA_SERVER_DEFAULT = '';
+function geminiAccess() {
+  const key = $('#geminiKey').value.trim();
+  if (key) return { base: GEMINI, headers: { 'x-goog-api-key': key }, via: 'clave' };
+  const server = ($('#iaServer').value.trim() || IA_SERVER_DEFAULT).replace(/\/+$/, '');
+  if (/^https:\/\//.test(server)) return { base: server + '/v1beta', headers: {}, via: 'servidor' };
+  return null;
+}
+async function geminiModels(access) {
+  const r = await fetch(`${access.base}/models?pageSize=1000`, { headers: access.headers });
   if (!r.ok) throw geminiError(r.status, await r.text());
   const j = await r.json();
   const ver = id => parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(id) || [])[1] || 0);
@@ -1073,21 +1088,21 @@ async function geminiModels(key) {
     // El mejor primero: Pro antes que Flash, luego la versión más nueva, luego estable antes que alias
     .sort((a, b) => tier(b.id) - tier(a.id) || ver(b.id) - ver(a.id) || (/latest/.test(a.id) - /latest/.test(b.id)));
 }
-async function geminiPick(key) {
+async function geminiPick(access) {
   const chosen = $('#geminiModel').value;
-  if (!geminiList) { try { geminiList = await geminiModels(key); } catch (e) { if (/clave/.test(e.message)) throw e; geminiList = []; } }
+  if (!geminiList) { try { geminiList = await geminiModels(access); } catch (e) { if (/clave/.test(e.message)) throw e; geminiList = []; } }
   const m = geminiList.find(x => x.id === chosen) || geminiList[0];
   return m || { id: chosen || GEMINI_FALLBACK, label: chosen || GEMINI_FALLBACK, out: 65536 };
 }
-async function geminiStream({ key, model, system, contents, tools, maxOut, onText }) {
+async function geminiStream({ access, model, system, contents, tools, maxOut, onText }) {
   const body = {
     systemInstruction: { parts: [{ text: system }] },
     contents,
     generationConfig: { maxOutputTokens: maxOut, thinkingConfig: { thinkingLevel: 'high' } },
   };
   if (tools) body.tools = tools;
-  const post = () => fetch(`${GEMINI}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
-    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body),
+  const post = () => fetch(`${access.base}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+    method: 'POST', headers: { 'content-type': 'application/json', ...access.headers }, body: JSON.stringify(body),
   });
   let r = await post();
   if (r.status === 400) {
@@ -1120,14 +1135,14 @@ async function geminiStream({ key, model, system, contents, tools, maxOut, onTex
   return { text, finish };
 }
 async function geminiText(system, prompt, { web, onText } = {}) {
-  const key = $('#geminiKey').value.trim();
-  if (!key) throw new Error('Falta la clave de API de Gemini.');
-  const m = await geminiPick(key);
+  const access = geminiAccess();
+  if (!access) throw new Error('Falta la clave de API de Gemini o el servidor de IA.');
+  const m = await geminiPick(access);
   const tools = web ? [{ url_context: {} }, { google_search: {} }] : undefined;
   const first = [{ role: 'user', parts: [{ text: prompt }] }];
   let contents = first, full = '';
   for (let round = 0; round < 4; round++) {
-    const r = await geminiStream({ key, model: m.id, system, contents, tools, maxOut: Math.min(m.out || 65536, 65536), onText: n => onText && onText(full.length + n) });
+    const r = await geminiStream({ access, model: m.id, system, contents, tools, maxOut: Math.min(m.out || 65536, 65536), onText: n => onText && onText(full.length + n) });
     full += r.text;
     if (r.finish !== 'MAX_TOKENS') break;
     contents = [...first, { role: 'model', parts: [{ text: full }] }, { role: 'user', parts: [{ text: CONTINUE_MSG }] }];
@@ -1355,18 +1370,18 @@ function syncProvider() {
   $('#envLabel').textContent = $('#useAI').checked ? (g ? 'Motor local + agentes Gemini' : 'Motor local + Claude') : 'Motor local activo';
 }
 async function loadGeminiModels() {
-  const key = $('#geminiKey').value.trim(), st = $('#geminiStatus'), sel = $('#geminiModel');
-  if (!key) return;
-  st.textContent = 'Conectando con Gemini…';
+  const access = geminiAccess(), st = $('#geminiStatus'), sel = $('#geminiModel');
+  if (!access) return;
+  st.textContent = access.via === 'servidor' ? 'Conectando con el servidor de IA…' : 'Conectando con Gemini…';
   geminiList = null;
   try {
-    geminiList = await geminiModels(key);
+    geminiList = await geminiModels(access);
     const saved = store.get('ms-gmodel') || '';
     sel.innerHTML = '<option value="">Automático: el mejor disponible</option>' +
       geminiList.map(m => `<option value="${m.id}">${m.label.replace(/</g, '&lt;')} · ${m.id}</option>`).join('');
     if (geminiList.some(m => m.id === saved)) sel.value = saved;
     st.textContent = geminiList.length
-      ? `Conectado. ${geminiList.length} modelos disponibles; en automático se usa ${geminiList[0].id}.`
+      ? `Conectado${access.via === 'servidor' ? ' al servidor de IA: no hace falta clave' : ''}. ${geminiList.length} modelos disponibles; en automático se usa ${geminiList[0].id}.`
       : 'Conectado, pero la clave no lista modelos compatibles.';
   } catch (e) { st.textContent = e.message; }
 }
@@ -1384,16 +1399,24 @@ if (isArtifact) {
 } else {
   const k = store.get('ms-key'); if (k) $('#apiKey').value = k;
   const gk = store.get('ms-gkey'); if (gk) $('#geminiKey').value = gk;
+  const srv = store.get('ms-iaserver'); if (srv) $('#iaServer').value = srv;
+  if (IA_SERVER_DEFAULT) {
+    // Servidor propio configurado: la clave pasa a ser opcional y el campo del servidor no hace falta
+    $('#serverRow').hidden = true;
+    $('#geminiKeyLabel').textContent = 'Clave de API de Gemini (opcional)';
+    $('#geminiStatus').textContent = 'La herramienta usa su propio servidor de IA: no necesitás clave.';
+  }
+  $('#iaServer').addEventListener('change', e => { e.target.classList.remove('need'); store.set('ms-iaserver', e.target.value.trim()); loadGeminiModels(); });
   const pv = store.get('ms-provider'); if (pv) $('#provider').value = pv;
   const pref = store.get('ms-useai');
-  if (pref === '1' || (pref === null && (gk || k))) $('#useAI').checked = true;
+  if (pref === '1' || (pref === null && (gk || k || srv || IA_SERVER_DEFAULT))) $('#useAI').checked = true;
   $('#apiKey').addEventListener('change', e => { e.target.classList.remove('need'); store.set('ms-key', e.target.value.trim()); });
   $('#geminiKey').addEventListener('change', e => { e.target.classList.remove('need'); store.set('ms-gkey', e.target.value.trim()); loadGeminiModels(); });
   $('#geminiModel').addEventListener('change', e => store.set('ms-gmodel', e.target.value));
   $('#provider').addEventListener('change', e => { store.set('ms-provider', e.target.value); syncProvider(); });
   $('#useAI').addEventListener('change', e => { store.set('ms-useai', e.target.checked ? '1' : '0'); syncProvider(); });
   syncProvider();
-  if (gk) loadGeminiModels();
+  if (geminiAccess()) loadGeminiModels();
 }
 const savedUrl = store.get('ms-url'); if (savedUrl) $('#url').value = savedUrl;
 
@@ -1448,7 +1471,7 @@ async function run() {
     const s = step(`Visitando ${url}…`);
     try { const r = await fetchSite(url); html = r.html; s.ok(`Sitio descargado (${Math.round(html.length / 1024)} KB, vía ${r.via}).`); }
     catch (e) {
-      if ($('#useAI').checked && provider() === 'gemini' && $('#geminiKey').value.trim()) {
+      if ($('#useAI').checked && provider() === 'gemini' && geminiAccess()) {
         s.err('El sitio bloquea la descarga directa: lo va a visitar el Agente Explorador de Gemini.');
         html = null;
       } else throw new Error(e.message + ' También podés activar los agentes de Gemini para que lo visiten directamente.');
@@ -1496,7 +1519,8 @@ async function processHtml(html, baseUrl, label, preset) {
   lastRun = { html, baseUrl, label, preset, before, localApplied: applied, localImproved: improved, ctx: null };
   $('#briefPanel').hidden = true;
   const keyInput = isArtifact ? null : (provider() === 'gemini' ? $('#geminiKey') : $('#apiKey'));
-  if ($('#useAI').checked && keyInput && !keyInput.value.trim()) {
+  const missingAccess = keyInput && (provider() === 'gemini' ? !geminiAccess() : !keyInput.value.trim());
+  if ($('#useAI').checked && missingAccess) {
     step('').err(`Los agentes de IA necesitan tu clave de ${provider() === 'gemini' ? 'Gemini' : 'Anthropic'}. Pegala en “Agentes de IA” y tocá “Mejorar sitio” otra vez. Por ahora ves las mejoras automáticas.`);
     $('#aiBox').open = true; keyInput.classList.add('need');
   } else if ($('#useAI').checked) {

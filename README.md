@@ -27,7 +27,9 @@ Herramienta web que toma un sitio (por link, archivo `.html` o código pegado), 
    - **Constructor:** sigue el prompt del Estratega y rehace el sitio completo como una página nueva, mejorada y responsive, sin inventar datos. Si la respuesta se corta por largo, la retoma sola.
    - **Revisor:** compara la página nueva con el original y, si falta contenido, lo agrega.
 
-   El modelo se elige solo (el Gemini Pro más nuevo que habilite tu clave) o se puede fijar a mano. También se puede usar Claude (Anthropic) como proveedor. Las claves quedan solo en tu navegador. La clave de Gemini se crea gratis en https://aistudio.google.com/apikey.
+   El modelo se elige solo (el Gemini Pro más nuevo disponible) o se puede fijar a mano. También se puede usar Claude (Anthropic) como proveedor.
+
+   **Sin pegar claves:** la clave de Gemini se guarda como secreto en un servidor propio y gratuito de Cloudflare (carpeta `worker/`, instrucciones en `worker/README.md`). La herramienta le habla a ese servidor y nadie necesita cargar una clave. También se puede usar una clave personal, que queda solo en tu navegador.
 5. **Genera el link del sitio mejorado.** El HTML mejorado se comprime y viaja dentro del propio link (`index.html#v=…`). Quien lo abra ve el sitio mejorado, sin servidor ni dominio. También se puede descargar el `.html`.
 
 ## Límites conocidos
@@ -39,4 +41,5 @@ Herramienta web que toma un sitio (por link, archivo `.html` o código pegado), 
 ## Estructura
 
 - `index.html`: la aplicación completa (interfaz, motor de análisis, motor de mejoras, IA y visor de links).
+- `worker/`: servidor de IA para Cloudflare Workers que guarda la clave de Gemini como secreto.
 - `.github/workflows/pages.yml`: publica la herramienta en GitHub Pages en cada push.

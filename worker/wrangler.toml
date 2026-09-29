@@ -1,0 +1,14 @@
+# Solo hace falta si se publica con la línea de comandos (npx wrangler deploy).
+# Desde el panel de Cloudflare alcanza con pegar worker.js (ver worker/README.md).
+name = "mejorador-ia"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Límite opcional: 20 pedidos por minuto por persona.
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
