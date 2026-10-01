@@ -1,0 +1,12 @@
+# Servidor de IA del Mejorador de Sitios (Cloudflare Workers).
+# Cloudflare lo publica solo en cada cambio del repositorio con: npx wrangler deploy
+# La clave de Gemini NO va acá: se carga como secreto GEMINI_API_KEY en el panel de Cloudflare.
+name = "mejora-de-sitios"
+main = "worker/worker.js"
+compatibility_date = "2026-09-01"
+
+# Límite de uso: 20 pedidos por minuto por persona.
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }

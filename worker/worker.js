@@ -5,10 +5,10 @@
  * solo los pedidos que la herramienta necesita: listar modelos y generar
  * contenido. La clave nunca llega al navegador ni al repositorio.
  *
- * Variables (Settings → Variables and Secrets):
+ * Configuración: wrangler.toml (raíz del repositorio). Variables (Settings → Variables and Secrets):
  *   GEMINI_API_KEY   (secreto, obligatorio)  clave de https://aistudio.google.com/apikey
  *   ALLOWED_ORIGINS  (texto, opcional)       sitios que pueden usarlo, separados por coma
- *   LIMITER          (enlace, opcional)      límite de pedidos por minuto (ver wrangler.toml)
+ *   LIMITER          (enlace)                límite de pedidos por minuto, definido en wrangler.toml
  */
 const GOOGLE = 'https://generativelanguage.googleapis.com';
 const DEFAULT_ORIGINS = 'https://raw.githack.com,https://tomasquinteros059-svg.github.io,http://localhost:8765';
