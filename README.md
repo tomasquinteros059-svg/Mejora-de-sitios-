@@ -21,11 +21,14 @@ Herramienta web que toma un sitio (por link, archivo `.html` o código pegado), 
    - Móvil: viewport, tablas desplazables, imágenes fluidas.
    - Diseño: reemplazo de etiquetas obsoletas (`<font>`, `<center>`, `<marquee>`…), favicon con el color de marca y 4 estilos: **Conservar, Moderno, Elegante, Audaz**.
    - Seguridad: `rel="noopener"`, forzado a HTTPS, política de referencia.
-4. **Agentes de IA (opcional, recomendado para sitios completos).** Con una clave de Gemini, cuatro agentes trabajan en cadena:
-   - **Explorador:** visita el sitio en vivo con las herramientas *URL context* y *Google Search* de Gemini y releva todo el contenido: secciones, textos, precios, imágenes, contacto y colores. También funciona con sitios que arman su contenido con JavaScript o que bloquean la descarga directa.
-   - **Estratega:** con ese relevamiento y la auditoría escribe el *prompt del sitio*: objetivo, público, paleta con códigos hex, tipografías, estructura sección por sección con su contenido y llamados a la acción, mejoras obligatorias y restricciones. El prompt aparece en pantalla: se puede copiar, editar y rehacer el sitio con él. Si marcás *Quiero leer y editar el prompt*, el proceso se detiene hasta que lo confirmes.
-   - **Constructor:** sigue el prompt del Estratega y rehace el sitio completo como una página nueva, mejorada y responsive, sin inventar datos. Si la respuesta se corta por largo, la retoma sola.
+4. **Agentes de IA (opcional, recomendado para sitios completos).** Cinco agentes de Gemini trabajan en cadena:
+   - **Explorador:** visita el sitio en vivo con las herramientas *URL context* y *Google Search* de Gemini y releva todo el contenido: secciones, textos, precios, imágenes, contacto, colores, público, diferenciales y tono. También funciona con sitios que arman su contenido con JavaScript o que bloquean la descarga directa.
+   - **Estratega (director creativo):** investiga en Google sitios destacados del mismo rubro y escribe el *prompt del sitio*: diagnóstico, un concepto creativo propio del negocio, dirección de arte exacta (paleta con hex, pareja tipográfica, un *elemento firma*), un layout distinto para cada sección, titulares nuevos con datos reales, recursos de conversión y una lista de prohibidos contra lo genérico. El prompt se puede copiar, editar y rehacer el sitio con él; si marcás *Quiero leer y editar el prompt*, el proceso se detiene hasta que lo confirmes.
+   - **Constructor:** sigue el prompt y rehace el sitio completo con técnicas concretas para no parecer plantilla (composiciones asimétricas, texturas y formas SVG, íconos propios, microinteracciones), sin inventar datos. Si la respuesta se corta por largo, la retoma sola.
+   - **Crítico:** saca capturas reales de la página (escritorio y celular), Gemini las mira y le pone puntaje de 1 a 10. Si queda por debajo de 8.5 o se ve genérica, la rediseña.
    - **Revisor:** compara la página nueva con el original y, si falta contenido, lo agrega.
+
+   Opciones: **Dirección de arte** (la elige el Estratega, o una de siete: editorial, tecnológico, lujo, cálido, corporativo, audaz, vibrante) y **Exigencia de diseño** (rápida, alta con una ronda de crítica, máxima con dos).
 
    El modelo se elige solo (el Gemini Pro más nuevo disponible) o se puede fijar a mano. También se puede usar Claude (Anthropic) como proveedor.
 

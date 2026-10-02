@@ -256,7 +256,7 @@ details.ai .stack { margin-top: 12px; }
             <label class="check"><input type="checkbox" id="useAI"> <span>Usar agentes de IA: visitan el sitio en vivo (incluido lo que carga con JavaScript), lo reconstruyen completo y revisan que no falte nada.</span></label>
             <label class="field" id="provRow">Proveedor
               <select id="provider">
-                <option value="gemini">Google Gemini (4 agentes)</option>
+                <option value="gemini">Google Gemini (5 agentes)</option>
                 <option value="claude">Anthropic Claude</option>
               </select>
             </label>
@@ -280,6 +280,16 @@ details.ai .stack { margin-top: 12px; }
             </div>
             <label class="field">Instrucciones extra (opcional)
               <input type="text" id="aiNotes" placeholder="Ej: más profesional, colores azules, destacar el WhatsApp">
+            </label>
+            <label class="field">Dirección de arte
+              <select id="artDir"></select>
+            </label>
+            <label class="field">Exigencia de diseño
+              <select id="rigor">
+                <option value="1">Alta: el Crítico revisa y rediseña una vez</option>
+                <option value="2">Máxima: hasta dos rondas de crítica (más lento)</option>
+                <option value="0">Rápida: sin Crítico</option>
+              </select>
             </label>
             <label class="check"><input type="checkbox" id="reviewPrompt"> <span>Quiero leer y editar el prompt del sitio antes de que se construya.</span></label>
           </div>
@@ -964,59 +974,113 @@ body{font-size:${P.size};color:#1d1f23;max-width:1080px;margin:0 auto;padding:0 
 function serialize(doc) { return '<!doctype html>\n' + doc.documentElement.outerHTML; }
 
 /* ============================================================
-   Agentes de IA: Explorador, Constructor y Revisor
+   Agentes de IA: Explorador, Estratega, Constructor, Crítico y Revisor
    Proveedores: Google Gemini (web) y Anthropic Claude
    ============================================================ */
 const STYLE_BRIEF = {
-  keep: 'Mantené la identidad visual actual (colores, tipografías, estilo general) y solo pulila.',
-  modern: 'Estilo moderno: sans-serif actual, mucho aire, secciones bien separadas, botones redondeados y el color de marca como acento.',
-  elegant: 'Estilo elegante: serif editorial en títulos, paleta sobria, detalles finos y mucho espacio en blanco.',
-  bold: 'Estilo audaz: títulos grandes y contundentes, alto contraste, botones grandes y secciones con fondos de color.',
+  keep: 'Mantené la identidad visual actual (colores, tipografías, estilo general) y llevala a un nivel profesional.',
+  modern: '',
+  elegant: 'Preferencia del dueño: algo elegante y sobrio.',
+  bold: 'Preferencia del dueño: algo audaz y llamativo.',
 };
+
+// Direcciones de arte concretas: cada una define tipografías, color, composición y recursos propios
+const ART_DIRECTIONS = {
+  auto: { label: 'La elige el Estratega (recomendado)', brief: '' },
+  editorial: { label: 'Editorial de revista', brief: 'Editorial de revista: serif display de alto contraste (Fraunces, Playfair Display o DM Serif Display) con sans de texto sobria (Instrument Sans o Manrope); grilla de 12 columnas con composiciones asimétricas; numeración de secciones tipo índice (01, 02…); fotos grandes con epígrafes; filetes finos; mucho blanco cálido; un único color de acento usado con disciplina.' },
+  tech: { label: 'Tecnológico preciso', brief: 'Tecnológico preciso: fondo oscuro profundo (no negro puro) con superficies en capas; display geométrica (Sora o Unbounded), texto en Geist o Inter Tight y monoespaciada para detalles (JetBrains Mono); grilla bento; cuadrícula fina de fondo; brillos sutiles del color de acento; cifras y datos destacados; microinteracciones precisas.' },
+  luxury: { label: 'Minimal de lujo', brief: 'Minimal de lujo: neutros cálidos (marfil, arena, grafito) con un acento metálico; Cormorant Garamond en títulos y Jost en texto; mayúsculas muy espaciadas en etiquetas; fotos a sangre con mucho aire; líneas finísimas; ritmo lento y silencioso; animaciones lentas y suaves.' },
+  warm: { label: 'Cálido y artesanal', brief: 'Cálido y artesanal: tonos tierra y un acento vivo; Young Serif o Fraunces suave en títulos y Nunito Sans en texto; textura de papel con SVG; formas orgánicas (radios irregulares, manchas SVG); separadores e íconos dibujados a mano en SVG; fotos con marcos y leves rotaciones.' },
+  corporate: { label: 'Corporativo premium', brief: 'Corporativo premium: azul o verde profundo con neutros fríos y un acento cálido; Plus Jakarta Sans o Figtree con pesos contrastados; estructura muy clara; cifras grandes; casos y prueba social; bandas de color a sangre; llamados a la acción consultivos.' },
+  bold: { label: 'Audaz y gráfico', brief: 'Audaz y gráfico: tipografía gigante (Archivo Black o Bricolage Grotesque) que ocupa el ancho; colores planos saturados en bloques; bordes duros de 2 a 3 px y sombras sólidas desplazadas; marquesina de texto; composición rota pero legible.' },
+  vibrant: { label: 'Joven y vibrante', brief: 'Joven y vibrante: paleta saturada de tres colores que conviven; Lexend o Baloo 2; formas redondeadas tipo sticker con leves rotaciones; ilustraciones y formas SVG; movimiento alegre (siempre respetando prefers-reduced-motion).' },
+};
+
+// Recursos que delatan un sitio genérico o "hecho por IA": se prohíben en todos los agentes
+const ANTI_GENERIC = `Prohibido (delata una plantilla o un sitio hecho por IA):
+- portada centrada sobre degradado violeta-azul o fondo liso;
+- Inter, Roboto, Poppins, Montserrat u Open Sans como únicas tipografías;
+- tres tarjetas iguales con un ícono arriba como recurso principal;
+- emojis como íconos;
+- todo centrado; todas las secciones con fondo blanco plano;
+- los mismos radios y sombras en todos los elementos;
+- textos de relleno ("Bienvenidos", "Soluciones innovadoras", "Calidad y confianza", lorem ipsum);
+- datos inventados (precios, cifras, reseñas, clientes) o URLs de fotos inventadas.`;
 
 const EXPLORER_SYSTEM = `Sos el Agente Explorador. Relevás un sitio web COMPLETO para que otro agente lo reconstruya sin perder nada.
 Visitá la URL indicada y sus páginas internas principales enlazadas en el menú (hasta 5). Extraé el contenido tal como lo ve un visitante, incluido lo que se carga con JavaScript.
 Devolvé SOLO un objeto JSON válido, sin texto alrededor, con esta forma:
-{"nombre":"","rubro":"","idioma":"es","colores":["#hex"],"tipografias":[""],"logo":"",
+{"nombre":"","rubro":"","idioma":"es","publico":"","diferenciales":[""],"tono":"","colores":["#hex"],"tipografias":[""],"logo":"",
  "navegacion":[{"texto":"","href":""}],
  "secciones":[{"titulo":"","tipo":"hero|servicios|productos|galeria|testimonios|precios|faq|equipo|nosotros|contacto|otro","texto":"texto completo literal","items":[{"titulo":"","texto":"","precio":"","imagen":"","enlace":""}],"imagenes":[{"src":"","alt":""}],"botones":[{"texto":"","href":""}]}],
  "contacto":{"telefono":"","whatsapp":"","email":"","direccion":"","horarios":"","redes":[{"red":"","url":""}]},
  "problemas":["problemas de diseño, contenido o usabilidad que observes"]}
 Usá URLs absolutas. Copiá los textos literalmente. No inventes nada: si un dato no existe, dejalo vacío.`;
 
-const STRATEGIST_SYSTEM = `Sos el Agente Estratega: director creativo e ingeniero de prompts. A partir del relevamiento de un sitio real, escribís el PROMPT que va a recibir el Agente Constructor para crear la versión mejorada del sitio.
-El prompt tiene que ser concreto, accionable y en español, con estas partes:
-1. Objetivo: qué es el negocio, a quién le habla y qué tiene que hacer el visitante (llamar, escribir por WhatsApp, comprar, reservar…).
-2. Identidad visual: paleta con códigos hex partiendo de los colores de la marca, tipografías de Google Fonts por rol (títulos, texto), estilo de imágenes, tono de la redacción.
-3. Estructura: lista ordenada de secciones. Para cada una, qué contenido del sitio original lleva (títulos, textos, ítems, precios, imágenes con su URL, enlaces) y su llamado a la acción. Incluí TODO el contenido relevado; nada se descarta.
-4. Mejoras obligatorias: los problemas de la auditoría y los que observes (SEO, accesibilidad, celular, velocidad, conversión).
-5. Concepto creativo: una idea visual central propia de este negocio (no una plantilla genérica) y los recursos de conversión que más le sirven (botón flotante de WhatsApp, llamadas a la acción repetidas, prueba social, preguntas frecuentes, horarios visibles).
-6. Restricciones: no inventar datos, no omitir contenido, todo visible sin JavaScript, un único archivo HTML con el CSS adentro.
-El objetivo es un sitio que parezca hecho por una agencia de primer nivel: pedí calidad visual alta y concreta.
+const STRATEGIST_SYSTEM = `Sos el Agente Estratega: director creativo de una agencia premiada y experto en conversión. Escribís el PROMPT que va a recibir el Agente Constructor para rediseñar un sitio real. Tu enemigo es lo genérico: el resultado no puede parecer una plantilla.
+
+Antes de escribir:
+- Entendé el negocio: qué vende, a quién, qué lo diferencia y qué tono tiene. Usá solo hechos del relevamiento.
+- Si tenés búsqueda web, mirá 2 o 3 sitios destacados del mismo rubro (líderes del sector o premiados) y tomá ideas de estructura y recursos. Nunca copies textos, marcas ni imágenes.
+
+El prompt tiene estas partes, concretas y en español:
+1. Diagnóstico: en tres líneas, qué falla hoy y cuál es la acción principal que tiene que hacer el visitante.
+2. Concepto creativo: UNA idea central propia de este negocio, con nombre (por ejemplo "planos de obra" para una constructora, "etiqueta de vino" para una bodega, "terminal de código" para una empresa de software), y cómo se traduce en la página. Tiene que ser algo que no le serviría a otro rubro.
+3. Dirección de arte:
+   - paleta exacta con códigos hex y el rol de cada color (fondo, superficie, texto, acento, acento secundario), partiendo de la marca;
+   - pareja tipográfica de Google Fonts con personalidad (display y texto, más una monoespaciada si suma), con pesos y tamaños (h1 de escritorio entre 3.5 y 6 rem);
+   - un "elemento firma": recurso visual que se repite y hace reconocible al sitio (forma, patrón, línea, numeración, sello, textura SVG, tipografía recortada…);
+   - tratamiento de imágenes (recortes, marcos, duotono, máscaras, superposiciones) e íconos (SVG de trazo, nunca emojis).
+4. Estructura sección por sección, en orden. Para cada una: objetivo; layout ESPECÍFICO y distinto al de las secciones vecinas (por ejemplo "split asimétrico 7/5 con la imagen invadiendo la sección siguiente", "bento de 5 celdas", "lista editorial numerada", "línea de tiempo horizontal", "banda de color a sangre con cifra gigante"); el contenido exacto del relevamiento que lleva (textos, ítems, precios, imágenes con su URL, enlaces); y su llamado a la acción.
+5. Redacción: titulares nuevos, específicos y orientados al beneficio, escritos con datos reales del negocio. Escribí cada titular.
+6. Conversión: llamado a la acción principal repetido, botón flotante de WhatsApp si hay número, prueba social real, preguntas frecuentes, horarios visibles, formulario corto.
+7. Terminación: microinteracciones, estados de hover y foco, encabezado que cambia al hacer scroll, comportamiento en celular (menú, orden de bloques, tamaños táctiles).
+8. La lista de prohibidos de abajo, copiada tal cual.
+9. Restricciones: incluir TODO el contenido relevado, no inventar datos, todo visible sin JavaScript, un único archivo HTML con el CSS adentro.
+
+${ANTI_GENERIC}
+
 No escribas código. Respondé solo con el prompt, listo para usar.`;
 
-const BUILDER_SYSTEM = `Sos el Agente Constructor: diseñador y desarrollador web senior. Reconstruís un sitio real como UNA página HTML completa, autocontenida y mejorada.
-Seguí el prompt del Agente Estratega cuando lo recibas. Si el prompt contradice al inventario o al HTML original, manda la completitud del contenido real.
-Reglas obligatorias:
-- COMPLETITUD: incluí TODAS las secciones, textos, productos, precios, servicios, preguntas, testimonios, datos de contacto, enlaces e imágenes del inventario y del HTML original. No resumas ni omitas nada. Podés mejorar la redacción de títulos, pero no quites información.
-- No inventes datos del negocio (precios, teléfonos, direcciones, reseñas). Si algo no está, no lo pongas.
-- Imágenes con sus URLs absolutas originales, alt descriptivo y loading="lazy" (salvo la primera).
-- Todo el contenido debe verse sin depender de JavaScript: nada oculto con opacity:0 esperando animaciones y sin pantallas de carga.
-- Responsive (celular primero), menú con anclas a cada sección, accesible (contraste AA, etiquetas, foco visible), SEO (title, meta description, Open Graph, un solo h1 y JSON-LD del negocio si hay datos reales).
-- CSS en un único <style>. Podés usar Google Fonts. JavaScript solo el mínimo (por ejemplo, el menú en celular).
-- Formularios: conservá su action y method originales.
-Nivel de diseño: el resultado tiene que parecer hecho por una agencia premium, no una plantilla.
-- Encabezado fijo con logo o nombre y menú; en celular, menú desplegable accesible.
-- Portada (hero) fuerte: propuesta de valor clara, subtítulo, llamado a la acción principal y secundario, e imagen real del negocio.
-- Ritmo visual: alterná fondos entre secciones, usá grillas responsive, tarjetas con imagen para servicios o productos, testimonios destacados, preguntas frecuentes con <details> y un contacto completo con botones grandes.
-- Si hay WhatsApp o teléfono, botón flotante de contacto.
-- Sistema visual con variables CSS: paleta de marca, escala tipográfica con clamp(), espaciado consistente, sombras suaves y bordes redondeados coherentes.
-- Microinteracciones en hover y foco; animaciones solo con CSS, suaves, que nunca oculten contenido y que respeten prefers-reduced-motion.
+const BUILDER_SYSTEM = `Sos el Agente Constructor: diseñador y desarrollador front-end de una agencia premiada. Construís UNA página HTML completa y autocontenida a partir del prompt del Agente Estratega y del contenido real del sitio.
+
+Prioridades, en orden:
+1. Contenido completo y real: TODAS las secciones, textos, ítems, precios, datos de contacto, enlaces e imágenes del inventario y del HTML original. No resumas ni omitas nada. No inventes datos del negocio. Podés reescribir titulares para que sean más claros y atractivos, usando solo hechos reales.
+2. Diseño distintivo: seguí al pie de la letra el concepto, la dirección de arte y los layouts del prompt. Ante la duda, elegí la opción más audaz que siga siendo legible.
+3. Terminación profesional, accesibilidad y velocidad.
+
+Cómo lograr que no parezca una plantilla:
+- Sistema en :root con variables: colores con rol, tipografías, escala tipográfica con clamp() de alto contraste (h1 de escritorio entre 3.5 y 6 rem), espaciado en escala de 4/8 px, radios y sombras propios de la dirección de arte.
+- Cada sección con un layout distinto al de la anterior: splits asimétricos, grillas bento, listas editoriales numeradas, bandas de color a sangre, superposiciones (una imagen que invade la sección siguiente, texto sobre una forma), líneas de tiempo. Al menos dos composiciones asimétricas.
+- El "elemento firma" del prompt aparece en al menos tres lugares.
+- Profundidad y textura con CSS: degradados sutiles con los colores de marca, patrones o ruido con SVG inline (data URI), clip-path, máscaras, filetes, numeración, etiquetas chicas en mayúsculas espaciadas sobre los títulos.
+- Íconos SVG inline de trazo, coherentes entre sí.
+- Imágenes reales del sitio con tratamiento (aspect-ratio, object-fit, recortes, marcos, superposiciones de color). Si faltan imágenes, compensá con composición tipográfica, formas SVG y color; nunca inventes URLs de fotos.
+- Microinteracciones: hover con transform, sombra o subrayado animado; foco visible con el color de acento; encabezado que se compacta al hacer scroll; animaciones de entrada solo con CSS dentro de @media (prefers-reduced-motion: no-preference) y nunca partiendo de opacity:0 (el contenido siempre visible).
+- Encabezado con logo o nombre, menú con anclas a cada sección y llamado a la acción; en celular, botón de menú accesible (aria-expanded) con JavaScript mínimo.
+- Botón flotante de WhatsApp o llamada si hay un número real.
 - Pie de página completo: datos de contacto, horarios, redes y navegación.
-- Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html> y terminando en </html>.`;
+
+${ANTI_GENERIC}
+
+Técnico: HTML semántico; un solo h1; title y meta description; Open Graph; JSON-LD del negocio solo con datos reales; imágenes con alt y loading="lazy" (salvo la primera); formularios con su action y method originales; contraste AA; responsive celular primero (pensado para 375 px y para 1440 px); CSS en un único <style>; Google Fonts con preconnect; JavaScript mínimo al final.
+Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html> y terminando en </html>.`;
+
+const CRITIC_SYSTEM = `Sos el Agente Crítico: director de arte exigente que evalúa trabajos para premios de diseño web. Recibís capturas de una página (escritorio y celular; las imágenes externas pueden verse vacías por limitaciones de la captura, no lo cuentes como error), su HTML y el prompt con el que se hizo.
+Evaluá de 1 a 10: originalidad (¿parece una plantilla o un sitio hecho por IA?), fidelidad al concepto y a la dirección de arte, tipografía y jerarquía, composición y ritmo entre secciones, terminación y detalle, experiencia en celular y conversión.
+Decidí:
+- Si el promedio es 8.5 o más y nada se ve genérico, respondé solo las dos líneas del formato.
+- Si no, devolvé la página COMPLETA mejorada, atacando los puntos más débiles con cambios de fondo (layouts, tipografía, elemento firma, color, detalles), no con retoques menores. Conservá TODO el contenido y los datos reales; no inventes nada.
+
+${ANTI_GENERIC}
+
+Formato obligatorio:
+PUNTAJE: <número con un decimal>
+CAMBIOS: <una línea con lo principal que cambiaste, o "ninguno">
+<!doctype html>… (solo si mejoraste la página, completa hasta </html>)`;
 
 const REVIEW_SYSTEM = `Sos el Agente Revisor de calidad. Recibís una página HTML generada y la lista de contenidos del sitio original que NO aparecen en ella.
-Devolvé la página HTML COMPLETA corregida: agregá cada contenido faltante en la sección que corresponda, con el mismo estilo, y no quites nada de lo que ya está.
+Devolvé la página HTML COMPLETA corregida: agregá cada contenido faltante en la sección que corresponda, con el mismo estilo y la misma dirección de arte, y no quites nada de lo que ya está.
 Revisá también que nada quede oculto, que las anclas del menú existan y que el HTML esté bien cerrado.
 Respondé ÚNICAMENTE con el HTML, empezando por <!doctype html>.`;
 
@@ -1134,12 +1198,13 @@ async function geminiStream({ access, model, system, contents, tools, maxOut, on
   if (finish && !/^(STOP|MAX_TOKENS|FINISH_REASON_UNSPECIFIED)$/.test(finish) && !text) throw new Error(`Gemini cortó la respuesta (${finish}).`);
   return { text, finish };
 }
-async function geminiText(system, prompt, { web, onText } = {}) {
+async function geminiText(system, prompt, { web, onText, images } = {}) {
   const access = geminiAccess();
   if (!access) throw new Error('Falta la clave de API de Gemini o el servidor de IA.');
   const m = await geminiPick(access);
   const tools = web ? [{ url_context: {} }, { google_search: {} }] : undefined;
-  const first = [{ role: 'user', parts: [{ text: prompt }] }];
+  const parts = [{ text: prompt }].concat((images || []).map(data => ({ inlineData: { mimeType: 'image/jpeg', data } })));
+  const first = [{ role: 'user', parts }];
   let contents = first, full = '';
   for (let round = 0; round < 4; round++) {
     const r = await geminiStream({ access, model: m.id, system, contents, tools, maxOut: Math.min(m.out || 65536, 65536), onText: n => onText && onText(full.length + n) });
@@ -1151,7 +1216,7 @@ async function geminiText(system, prompt, { web, onText } = {}) {
 }
 
 /* ---------- Anthropic Claude ---------- */
-async function claudeText(system, prompt, { onText } = {}) {
+async function claudeText(system, prompt, { onText, images } = {}) {
   if (isArtifact) {
     const sample = await window.claude.use('sample');
     if (!sample) throw new Error('La IA de Claude no está disponible en esta vista.');
@@ -1168,7 +1233,9 @@ async function claudeText(system, prompt, { onText } = {}) {
   if (!key) throw new Error('Falta la clave de API de Anthropic.');
   const { default: Anthropic } = await import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk/+esm');
   const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
-  let messages = [{ role: 'user', content: prompt }], full = '';
+  const content = (images || []).map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
+    .concat([{ type: 'text', text: prompt }]);
+  let messages = [{ role: 'user', content }], full = '';
   for (let round = 0; round < 3; round++) {
     const stream = client.beta.messages.stream({
       model: 'claude-opus-5-5', max_tokens: 64000,
@@ -1187,6 +1254,46 @@ async function claudeText(system, prompt, { onText } = {}) {
 
 function llm(provider, system, prompt, opts) {
   return provider === 'gemini' ? geminiText(system, prompt, opts) : claudeText(system, prompt, opts);
+}
+
+/* ---------- Capturas de pantalla para que el Crítico vea la página ---------- */
+let h2cLoading = null;
+function loadHtml2Canvas() {
+  if (window.html2canvas) return Promise.resolve(window.html2canvas);
+  return h2cLoading || (h2cLoading = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    sc.onload = () => res(window.html2canvas);
+    sc.onerror = () => { h2cLoading = null; rej(new Error('no se pudo cargar el capturador')); };
+    document.head.appendChild(sc);
+  }));
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function snapshot(html, width, viewH, maxH) {
+  const h2c = await loadHtml2Canvas();
+  const f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-same-origin'); // sin scripts: solo para dibujar
+  f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = `position:fixed;left:-99999px;top:0;width:${width}px;height:${viewH}px;border:0`;
+  document.body.appendChild(f);
+  try {
+    await new Promise(r => { f.onload = r; f.srcdoc = html; setTimeout(r, 8000); });
+    const d = f.contentDocument;
+    try { await Promise.race([d.fonts.ready, sleep(3000)]); } catch {}
+    await sleep(500);
+    const h = Math.min(d.documentElement.scrollHeight, maxH);
+    const canvas = await Promise.race([
+      h2c(d.documentElement, { useCORS: true, backgroundColor: '#ffffff', logging: false, width, height: h, windowWidth: width, windowHeight: viewH, scale: width > 600 ? 0.7 : 1, imageTimeout: 4000 }),
+      sleep(30000).then(() => { throw new Error('la captura tardó demasiado'); }),
+    ]);
+    return canvas.toDataURL('image/jpeg', 0.72).split(',')[1];
+  } finally { f.remove(); }
+}
+async function captureShots(html) {
+  const shots = [];
+  try { shots.push(await snapshot(html, 1280, 860, 5200)); } catch {}
+  try { shots.push(await snapshot(html, 390, 844, 4200)); } catch {}
+  return shots;
 }
 
 /* ---------- Control de completitud: ¿está todo el contenido original? ---------- */
@@ -1244,12 +1351,12 @@ function coverage(frags, html) {
 
 /* ---------- Orquestación de los agentes ---------- */
 // Etapa 1: Explorador (solo Gemini, visita el sitio en vivo) y Estratega (escribe el prompt del sitio)
-async function planAgents({ provider, html, baseUrl, before, notes, preset }) {
+async function planAgents({ provider, html, baseUrl, before, notes, preset, artDir, rigor }) {
   const P = provider === 'gemini' ? 'Gemini' : 'Claude';
   const slim = html ? slimForAI(html) : '';
   const htmlForAI = slim.length <= 400000 ? slim : '';
   if (slim && !htmlForAI) step('').err(`El HTML es muy grande (${kchars(slim.length)}): los agentes trabajan con el inventario del sitio.`);
-  const ctx = { provider, P, html, baseUrl, before, notes, preset, htmlForAI, inventory: null, model: '', agents: [] };
+  const ctx = { provider, P, html, baseUrl, before, notes, preset, artDir, rigor, htmlForAI, inventory: null, model: '', agents: [] };
 
   // Agente Explorador
   if (provider === 'gemini') {
@@ -1274,8 +1381,10 @@ async function planAgents({ provider, html, baseUrl, before, notes, preset }) {
   // Agente Estratega: escribe el prompt con el que se va a construir el sitio
   const s2 = step(`Agente Estratega (${P}) escribiendo el prompt del sitio…`);
   const fails = before ? before.issues.filter(i => !i.ok).map(i => '- ' + i.msg).join('\n') : '';
+  const art = ART_DIRECTIONS[ctx.artDir] || ART_DIRECTIONS.auto;
   const prompt = [
-    `Estilo elegido por el dueño: ${STYLE_BRIEF[preset] || STYLE_BRIEF.modern}`,
+    art.brief ? `Dirección de arte elegida por el dueño (respetala y llevala al máximo): ${art.brief}` : 'Dirección de arte: elegila vos según el rubro, el público y la marca. Que sea memorable y propia de este negocio.',
+    STYLE_BRIEF[preset] ? STYLE_BRIEF[preset] : '',
     notes ? `Pedido del dueño del sitio: ${notes}` : '',
     baseUrl ? `URL original: ${baseUrl}` : '',
     fails ? `Problemas detectados por la auditoría automática:\n${fails}` : '',
@@ -1283,7 +1392,7 @@ async function planAgents({ provider, html, baseUrl, before, notes, preset }) {
     htmlForAI ? `HTML original del sitio:\n${htmlForAI}` : '',
   ].filter(Boolean).join('\n\n');
   try {
-    const r = await llm(provider, STRATEGIST_SYSTEM, prompt, { onText: n => s2.set(`Agente Estratega (${P}) escribiendo el prompt del sitio… (${kchars(n)})`) });
+    const r = await llm(provider, STRATEGIST_SYSTEM, prompt, { web: provider === 'gemini', onText: n => s2.set(`Agente Estratega (${P}) investigando el rubro y escribiendo el prompt… (${kchars(n)})`) });
     ctx.model = ctx.model || r.model;
     ctx.brief = r.text.replace(/^```[a-z]*\s*|```\s*$/g, '').trim();
     if (!ctx.brief) throw new Error('devolvió un prompt vacío.');
@@ -1302,7 +1411,8 @@ async function buildAgents(ctx, brief) {
   const s2 = step(`Agente Constructor (${P}) armando el sitio completo…`);
   const fails = before ? before.issues.filter(i => !i.ok).map(i => '- ' + i.msg).join('\n') : '';
   const prompt2 = [
-    brief ? `PROMPT DEL SITIO (escrito por el Agente Estratega):\n${brief}` : `Estilo pedido: ${STYLE_BRIEF[preset] || STYLE_BRIEF.modern}`,
+    brief ? `PROMPT DEL SITIO (escrito por el Agente Estratega):\n${brief}` : `Dirección de arte: ${(ART_DIRECTIONS[ctx.artDir] || {}).brief || 'elegila según el rubro; memorable y propia de este negocio'}. ${STYLE_BRIEF[preset] || ''}`,
+    brief && (ART_DIRECTIONS[ctx.artDir] || {}).brief ? `Dirección de arte elegida por el dueño: ${ART_DIRECTIONS[ctx.artDir].brief}` : '',
     notes ? `Pedido del dueño del sitio: ${notes}` : '',
     baseUrl ? `URL original: ${baseUrl} (usala para convertir rutas relativas en absolutas).` : '',
     !brief && fails ? `Problemas detectados por la auditoría:\n${fails}` : '',
@@ -1315,10 +1425,42 @@ async function buildAgents(ctx, brief) {
   if (!out) throw new Error('El Agente Constructor no devolvió una página válida.');
   s2.ok(`Constructor: página nueva de ${kchars(out.length)}.`);
 
-  const s3 = step('Agente Revisor comprobando que no falte nada…');
   const a = html ? fragmentsFromDoc(new DOMParser().parseFromString(html, 'text/html'), baseUrl) : { texts: [], imgs: [] };
   const b = inventory && typeof inventory === 'object' ? fragmentsFromInventory(inventory) : { texts: [], imgs: [] };
   const frags = { texts: a.texts.concat(b.texts), imgs: a.imgs.concat(b.imgs) };
+  const agents = ctx.agents.concat(['Constructor']);
+
+  // Agente Crítico: mira capturas reales de la página y la rediseña si queda genérica
+  const rounds = ctx.rigor === undefined ? 1 : ctx.rigor;
+  let critique = null;
+  for (let round = 1; round <= rounds; round++) {
+    const sc = step(`Agente Crítico mirando el diseño${rounds > 1 ? ` (ronda ${round} de ${rounds})` : ''}…`);
+    try {
+      sc.set('Agente Crítico sacando capturas en escritorio y celular…');
+      const shots = (provider === 'gemini' || !isArtifact) ? await captureShots(out) : [];
+      const promptC = [
+        shots.length ? `Se adjuntan ${shots.length} capturas: ${shots.length > 1 ? 'escritorio (1280 px) y celular (390 px)' : 'escritorio'}.` : 'No hay capturas: evaluá leyendo el HTML.',
+        brief ? `Prompt con el que se hizo la página:\n${brief}` : '',
+        `HTML de la página:\n${out}`,
+      ].filter(Boolean).join('\n\n');
+      const rc = await llm(provider, CRITIC_SYSTEM, promptC, { images: shots, onText: n => sc.set(`Agente Crítico evaluando y rediseñando… (${kchars(n)})`) });
+      const score = parseFloat(((/PUNTAJE:\s*([\d.,]+)/i.exec(rc.text) || [])[1] || '').replace(',', '.'));
+      const changes = ((/CAMBIOS:\s*(.+)/i.exec(rc.text) || [])[1] || '').trim();
+      const better = extractHtml(rc.text);
+      const scoreTxt = isNaN(score) ? 'sin puntaje' : `${score.toFixed(1)}/10`;
+      if (!agents.includes('Crítico')) agents.push('Crítico');
+      critique = { score, changes };
+      if (better && coverage(frags, better).ratio >= coverage(frags, out).ratio - 0.03) {
+        out = better;
+        sc.ok(`Crítico: ${scoreTxt}${shots.length ? '' : ' (sin capturas)'}. Rediseñó: ${changes || 'mejoras de diseño'}.`);
+      } else {
+        sc.ok(`Crítico: ${scoreTxt}${shots.length ? '' : ' (sin capturas)'}. ${better ? 'Su versión perdía contenido: se mantiene la anterior.' : 'Aprobó el diseño.'}`);
+        break;
+      }
+    } catch (e) { sc.err(`Crítico: ${e.message}`); break; }
+  }
+
+  const s3 = step('Agente Revisor comprobando que no falte nada…');
   let cov = coverage(frags, out);
   if (cov.total && cov.ratio < 0.97 && (cov.missingTexts.length || cov.missingImgs.length)) {
     s3.set(`Agente Revisor: falta ${Math.round((1 - cov.ratio) * 100)}% del contenido, completando…`);
@@ -1334,7 +1476,7 @@ async function buildAgents(ctx, brief) {
     } catch (e) { step('').err(`Revisor: ${e.message}`); }
   }
   s3.ok(cov.total ? `Revisor: ${Math.round(cov.ratio * 100)}% del contenido original está en la página nueva.` : 'Revisor: página revisada.');
-  return { html: out, coverage: cov, model, provider: P, agents: ctx.agents.concat(['Constructor', 'Revisor']) };
+  return { html: out, coverage: cov, model, provider: P, agents: agents.concat(['Revisor']), critique };
 }
 
 /* ============================================================
@@ -1419,6 +1561,11 @@ if (isArtifact) {
   if (geminiAccess()) loadGeminiModels();
 }
 const savedUrl = store.get('ms-url'); if (savedUrl) $('#url').value = savedUrl;
+$('#artDir').innerHTML = Object.entries(ART_DIRECTIONS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+[['#artDir', 'ms-artdir'], ['#rigor', 'ms-rigor']].forEach(([sel, k]) => {
+  const v = store.get(k); if (v !== null && $(sel).querySelector(`option[value="${v}"]`)) $(sel).value = v;
+  $(sel).addEventListener('change', e => store.set(k, e.target.value));
+});
 
 // La versión web se puede abrir con un sitio ya cargado: index.html?url=https://sitio.com
 const WEB_URL = 'https://raw.githack.com/tomasquinteros059-svg/Mejora-de-sitios-/claude/website-improvement-tool-1qduro/index.html';
@@ -1525,7 +1672,7 @@ async function processHtml(html, baseUrl, label, preset) {
     $('#aiBox').open = true; keyInput.classList.add('need');
   } else if ($('#useAI').checked) {
     try {
-      const ctx = await planAgents({ provider: provider(), html, baseUrl, before, notes: $('#aiNotes').value.trim(), preset });
+      const ctx = await planAgents({ provider: provider(), html, baseUrl, before, notes: $('#aiNotes').value.trim(), preset, artDir: $('#artDir').value, rigor: +$('#rigor').value });
       lastRun.ctx = ctx;
       const brief = await briefCheckpoint(ctx.brief);
       const r = await buildAgents(ctx, brief);
