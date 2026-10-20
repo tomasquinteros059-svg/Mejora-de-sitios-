@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}</style></head>
+<body>
+<title>Asistente Ya Llega</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: una columna tipo app móvil; encabezado, selector Chat/Preguntas, conversación con scroll y caja de mensaje fija abajo */
+:root {
+  --bg: #FFFFFF;
+  --card: #FFFFFF;
+  --ink: #13202B;
+  --muted: #5E6B7A;
+  --line: #D3DAE3;
+  --seg: #E4E9EF;
+  --accent: #F2B705;
+  --accent-ink: #1A1608;
+  --edge: #1A1A12;
+  --me: #13202B;
+  --me-ink: #FFFFFF;
+  --ok: #1E8E57;
+  --hatch: rgba(19, 32, 43, .06);
+  --shadow: 0 6px 18px -6px rgba(19, 32, 43, .28);
+  --f-display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --f-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E151D; --card: #151F2A; --ink: #E8EDF3; --muted: #9BA7B6; --line: #2B3847; --seg: #1E2A37;
+    --accent: #F5C12E; --accent-ink: #1A1608; --edge: #F5C12E; --me: #E8EDF3; --me-ink: #0E151D; --ok: #45C483;
+    --hatch: rgba(232, 237, 243, .05); --shadow: 0 6px 18px -6px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E151D; --card: #151F2A; --ink: #E8EDF3; --muted: #9BA7B6; --line: #2B3847; --seg: #1E2A37;
+  --accent: #F5C12E; --accent-ink: #1A1608; --edge: #F5C12E; --me: #E8EDF3; --me-ink: #0E151D; --ok: #45C483;
+  --hatch: rgba(232, 237, 243, .05); --shadow: 0 6px 18px -6px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.app { height: 100%; max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 14px; }
+header { position: relative; padding-right: 64px; }
+.eyebrow { font-size: 13px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: 34px; line-height: 1.05; letter-spacing: -0.02em; margin: 4px 0 0; text-wrap: balance; }
+.fab { position: absolute; right: 0; top: 4px; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); display: grid; place-items: center; color: var(--muted); }
+.fab:hover { color: var(--ink); }
+
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--seg); border-radius: 14px; padding: 5px; gap: 4px; flex: none; }
+.seg button { border: 0; background: transparent; border-radius: 10px; padding: 11px 8px; font-weight: 700; font-size: 15px; }
+.seg button[aria-selected="true"] { background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+
+.panel { flex: 1; min-height: 0; border: 2px solid var(--line); border-radius: 18px; background: var(--card); display: flex; flex-direction: column; overflow: hidden; }
+.thread { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+.day { align-self: center; font-family: var(--f-mono); font-size: 11px; color: var(--muted); background: var(--seg); padding: 3px 10px; border-radius: 99px; }
+.msg { display: flex; gap: 8px; align-items: flex-end; max-width: 100%; }
+.msg.me { justify-content: flex-end; }
+.av { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; flex: none; }
+.bubble { max-width: 82%; min-width: 0; padding: 10px 13px; border-radius: 16px; font-size: 15px; overflow-wrap: anywhere; }
+.bot .bubble { background: var(--card); border: 2px solid var(--line); border-bottom-left-radius: 6px; }
+.me .bubble { background: var(--me); color: var(--me-ink); border-bottom-right-radius: 6px; }
+.bubble p { margin: 0; }
+.bubble p + p, .bubble p + .kv, .bubble .kv + p { margin-top: 8px; }
+.bubble time { display: block; font-family: var(--f-mono); font-size: 10px; opacity: .6; margin-top: 4px; text-align: right; }
+.bubble img { display: block; border-radius: 10px; max-height: 180px; margin-bottom: 6px; }
+.mono { font-family: var(--f-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; background: var(--seg); border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--f-mono); font-weight: 700; text-align: right; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 38px; }
+.quick button { border: 2px solid var(--line); background: var(--card); border-radius: 99px; padding: 7px 12px; font-size: 14px; font-weight: 600; }
+.quick button:hover { border-color: var(--ink); }
+.quick button.primary { background: var(--accent); border-color: var(--edge); color: var(--accent-ink); }
+.typing .bubble { display: flex; gap: 4px; padding: 14px; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 50% { opacity: .25; } }
+
+.composer { border-top: 2px solid var(--line); padding: 10px; display: grid; gap: 8px; flex: none; }
+.drop { border: 2px dashed var(--muted); border-radius: 14px; min-height: 76px; display: grid; place-items: center; color: var(--muted); font-size: 14px; cursor: pointer; text-align: center; padding: 8px;
+  background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 14px); position: relative; }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop img { max-height: 64px; border-radius: 8px; }
+.row { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.clip { width: 46px; height: 48px; border: 2px solid var(--line); background: var(--card); border-radius: 12px; display: grid; place-items: center; color: var(--muted); }
+.clip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+textarea { width: 100%; resize: none; border: 2px solid var(--line); border-radius: 12px; padding: 11px 12px; background: var(--card); min-height: 48px; max-height: 120px; line-height: 1.35; font-size: 16px; }
+textarea:focus { outline: none; border-color: var(--ink); }
+.send { height: 48px; border: 2px solid var(--edge); background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 0 18px; font-weight: 700; font-size: 16px; }
+.send:disabled { opacity: .5; cursor: default; }
+.label { font-weight: 700; font-size: 14px; }
+.label small { font-weight: 500; color: var(--muted); font-size: 14px; }
+
+.faq { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 14px 14px; }
+.faq details { border-bottom: 2px solid var(--line); padding: 4px 0; }
+.faq details:last-child { border-bottom: 0; }
+.faq summary { list-style: none; cursor: pointer; padding: 12px 28px 12px 0; font-weight: 700; position: relative; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; position: absolute; right: 4px; top: 9px; font-family: var(--f-mono); font-size: 20px; color: var(--muted); }
+.faq details[open] summary::after { content: "–"; }
+.faq p { margin: 0 0 10px; color: var(--muted); font-size: 15px; max-width: 60ch; }
+.faq .ask { border: 2px solid var(--edge); background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+.note { font-size: 12px; color: var(--muted); text-align: center; flex: none; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 20; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<div class="app">
+  <header>
+    <div class="eyebrow"><i class="live" aria-hidden="true"></i>Furgón JKLM-42 · Tomás Rojas, 3°B</div>
+    <h1>Asistente</h1>
+    <button class="fab" id="btnNew" type="button" title="Nueva conversación" aria-label="Nueva conversación">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+  </header>
+
+  <div class="seg" role="tablist" aria-label="Vista">
+    <button type="button" role="tab" id="tabChat" aria-selected="true" aria-controls="viewChat">Chat</button>
+    <button type="button" role="tab" id="tabFaq" aria-selected="false" aria-controls="viewFaq">Preguntas frecuentes</button>
+  </div>
+
+  <section class="panel" id="viewChat" role="tabpanel" aria-labelledby="tabChat">
+    <div class="thread" id="thread" aria-live="polite"></div>
+    <form class="composer" id="form" autocomplete="off">
+      <div id="photoBox" hidden>
+        <div class="label" style="margin-bottom:6px">Foto <small>(opcional)</small></div>
+        <label class="drop" id="drop"><input type="file" id="photo" accept="image/*" aria-label="Agregar foto"><span id="dropText">Agregar foto</span></label>
+      </div>
+      <div class="row">
+        <button class="clip" id="btnClip" type="button" aria-pressed="false" aria-label="Adjuntar foto">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <textarea id="input" rows="1" placeholder="Escribe tu pregunta…" aria-label="Mensaje"></textarea>
+        <button class="send" id="btnSend" type="submit" disabled>Enviar</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" id="viewFaq" role="tabpanel" aria-labelledby="tabFaq" hidden>
+    <div class="faq" id="faq"></div>
+  </section>
+
+  <p class="note">Prototipo con datos de ejemplo. Las respuestas no salen de un furgón real.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "yallega-chat-v1";
+  var KID = "Tomás", PARENT = "Carla", DRIVER = "don Luis";
+  var state = { msgs: [], pending: null, photo: null };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function hhmm(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function plus(min) { return hhmm(new Date(Date.now() + min * 60000)); }
+  function norm(s) { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[¿?¡!.,;:]/g, " ").replace(/\s+/g, " ").trim(); }
+  function has(t, words) {
+    var flat = t.replace(/ /g, "");
+    return words.some(function (w) { return (" " + t + " ").indexOf(" " + w) !== -1 || (w.length > 5 && flat.indexOf(w.replace(/ /g, "")) !== -1); });
+  }
+
+  var QUICK = ["¿Dónde está el furgón?", "Hoy no viaja", "Horarios", "Hablar con el conductor"];
+
+  // ---- Respuestas ----
+  var INTENTS = [
+    { id: "cancel", words: ["cancelar", "no gracias", "dejalo", "olvidalo"] },
+    { id: "absent", words: ["no viaja", "no va", "no ira", "faltara", "va a faltar", "enferm", "ausente", "no lo pasen", "no la pasen", "no pase"] },
+    { id: "where", words: ["donde", "dnd", "ubicacion", "ubica", "furgon", "furgn", "viene", "a que hora llega", "aque hora llega", "cuanto falta", "cuanto le falta", "tiempo", "llega", "demora", "atrasad"] },
+    { id: "schedule", words: ["horario", "hora", "ida", "vuelta", "salida", "entrada"] },
+    { id: "phone", words: ["telefono", "fono", "numero", "celular", "contacto", "cambiar"] },
+    { id: "driver", words: ["conductor", "chofer", "tio luis", "el tio", "don luis", "hablar", "mensaje", "recado", "decirle", "avisarle"] },
+    { id: "pay", words: ["pago", "pagar", "mensualidad", "transferencia", "cuota", "cuenta", "deuda"] },
+    { id: "thanks", words: ["gracias", "grax", "muy amable", "perfecto", "ok", "vale", "listo"] },
+    { id: "hello", words: ["hola", "buenas", "buenos dias", "buen dia", "alo"] }
+  ];
+
+  function detect(t) {
+    for (var i = 0; i < INTENTS.length; i++) if (has(t, INTENTS[i].words)) return INTENTS[i].id;
+    return null;
+  }
+
+  function reply(raw) {
+    var t = norm(raw);
+    // Flujos con pregunta pendiente
+    if (state.pending === "confirmAbsent") {
+      state.pending = null;
+      if (/^(si|sip|confirmo|dale|ya|correcto)\b/.test(t) || t.indexOf("no viaja hoy") === 0) {
+        return { html: "<p>Listo. Marqué que <b>" + KID + " no viaja hoy</b> en la vuelta.</p><p>Le avisé a " + DRIVER + " y el furgón no pasará por tu casa. No recibirás alarma ni llamada hoy.</p>", quick: QUICK };
+      }
+      return { html: "<p>Ok, no hice cambios. " + KID + " sigue en la ruta de hoy.</p>", quick: QUICK };
+    }
+    if (state.pending === "phone") {
+      var digits = raw.replace(/\D/g, "").replace(/^56/, "");
+      if (detect(t) === "cancel") { state.pending = null; return { html: "<p>Ok, dejé los teléfonos como estaban.</p>", quick: QUICK }; }
+      if (!digits && detect(t)) { state.pending = null; return reply(raw); }
+      if (/^9\d{8}$/.test(digits)) {
+        state.pending = null;
+        var f = "+56 9 " + digits.slice(1, 5) + " " + digits.slice(5);
+        return { html: "<p>Actualicé tu teléfono principal a <span class=\"mono\">" + f + "</span>.</p><p>Desde ahora las alarmas y llamadas del furgón llegarán a ese número.</p>", quick: QUICK };
+      }
+      return { html: "<p>Ese número no parece un celular chileno. Escríbelo con 9 dígitos y empezando con 9, por ejemplo <span class=\"mono\">9 8123 4567</span>.</p>", quick: ["Cancelar"] };
+    }
+    if (state.pending === "driverMsg") {
+      state.pending = null;
+      if (detect(t) === "cancel") return { html: "<p>Ok, no envié ningún mensaje.</p>", quick: QUICK };
+      return { html: "<p>Mensaje enviado a " + DRIVER + " a las <span class=\"mono\">" + hhmm(new Date()) + "</span>.</p><p>Lo verá cuando el furgón esté detenido, porque no lee mensajes mientras maneja.</p>", quick: QUICK };
+    }
+
+    switch (detect(t)) {
+      case "hello":
+        return { html: "<p>¡Hola, " + PARENT + "! ¿En qué te ayudo?</p>", quick: QUICK };
+      case "where":
+        return { html: "<p>El furgón de " + DRIVER + " va en <b>Av. Grecia con Los Presidentes</b>, en el recorrido de vuelta.</p>" +
+          "<dl class=\"kv\"><dt>Distancia a tu casa</dt><dd>2,4 km</dd><dt>Llegada estimada</dt><dd>" + plus(9) + "</dd><dt>Paradas antes</dt><dd>1</dd></dl>" +
+          "<p>Te avisaré con alarma y llamada cuando falten 5 minutos.</p>", quick: ["Hoy no viaja", "Hablar con el conductor"] };
+      case "absent":
+        state.pending = "confirmAbsent";
+        return { html: "<p>¿Confirmas que <b>" + KID + " no viaja hoy</b> en la vuelta?</p>", quick: ["Sí, no viaja hoy", "Cancelar"], primary: 0 };
+      case "schedule":
+        return { html: "<p>Estos son los horarios de " + KID + ":</p>" +
+          "<dl class=\"kv\"><dt>Ida · retiro en casa</dt><dd>07:05</dd><dt>Ida · llegada al colegio</dt><dd>07:50</dd><dt>Vuelta · salida del colegio</dt><dd>16:10</dd><dt>Vuelta · llegada a casa</dt><dd>16:24</dd></dl>" +
+          "<p>Las horas pueden variar unos minutos según el tráfico.</p>", quick: QUICK };
+      case "phone":
+        state.pending = "phone";
+        return { html: "<p>Estos son tus contactos para alarmas y llamadas:</p>" +
+          "<dl class=\"kv\"><dt>Principal · Carla</dt><dd>+56 9 8123 4567</dd><dt>Secundario · Felipe</dt><dd>+56 9 7744 1209</dd></dl>" +
+          "<p>Escribe el nuevo número para el contacto principal.</p>", quick: ["Cancelar"] };
+      case "driver":
+        state.pending = "driverMsg";
+        return { html: "<p>Escribe el mensaje para " + DRIVER + ". Se lo mostraré cuando el furgón esté detenido.</p>", quick: ["Cancelar"] };
+      case "pay":
+        return { html: "<p>La mensualidad de octubre es de <span class=\"mono\">$48.000</span> y vence el <span class=\"mono\">05/10</span>. Ya está pagada.</p>" +
+          "<dl class=\"kv\"><dt>Próximo pago</dt><dd>05/11</dd><dt>Banco</dt><dd>BancoEstado</dd><dt>Cuenta RUT</dt><dd>12.345.678-9</dd></dl>", quick: QUICK };
+      case "thanks":
+        return { html: "<p>¡De nada! Si necesitas algo más, aquí estoy.</p>", quick: QUICK };
+      case "cancel":
+        return { html: "<p>Ok. ¿Te ayudo con otra cosa?</p>", quick: QUICK };
+      default:
+        return { html: "<p>No entendí tu pregunta. Puedo ayudarte con estas opciones:</p>", quick: QUICK.concat(["Cambiar teléfono", "Pagos"]) };
+    }
+  }
+
+  // ---- Render ----
+  var BUS = '<svg width="18" height="18" viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="8" width="22" height="12" rx="3" fill="#13202B"/><rect x="6" y="11" width="5" height="4" rx="1" fill="#F2B705"/><rect x="13" y="11" width="5" height="4" rx="1" fill="#F2B705"/><circle cx="9" cy="21" r="2.5" fill="#13202B"/><circle cx="20" cy="21" r="2.5" fill="#13202B"/></svg>';
+
+  function msgEl(m) {
+    var wrap = document.createElement("div");
+    wrap.className = "msg " + m.who;
+    var inner = m.who === "me"
+      ? (m.img ? '<img src="' + m.img + '" alt="Foto adjunta">' : m.imgLost ? "<p><i>Foto adjunta</i></p>" : "") + (m.text ? "<p>" + esc(m.text) + "</p>" : "")
+      : m.html;
+    wrap.innerHTML = (m.who === "bot" ? '<span class="av">' + BUS + "</span>" : "") + '<div class="bubble">' + inner + "<time>" + m.time + "</time></div>";
+    return wrap;
+  }
+  function quickEl(list, primary) {
+    var q = document.createElement("div");
+    q.className = "quick"; q.id = "quick";
+    list.forEach(function (label, i) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = label;
+      if (i === primary) b.className = "primary";
+      b.addEventListener("click", function () { send(label); });
+      q.appendChild(b);
+    });
+    return q;
+  }
+  function clearQuick() { var q = $("quick"); if (q) q.remove(); }
+  function scroll() { var th = $("thread"); th.scrollTop = th.scrollHeight; }
+
+  function renderAll() {
+    var th = $("thread"); th.innerHTML = '<span class="day">Hoy</span>';
+    state.msgs.forEach(function (m) { th.appendChild(msgEl(m)); });
+    var last = state.msgs[state.msgs.length - 1];
+    if (last && last.who === "bot" && last.quick) th.appendChild(quickEl(last.quick, last.primary));
+    scroll();
+  }
+  function push(m) {
+    state.msgs.push(m);
+    $("thread").appendChild(msgEl(m));
+    if (m.quick) $("thread").appendChild(quickEl(m.quick, m.primary));
+    save(); scroll();
+  }
+
+  function botSay(r) {
+    var th = $("thread"), typing = document.createElement("div");
+    typing.className = "msg bot typing";
+    typing.innerHTML = '<span class="av">' + BUS + '</span><div class="bubble" aria-label="Escribiendo"><i></i><i></i><i></i></div>';
+    th.appendChild(typing); scroll();
+    lock(true);
+    setTimeout(function () {
+      typing.remove();
+      push({ who: "bot", html: r.html, quick: r.quick, primary: r.primary, time: hhmm(new Date()) });
+      lock(false);
+    }, 500 + Math.random() * 500);
+  }
+  var busy = false;
+  function lock(v) { busy = v; updateSend(); }
+
+  function send(text) {
+    text = (text || "").trim();
+    if (busy || (!text && !state.photo)) return;
+    clearQuick();
+    var m = { who: "me", text: text, time: hhmm(new Date()) };
+    if (state.photo) m.img = state.photo;
+    push(m);
+    var hadPhoto = !!state.photo;
+    resetPhoto();
+    $("input").value = ""; autosize();
+    if (hadPhoto && !text) {
+      botSay({ html: "<p>Recibí la foto. Se la mostraré a " + DRIVER + " junto con tu próximo mensaje o al administrador si es un problema con el servicio.</p>", quick: QUICK });
+    } else {
+      botSay(reply(text));
+    }
+  }
+
+  // ---- Guardado local ----
+  function save() {
+    try {
+      var slim = state.msgs.slice(-60).map(function (m) { var c = Object.assign({}, m); if (c.img) { delete c.img; c.imgLost = true; } return c; });
+      localStorage.setItem(KEY, JSON.stringify({ msgs: slim, pending: state.pending }));
+    } catch (e) {}
+  }
+  function load() {
+    try { var d = JSON.parse(localStorage.getItem(KEY) || "null"); if (d && d.msgs && d.msgs.length) { state.msgs = d.msgs; state.pending = d.pending || null; return true; } } catch (e) {}
+    return false;
+  }
+  function greet() {
+    state.msgs = []; state.pending = null;
+    state.msgs.push({ who: "bot", time: hhmm(new Date()), html: "<p>¡Hola, " + PARENT + "! Soy el asistente del furgón de " + KID + ".</p><p>Puedo decirte dónde va el furgón, avisar que " + KID + " no viaja hoy o dejarle un mensaje a " + DRIVER + ". ¿Qué necesitas?</p>", quick: QUICK });
+    save(); renderAll();
+  }
+
+  // ---- Foto ----
+  function resetPhoto() {
+    state.photo = null; $("photo").value = ""; $("dropText").innerHTML = "Agregar foto";
+    $("photoBox").hidden = true; $("btnClip").setAttribute("aria-pressed", "false");
+  }
+  $("btnClip").addEventListener("click", function () {
+    var open = $("photoBox").hidden; $("photoBox").hidden = !open; this.setAttribute("aria-pressed", String(open));
+    if (!open) resetPhoto();
+  });
+  $("photo").addEventListener("change", function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    if (!/^image\//.test(f.type)) { $("dropText").textContent = "Ese archivo no es una imagen. Elige una foto."; return; }
+    var r = new FileReader();
+    r.onload = function () { state.photo = r.result; $("dropText").innerHTML = '<img src="' + r.result + '" alt="Vista previa de la foto">'; updateSend(); };
+    r.readAsDataURL(f);
+  });
+
+  // ---- Caja de texto ----
+  function autosize() { var t = $("input"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 4, 120) + "px"; updateSend(); }
+  function updateSend() { $("btnSend").disabled = busy || (!$("input").value.trim() && !state.photo); }
+  $("input").addEventListener("input", autosize);
+  $("input").addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(this.value); } });
+  $("form").addEventListener("submit", function (e) { e.preventDefault(); send($("input").value); });
+
+  // ---- Pestañas y preguntas frecuentes ----
+  var FAQ = [
+    ["¿Cómo sé dónde va el furgón?", "Pregúntale al asistente o abre el mapa en la app. La ubicación se ve solo mientras el recorrido está activo.", "¿Dónde está el furgón?"],
+    ["¿Cuándo me avisan que llega?", "Cuando faltan 5 minutos para tu casa recibes una alarma y una llamada automática. Si no contestas, llamamos a tu contacto secundario.", null],
+    ["¿Cómo aviso que mi hijo no viaja?", "Escribe \"hoy no viaja\" en el chat y confirma. El furgón no pasará por tu casa y no recibirás llamadas ese día.", "Hoy no viaja"],
+    ["¿Puedo cambiar el teléfono de contacto?", "Sí. Escribe \"cambiar teléfono\" y luego el número nuevo. Los avisos llegarán a ese número desde ese momento.", "Cambiar teléfono"],
+    ["¿Puedo hablar con el conductor?", "Puedes dejarle un mensaje. Lo verá cuando el furgón esté detenido, porque no lee mensajes mientras maneja.", "Hablar con el conductor"],
+    ["¿Cuándo se paga la mensualidad?", "La mensualidad vence el día 5 de cada mes y se paga por transferencia.", "Pagos"]
+  ];
+  $("faq").innerHTML = FAQ.map(function (f, i) {
+    return "<details><summary>" + esc(f[0]) + "</summary><p>" + esc(f[1]) + "</p>" + (f[2] ? '<button class="ask" type="button" data-q="' + i + '">Preguntar en el chat</button>' : "") + "</details>";
+  }).join("");
+  $("faq").addEventListener("click", function (e) {
+    var b = e.target.closest(".ask"); if (!b) return;
+    showTab("chat"); send(FAQ[+b.getAttribute("data-q")][2]);
+  });
+  function showTab(which) {
+    var chat = which === "chat";
+    $("tabChat").setAttribute("aria-selected", String(chat)); $("tabFaq").setAttribute("aria-selected", String(!chat));
+    $("viewChat").hidden = !chat; $("viewFaq").hidden = chat;
+    if (chat) scroll();
+  }
+  $("tabChat").addEventListener("click", function () { showTab("chat"); });
+  $("tabFaq").addEventListener("click", function () { showTab("faq"); });
+
+  var toastT;
+  $("btnNew").addEventListener("click", function () {
+    if (busy) return;
+    resetPhoto(); $("input").value = ""; autosize(); showTab("chat"); greet();
+    var t = $("toast") || document.body.appendChild(Object.assign(document.createElement("div"), { id: "toast", className: "toast" }));
+    t.textContent = "Conversación nueva"; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 1800);
+  });
+
+  if (load()) renderAll(); else greet();
+})();
+</script>
+</body>
+</html>
