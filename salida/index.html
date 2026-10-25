@@ -158,6 +158,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; background: var(--panel-2); b
 .pts3 div.got { border-color: var(--gold); }
 .pts3 .tag, .pts3 b { display: block; }
 .pts3 small { display: block; color: var(--muted); font-size: 12px; }
+#cvC { width: 100%; height: 210px; display: block; border-radius: 10px; background: var(--ground); }
 canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(--ground); max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
@@ -439,6 +440,16 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <button class="persona" type="button" id="btnSilent"><b>Seguir sin hablar</b><small>Viajan juntos, pero solo se comunican con señas.</small></button>
     </div>
   </div>
+</div>
+<!-- Conexión con el Nivel 1: se mueve al panel del nivel activo -->
+<div class="card" id="canal" hidden>
+  <span class="tag g">Conexión con el Nivel 1 · la persona</span>
+  <p class="hint" id="canalHint"></p>
+  <canvas id="cvC" aria-label="El barrio del Nivel 1 en vivo, con las personas que están jugando"></canvas>
+  <div class="row"><label for="canalTo" class="hint">Para</label><select id="canalTo" class="btn" style="max-width:100%"></select></div>
+  <div class="row" id="canalActs"></div>
+  <div class="cmd"><input id="canalMsg" type="text" placeholder="Escribe un mensaje para la persona… (Enter)" aria-label="Mensaje para la persona del Nivel 1"><button class="btn" id="canalSend" type="button">Enviar</button><span></span></div>
+  <div class="feed" id="canalLog"><div>Los puntos ámbar son personas del Nivel 1 que están jugando ahora. Lo que les mandes les llega en su recorrido.</div></div>
 </div>
 <!-- Gobierno: captura, Supervisor y condena -->
 <div class="ov" id="ovGob" hidden>
@@ -1644,7 +1655,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     document.querySelector(".stage").hidden = true; $("libre").hidden = false;
     $("lvlTxt").textContent = "Nivel 2.1 · Mundo libre · Juntos";
     document.querySelector(".law").innerHTML = '<b>Ley del juego:</b> si uno pasa, pasan los dos. Ahora están juntos: lleguen los dos a los 3 puntos del mundo para abrir el portal. <span id="lawTxt" hidden></span>';
-    fit(); renderTalk(); renderPoints();
+    fit(); renderTalk(); renderPoints(); openCanal("libre", "libre");
     decide(talk ? "Decidieron conocerse y hablar" : "Decidieron viajar juntos sin hablar");
     subL("Están en el Bosque Dorado. Al este los esperan tres puntos del mundo, y puertas a otras dimensiones.", "s", 9000);
     $("libre").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1909,7 +1920,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     document.querySelector(".stage").hidden = true; $("libre").hidden = true; $("cielo").hidden = false;
     $("lvlTxt").textContent = "Etapa 3 · Del Cielo al Infierno · el guía sigue invisible";
     document.querySelector(".law").innerHTML = '<b>Ley del juego:</b> si uno pasa, pasan los dos. Crucen una de las 4 puertas de Alto: cada una pide algo distinto. <span id="lawTxt" hidden></span>';
-    fit(); renderE3Doors(); renderE3Offer();
+    fit(); renderE3Doors(); renderE3Offer(); openCanal("cielo", "cielo");
     decide("Siguieron jugando sin conocerse: se abrió el entorno del Cielo al Infierno");
     subE("Se abrió el entorno del Cielo al Infierno. Al oeste está la luz; al este, el fuego. Tu guía sigue contigo, invisible.", "s", 9000);
     $("cielo").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1955,7 +1966,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   document.querySelectorAll("[data-ecmd]").forEach(function (b) { b.addEventListener("click", function () { e3Command(b.getAttribute("data-ecmd")); }); });
   bindViews("vwE", function (v) { if (E3) E3.view = v; });
   function updateE3(dt) {
-    G.rt += dt;
+    G.rt += dt; G.minute += dt * G.speed * 0.6; if (G.minute >= 1320) G.minute = 420; updateNPCs(dt, G.minute);
     var a = 0, d = 0, run = keys["shift"], pad = readPad();
     if (!typing()) { if (keys["a"]) a -= 1; if (keys["d"]) a += 1; if (keys["w"]) d -= 1; if (keys["s"]) d += 1; }
     if (pad) { a += pad.x; d += pad.y; run = run || pad.run; }
@@ -2135,7 +2146,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     $("lvlTxt").textContent = "Etapa 3 · Nivel Dios · juntos";
     document.querySelector(".law").innerHTML = '<b>Ley del juego:</b> si uno pasa, pasan los dos, aunque tomen rumbos distintos. En el Nivel Dios lo saben todo: miren, aprendan y elijan su rumbo. <span id="lawTxt" hidden></span>';
     decide("Cruzaron el portal y llegaron al Nivel Dios");
-    fit(); renderRumbos(); renderCaminos(); godPerson(BARRIO_BASE + 17);
+    fit(); renderRumbos(); renderCaminos(); godPerson(BARRIO_BASE + 17); openCanal("dios", "dios");
     subD("Ahora pueden volar a cualquier mundo y saberlo todo de cualquiera. Cuando estén listos, tomen su rumbo.", "s", 9000);
     $("dios").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -2286,7 +2297,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     $("lvlTxt").textContent = "Etapa 3 · El gobierno que dirige el mundo";
     document.querySelector(".law").innerHTML = '<b>Regla de este rumbo:</b> que nadie te vea. Si te ven, eliges: vuelves al Nivel 1 o te dejas atrapar. Cumple 3 misiones del presidente para ser parte del gobierno. <span id="lawTxt" hidden></span>';
     $("gobPartner").textContent = coop ? "Tu compañero también eligió este rumbo: juegan los dos (flechas, vuela con L)." : "Tu compañero tomó otro rumbo: te acompaña como voz invisible (flechas). Nadie lo ve.";
-    fit(); renderGobMis(); renderConds();
+    fit(); renderGobMis(); renderConds(); openCanal("gob", "gob");
     decide("Entraron al gobierno que dirige el mundo" + (coop ? ", juntos" : ""));
     sub("gb", "El presidente te espera. Vuela con F. Volar te hace más rápido y pasas sobre los muros, pero los drones te ven en el aire.", "s", 9000);
     $("gob").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2350,7 +2361,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     o.dir = Math.atan2(ay, ax); o.walk += sp * 0.1;
   }
   function updateGob(dt) {
-    G.rt += dt;
+    G.rt += dt; G.minute += dt * G.speed * 0.6; if (G.minute >= 1320) G.minute = 420; updateNPCs(dt, G.minute);
     var run = keys["shift"], ax = 0, ay = 0, pad = readPad();
     if (!typing()) { if (keys["a"]) ax -= 1; if (keys["d"]) ax += 1; if (keys["w"]) ay -= 1; if (keys["s"]) ay += 1; }
     if (pad) { ax += pad.x; ay += pad.y; }
@@ -2448,6 +2459,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
   function resetGobPos() { GOB.p.x = 980; GOB.p.y = 1120; GOB.q.x = 1040; GOB.q.y = 1120; GOB.p.meter = 0; GOB.q.meter = 0; }
   function backToLevel1(msg, label) {
+    closeCanal();
     G.mode = null; $("gob").hidden = true; document.querySelector(".stage").hidden = false;
     document.querySelector(".law").innerHTML = LAW0;
     G.day++; G.minute = 420; G.decisions = []; G.threats = []; G.visionPlanned = null; G.nextThreatAt = G.rt + 35; G.passed = false; G.pl.done = 0;
@@ -2542,6 +2554,84 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   });
 
   // =========================================================
+  //  Conexión con el Nivel 1 (la persona): todos los niveles de arriba
+  //  pueden ver el barrio en vivo y comunicarse con quienes juegan ahí.
+  // =========================================================
+  var L1P = (function () {
+    var out = [], k = 0;
+    while (out.length < 4 && k < NPC_N) { var n = NPCS[(k * 131 + 47) % NPC_N]; if (n.p.age >= 20 && n.p.age <= 60 && !n.p.illegal && !n.p.police && !n.taken && n.work !== "fuera" && out.indexOf(n) < 0) out.push(n); k++; }
+    return out.map(function (n, i) { return { n: n, name: n.p.name.split(" ").slice(0, 2).join(" "), pair: "Pareja " + (i + 1) }; });
+  })();
+  var CANAL = {
+    libre: { hint: "Desde el mundo libre ven el barrio y pueden aconsejar a quienes siguen en el Nivel 1.", acts: [["consejo", "Dar un consejo"], ["senal", "Marcarle el camino"]] },
+    cielo: { hint: "Desde el Cielo o el Infierno le llegan cosas a la persona: luz, trampas o visiones.", acts: [["luz", "Mandar luz (ayuda)"], ["brasa", "Mandar brasa (trampa)"], ["vision", "Mandarle una visión"]] },
+    dios: { hint: "El Nivel Dios ve todo el Nivel 1: el destino de cada persona y lo que hace ahora mismo.", acts: [["destino", "Ver su destino"], ["mision", "Mandarle una misión sorpresa"], ["tocar", "Tocar su destino (una vez)"]] },
+    gob: { hint: "El gobierno manda sobre el barrio: da órdenes, firma decretos y vigila a las personas.", acts: [["orden", "Darle una orden"], ["patrullas", "Decreto: más patrullas en el barrio"], ["vigilar", "Vigilar a esta persona"]] }
+  };
+  function openCanal(sectionId, mode) {
+    var c = $("canal"); $(sectionId).querySelector(".panel").appendChild(c); c.hidden = false; G.canalMode = mode;
+    $("canalHint").textContent = CANAL[mode].hint;
+    $("canalTo").innerHTML = L1P.map(function (t, i) { return '<option value="' + i + '">' + esc(t.name) + " (" + esc(t.n.p.job || t.n.p.status) + ") · " + t.pair + "</option>"; }).join("");
+    $("canalActs").innerHTML = CANAL[mode].acts.map(function (a) { return '<button class="btn cy" type="button" data-ca="' + a[0] + '">' + esc(a[1]) + "</button>"; }).join("");
+    var cv = $("cvC"), r = cv.getBoundingClientRect(); cv.width = Math.round(r.width * DPR); cv.height = Math.round(r.height * DPR); cv._w = r.width; cv._h = r.height;
+  }
+  function closeCanal() { $("canal").hidden = true; G.canalMode = null; }
+  function canalLog(html) { var f = $("canalLog"), el = document.createElement("div"); el.innerHTML = "<b>" + clockStr(G.minute) + "</b> " + html; f.insertBefore(el, f.firstChild); while (f.children.length > 25) f.removeChild(f.lastChild); }
+  function where(n) {
+    if (!n.inside) return "caminando por la calle";
+    if (n.dest === n.home.id) return "en su casa (N° " + n.home.num + ")";
+    var b = B[n.dest]; return b ? "en " + placeName(b) : "fuera del barrio";
+  }
+  function canalAct(kind, text) {
+    var t = L1P[+$("canalTo").value], who = esc(t.name), me = G.canalMode;
+    if (kind === "msg") { if (!text) return; canalLog("Tú → " + who + ": «" + esc(text) + "»"); }
+    else canalLog("Tú → " + who + ": " + esc(CANAL[me].acts.filter(function (a) { return a[0] === kind; })[0][1].toLowerCase()));
+    decide("Desde " + ({ libre: "el mundo libre", cielo: "el Cielo y el Infierno", dios: "el Nivel Dios", gob: "el gobierno" }[me]) + " se comunicó con " + t.name + " en el Nivel 1");
+    if (kind === "destino") { godPerson(t.n.p.id); canalLog("Su destino quedó abierto en «Conocer todo»."); return; }
+    if (kind === "vigilar") { canalLog(who + " está ahora " + esc(where(t.n)) + ". No sabe que lo miran."); if (GOB) GOB.power += 0; return; }
+    if (kind === "patrullas") {
+      for (var i = 0; i < 2; i++) G.patrols.push({ x: COMI.door.x, y: COMI.door.y, path: [], name: "Policía " + pick(prng, SURNAMES) });
+      if (GOB) { GOB.power += 1; renderGobMis(); } G.pl.karma -= 1;
+      canalLog("Decreto firmado: el barrio ahora tiene " + G.patrols.length + " patrullas. Quienes juegan en el Nivel 1 lo notarán, y tú también si vuelves."); return;
+    }
+    if (kind === "tocar") {
+      if (G.touched) { canalLog("Ya tocaste un destino. El Nivel Dios solo permite hacerlo una vez."); return; }
+      G.touched = true; canalLog("Cambiaste el destino de " + who + ": ahora se cruzará contigo en otro nivel. Nadie sabe todavía qué significa."); return;
+    }
+    setTimeout(function () {
+      var r = prng(), ok;
+      if (kind === "msg" || kind === "consejo") { ok = r < 0.7; canalLog(ok ? who + " escuchó tu voz y te lo agradeció (+20 pts)." : who + " no te escuchó: estaba ocupado."); if (ok) G.pl.score += 20; }
+      else if (kind === "senal") { canalLog(who + " siguió tu señal y cumplió una misión (+40 pts)."); G.pl.score += 40; }
+      else if (kind === "luz") { canalLog(who + " recibió tu luz: +60 puntos para su recorrido. Tu karma sube."); if (E3) E3.karma += 1; }
+      else if (kind === "brasa") { ok = r < 0.55; canalLog(ok ? who + " cayó en tu trampa y perdió tiempo. Ganas una brasa de sombra." : who + " esquivó tu trampa."); if (ok && E3) { E3.sombra += 1; E3.karma -= 1; } }
+      else if (kind === "vision") { ok = r < 0.6; canalLog(ok ? "Gracias a tu visión, " + who + " evitó un asalto. Karma +1." : who + " no entendió tu visión."); if (ok && E3) E3.karma += 1; }
+      else if (kind === "mision") { ok = r < 0.65; canalLog(ok ? who + " aceptó tu misión sorpresa sin saber que venía del Nivel Dios." : who + " rechazó tu misión."); if (ok) setTimeout(function () { canalLog(who + " cumplió tu misión. Algo cambió en su camino."); }, 3000); }
+      else if (kind === "orden") { ok = r < 0.6; canalLog(ok ? who + " obedeció la orden del gobierno (+1 poder)." : who + " se negó a obedecer al gobierno."); if (ok && GOB) { GOB.power += 1; renderGobMis(); } }
+      if (G.canalMode && E3 && G.mode === "cielo") renderE3Doors();
+    }, 1400 + prng() * 1800);
+  }
+  $("canalActs").addEventListener("click", function (e) { var b = e.target.closest("[data-ca]"); if (b) canalAct(b.getAttribute("data-ca")); });
+  $("canalSend").addEventListener("click", function () { canalAct("msg", $("canalMsg").value.trim()); $("canalMsg").value = ""; });
+  $("canalMsg").addEventListener("keydown", function (e) { if (e.key === "Enter") { canalAct("msg", this.value.trim()); this.value = ""; this.blur(); } });
+  var lastCanal = 0;
+  function renderCanal(ts) {
+    if (!G.canalMode || $("canal").hidden || ts - lastCanal < 200) return; lastCanal = ts;
+    var cv = $("cvC"), c = cv.getContext("2d"), w = cv._w, h = cv._h; if (!w) return;
+    var z = Math.min(w / W, h / H), cam = { x: W / 2, y: H / 2 };
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "#161A36"; c.fillRect(0, 0, w, h);
+    c.setTransform(DPR * z, 0, 0, DPR * z, (w / 2 - cam.x * z) * DPR, (h / 2 - cam.y * z) * DPR);
+    drawCity(c, cam, w, h, z, true);
+    var sel = +$("canalTo").value;
+    L1P.forEach(function (t, i) {
+      var n = t.n, x = n.inside ? n.home.door.x : n.x, y = n.inside ? n.home.door.y : n.y;
+      if (n.inside && n.dest !== n.home.id && B[n.dest]) { x = B[n.dest].door.x; y = B[n.dest].door.y; }
+      c.strokeStyle = i === sel ? "#FFB547" : "rgba(255,181,71,.55)"; c.lineWidth = (i === sel ? 6 : 3) / z * 0.5; c.beginPath(); c.arc(x, y, 34, 0, 7); c.stroke();
+      c.fillStyle = "#FFB547"; c.beginPath(); c.arc(x, y, 12, 0, 7); c.fill();
+      c.font = "700 " + Math.round(13 / z * 0.6) + "px Atkinson Hyperlegible, sans-serif"; c.fillStyle = "#FAF0D7"; c.fillText(t.name, x + 40, y + 6);
+    });
+  }
+
+  // =========================================================
   //  Panel: actualizar números (4 veces por segundo)
   // =========================================================
   function hud() {
@@ -2605,6 +2695,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts;
     if (G.mode === "gob") {
       if (!G.paused) updateGob(dt);
+      renderCanal(ts);
       renderGob();
       if (ts - lastHud > 250) { lastHud = ts; hudGob(); }
       requestAnimationFrame(frame); return;
@@ -2612,12 +2703,14 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     if (G.mode === "cielo" || G.mode === "dios") {
       var isE = G.mode === "cielo";
       if (!G.paused) (isE ? updateE3 : updateDios)(dt);
+      renderCanal(ts);
       (isE ? renderE3 : renderDios)();
       if (ts - lastHud > 250) { lastHud = ts; (isE ? hudE3 : hudDios)(); }
       requestAnimationFrame(frame); return;
     }
     if (G.mode === "libre") {
-      if (!G.paused) updateLibre(dt);
+      if (!G.paused) { updateLibre(dt); updateNPCs(dt, G.minute); }
+      renderCanal(ts);
       renderLibre();
       if (ts - lastHud > 250) { lastHud = ts; hudLibre(); }
       requestAnimationFrame(frame); return;
