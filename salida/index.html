@@ -358,6 +358,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <p class="hint">Conos amarillos: guardias (ven a pie y en el aire). Conos naranjos: cámaras. Círculos morados: drones (solo ven a quien vuela). Los muros tapan la vista a los que van a pie.</p>
       <div id="gobMis" style="display:grid;gap:8px"></div>
       <div class="card"><span class="tag r">Condiciones de lealtad del Supervisor</span><ul class="list gr" id="gobCond"></ul></div>
+      <div class="card" id="gobWorld" hidden></div>
     </div>
   </section>
 
@@ -566,7 +567,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       var x = r();
       edu = 2 + Math.floor(r() * 4);
       if (age < 25 && x < 0.45) { p.status = "Estudiante de educación superior"; edu += 1; }
-      else if (age >= 65 && x < 0.7) { p.status = "Jubilado" + (fem ? "a" : ""); }
+      else if (age >= 65 && x < 0.7) { p.status = fem ? "Jubilada" : "Jubilado"; }
       else if (x < 0.08) { p.status = "Busca trabajo"; }
       else if (x < 0.15) { p.status = "Dueñ" + (fem ? "a" : "o") + " de casa"; }
       else { var gi = weighted(r, ISCO_W); p.isco = gi; p.job = pick(r, ISCO[gi][2]); p.status = "Trabaja"; p.police = p.job === "Policía"; if (gi <= 1) edu += 2; }
@@ -957,7 +958,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
   function complete(m) {
     m.state = "completa"; G.pl.done++; G.pl.score += m.reward;
-    if (G.gd.connected) G.gd.score += Math.round(m.reward * 0.3 * (hasR("firme") ? 1.25 : 1));
+    if (G.gd.connected) G.gd.score += Math.round(m.reward * 0.3 * (hasR("firme") ? 1.25 : 1) * (G.guideMult || 1));
     if (G.gd.markedMission === m.id) unlock("brujula");
     sfx("ok"); sub("p", "Misión cumplida: +" + m.reward + " puntos", "s"); feed("Tu jugador cumplió «" + m.title + "».");
     decide("Cumplió: " + m.title + " (+" + m.reward + ")");
@@ -1207,7 +1208,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     // Amenazas
     if (!G.visionPlanned && G.rt > G.nextThreatAt - (hasR("vidente") ? 30 : 18) && tMin < 1260) planThreat();
     if (hasR("lector")) G.missions.forEach(function (m) { if (m.state === "pendiente" && !m.previewed && m.at - tMin < 60) { m.previewed = true; feed("Página extra: a las " + clockStr(m.at) + " llegará «" + m.title + "» de " + m.from + "."); } });
-    if (G.visionPlanned && G.rt >= G.visionPlanned.rt) { spawnThief(false); G.visionPlanned = null; G.nextThreatAt = G.rt + 70 + prng() * 40; }
+    if (G.visionPlanned && G.rt >= G.visionPlanned.rt) { spawnThief(false); G.visionPlanned = null; G.nextThreatAt = G.rt + (70 + prng() * 40) * worldThreatK(); }
     for (var ti = G.threats.length - 1; ti >= 0; ti--) {
       var th = G.threats[ti]; th.ttl -= dt;
       var dx = G.pl.x - th.x, dy = G.pl.y - th.y, d = Math.hypot(dx, dy), sgn = th.flee > 0 ? -1 : 1, tsp = (th.flee > 0 ? 150 : 100) * dt;
@@ -2631,9 +2632,31 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     var b = e.target.closest("[data-gob]"); if (!b) return; var v = b.getAttribute("data-gob");
     if (v === "leer") { GOB.read = true; breakCond("noleer"); var m0 = GOB.missions[0]; m0.note = "Leíste el decreto: «Vigilar a todos los habitantes del Barrio Medio, día y noche». Ahora llévalo al Archivo Prohibido."; decide("Leyó el decreto sellado"); renderGobMis(); return; }
     var parts = v.split(":"), m = GOB.missions.filter(function (x) { return x.id === parts[0]; })[0], c = m && m.choice ? m.choice[+parts[1]] : null; if (!c) return;
-    GOB.power += c[1]; G.pl.karma += c[2]; m.choice = null; m.state = "hecha"; m.note = c[3]; GOB.done++; sfx("ok"); decide(m.title + ": " + c[0]);
+    var pd = ndDom("presidente"), ob = c[2] < 0, pr = PRES_ND[pd][ob ? "ob" : "re"];
+    GOB.power = Math.max(0, GOB.power + c[1] + pr[0]); G.pl.karma += c[2]; m.choice = null; m.state = "hecha"; m.note = c[3] + " El presidente (" + pd + "): " + pr[1]; GOB.done++; sfx("ok"); decide(m.title + ": " + c[0]); ndFeed("presidente", ob ? "Cumplió" : "Rompió");
     renderGobMis(); if (GOB.done >= 3 && !GOB.ended) { GOB.ended = true; setTimeout(gobFinale, 900); }
   });
+
+  // Guardias con NDAPREMO: su personalidad decide si dan la alerta de inmediato, dudan o dejan pasar (una vez)
+  var GUARD_ND = {
+    ROJO:     { rate: 1.6, say: "«¡ALTO AHÍ!»" },
+    NARANJA:  { rate: 1.3, say: "«¡Te tengo! ¡No escaparás!»" },
+    GRIS:     { rate: 1.0, say: "«Zona restringida. Identifíquese.»" },
+    AZUL:     { rate: 0.8, say: "«¿Quién anda ahí? Voy a revisar.»" },
+    AMARILLO: { rate: 0.7, say: "«¿Hola? ¿Hay alguien?»", pass: 1, letGo: "«Bah, seguro fue el viento.» Te deja pasar." },
+    VIOLETA:  { rate: 0.6, say: "«¿Vi algo… o lo imaginé?»", pass: 0.5, letGo: "«Mejor no meterme en líos.» Te deja pasar." },
+    VERDE:    { rate: 0.5, say: "«Tranquilo… ¿estás perdido?»", pass: -1, letGo: "«Sigue. No te vi.» Te deja pasar." }
+  };
+  // El presidente también tiene NDAPREMO: reacciona a tu obediencia según su personalidad
+  var PRES_ND = {
+    ROJO:     { ob: [1, "«Así me gusta. Obediencia.»"], re: [-1, "«¿Me desafías? Lo pagarás.»"] },
+    GRIS:     { ob: [0, "«Cumpliste la orden.»"], re: [0, "«Anotado.»"] },
+    AZUL:     { ob: [0, "«Correcto. Lo esperaba.»"], re: [0, "«Interesante decisión. La estudiaré.»"] },
+    VIOLETA:  { ob: [0, "«Hiciste lo que pedí… ¿por qué dudo de ti?»"], re: [1, "«Me haces pensar. Eso vale.»"] },
+    NARANJA:  { ob: [1, "«¡Rápido y bien! Sigue así.»"], re: [-1, "«Pierdes impulso. No me falles.»"] },
+    VERDE:    { ob: [0, "«Gracias. Sé que no fue fácil.»"], re: [1, "«Elegiste tu conciencia. Te respeto.»"] },
+    AMARILLO: { ob: [1, "«¡Excelente! Vamos a hacer grandes cosas.»"], re: [0, "«Bueno, a todos nos pasa.»"] }
+  };
   var CONDS = [
     { id: "novolar", text: "No vueles hasta pasar al siguiente nivel" },
     { id: "noarchivo", text: "No vuelvas a entrar al Archivo Prohibido" },
@@ -2660,7 +2683,8 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function gBlocked(x, y) { if (x < 10 || y < 10 || x > GW - 10 || y > GH - 10) return true; for (var i = 0; i < GOB.walls.length; i++) { var w = GOB.walls[i]; if (x > w.x - 9 && x < w.x + w.w + 9 && y > w.y - 9 && y < w.y + w.h + 9) return true; } return false; }
   function angDiff(a, b) { var d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return Math.abs(d); }
   function seenBy(o) {
-    for (var i = 0; i < GOB.guards.length; i++) { var g = GOB.guards[i], d = dist(g, o), rr = o.fly ? 210 : 170; if (d < rr && angDiff(Math.atan2(o.y - g.y, o.x - g.x), g.dir) < 0.6 && (o.fly || los(g, o))) return g.name; }
+    for (var i = 0; i < GOB.guards.length; i++) { var g = GOB.guards[i], d = dist(g, o), rr = o.fly ? 210 : 170; if (d < rr && angDiff(Math.atan2(o.y - g.y, o.x - g.x), g.dir) < 0.6 && (o.fly || los(g, o))) { GOB.seer = g; return g.name; } }
+    GOB.seer = null;
     for (var j = 0; j < GOB.cams.length; j++) { var c = GOB.cams[j], ca = c.a + Math.sin(G.rt * 0.6 + j) * 0.8; if (dist(c, o) < c.r && angDiff(Math.atan2(o.y - c.y, o.x - c.x), ca) < 0.45 && los({ x: c.x + Math.cos(ca) * 16, y: c.y + Math.sin(ca) * 16 }, o)) return "una cámara"; }
     if (o.fly) for (var k = 0; k < GOB.drones.length; k++) if (dist(GOB.drones[k], o) < 120) return "un dron";
     return null;
@@ -2694,7 +2718,10 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     var watchers = [GOB.p]; if (GOB.coop) watchers.push(GOB.q);
     for (var i = 0; i < watchers.length; i++) {
       var o = watchers[i], by2 = seenBy(o);
-      if (by2) o.meter = Math.min(1, o.meter + dt * 0.95); else o.meter = Math.max(0, o.meter - dt * 0.6);
+      var sg = by2 && GOB.seer && GOB.seer.name === by2 ? GOB.seer : null, gn = sg ? ndDom("guardia:" + sg.name) : null, gr = gn ? GUARD_ND[gn] : null;
+      if (sg && !sg.spoke) { sg.spoke = true; ndFeed("guardia:" + sg.name, "Lo vieron en la capital"); sub("gb", sg.name + " (" + gn + "): " + gr.say, "d", 4000); }
+      if (by2) o.meter = Math.min(1, o.meter + dt * 0.95 * (gr ? gr.rate : 1)); else { o.meter = Math.max(0, o.meter - dt * 0.6); GOB.guards.forEach(function (g) { if (g.spoke && dist(g, GOB.p) > 320 && (!GOB.coop || dist(g, GOB.q) > 320)) g.spoke = false; }); }
+      if (o.meter >= 1 && gr && gr.pass && !sg.passed && judgeScore() >= gr.pass) { sg.passed = true; o.meter = 0; ndFeed("guardia:" + sg.name, "dejó ir"); decide(sg.name + " lo vio y lo dejó pasar (domina " + gn + ")"); sub("gb", sg.name + ": " + gr.letGo, "s", 6000); continue; }
       if (o.meter >= 1) { o.meter = 0; caught(o === GOB.p ? "Tú" : "Tu compañero", by2); return; }
     }
     // misiones
@@ -2804,17 +2831,91 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     G.offers = []; renderOffers(); G.missions = genMissions(G.day); renderActive();
     G.gd.connected = true; G.gd.disc = 0; $("gConnected").hidden = false; $("gAway").hidden = true; $("gAway").style.display = "none"; $("gPlane").textContent = "Plano 1 · con tu jugador"; $("ndTxt").textContent = "2 jugadores";
     NPCS.forEach(function (n) { n.x = n.home.door.x; n.y = n.home.door.y; n.inside = true; n.dest = "home"; n.path = []; });
-    placePlayerStart(); fit();
+    placePlayerStart(); fit(); applyWorldToL1(); $("gobWorld").hidden = true;
     $("lvlTxt").textContent = "Nivel " + (label || "Medio") + " · Plano 1 terrenal · Día " + G.day;
     G.paused = false; sub("p", msg, "s", 10000);
     document.querySelector(".stage").scrollIntoView({ behavior: "smooth", block: "start" });
     if (lockedUntil() > Date.now()) { sub("p", "Este personaje sigue bajo condena: en la versión completa no podrías jugarlo hasta que pasen los 3 días.", "d", 10000); }
   }
+
+  // =========================================================
+  //  Gobernar el mundo: crisis diarias, ministros y la voz del pueblo (todos con NDAPREMO)
+  // =========================================================
+  var CRISES = [
+    { id: "huelga", t: "Huelga en la Fundición Latón", d: "Los obreros pararon las máquinas: piden menos horas.", o: [["Negociar con los obreros", 0, -5, 10], ["Reprimir con guardias", 10, -15, -5], ["Ignorarlos", 0, 0, -10]] },
+    { id: "tos", t: "Tos de carbón en el Hospital de Vapor", d: "El humo de las fábricas enferma a los niños del barrio.", o: [["Cerrar las fábricas una semana", -5, 0, 15], ["Mandar médicos autómatas", 2, 0, 8], ["Ocultar la epidemia", 5, -10, -15]] },
+    { id: "hackers", t: "Hackers en la torre de comunicaciones", d: "Alguien transmite mensajes contra el gobierno.", o: [["Cortar la red del mundo", 10, -10, -3], ["Contratarlos", -5, 5, 0], ["Perseguirlos", 5, -5, 0]] },
+    { id: "pan", t: "Escasez de pan en el Barrio Medio", d: "La Panadería La Caldera no tiene harina.", o: [["Repartir pan de la Bóveda", -3, 0, 15], ["Racionar", 5, -5, 5], ["Subir los precios", 0, 0, -10]] },
+    { id: "dirigible", t: "Un dirigible sin permiso sobre la capital", d: "Trae una bandera que nadie conoce.", o: [["Derribarlo", 10, -5, -5], ["Dejarlo aterrizar y escuchar", -3, 8, 2], ["Escoltarlo", 5, 0, 0]] },
+    { id: "escuela", t: "La Escuela de Mecánica pide fondos", d: "Quieren enseñar a construir autómatas a todos los niños.", o: [["Darles los fondos", 0, 3, 10], ["Convertirla en academia militar", 10, -10, -2], ["Negarse", 0, 0, -5]] },
+    { id: "dimension", t: "Rumor de la dimensión secreta", d: "Se dice que existe un lugar que ni el gobierno controla.", o: [["Ordenar buscarla", 5, -20, -3], ["Dejarla en paz", -3, 10, 0], ["Negar que existe", 5, -5, 0]] }
+  ];
+  var MIN_NAMES = ["Ministra del Orden", "Ministro de la Libertad", "Ministra del Bienestar"];
+  function prefOf(node) { return { ROJO: [1, 0, 0], GRIS: [1, 0.2, 0], NARANJA: [0.8, 0.3, 0.2], AZUL: [0.4, 0.4, 0.4], VIOLETA: [0, 1, 0.2], VERDE: [0, 0.2, 1], AMARILLO: [0.1, 0.4, 0.8] }[node]; }
+  function liking(node, op) { var w = prefOf(node); return w[0] * op[1] + w[1] * op[2] + w[2] * op[3]; }
+  var VOICE = {
+    ROJO: ["«¡Por fin mano dura!»", "«¡Esto es una vergüenza!»"], GRIS: ["«Está bien.»", "«No me parece.»"], AZUL: ["«Es lo más razonable.»", "«Los números no cuadran.»"],
+    VIOLETA: ["«Me hace pensar… creo que es justo.»", "«¿Y nuestra libertad?»"], NARANJA: ["«¡Vamos, así se avanza!»", "«Nos están frenando.»"],
+    VERDE: ["«Pensaron en la gente. Gracias.»", "«Esto le duele a muchos.»"], AMARILLO: ["«¡Qué buena noticia!»", "«Qué tristeza…»"]
+  };
+  function startRule(decree) {
+    G.world = G.world || { orden: 50, libertad: 50, bienestar: 50, day: 0, done: [], ministers: null, over: false };
+    var W2 = G.world;
+    if (/fronteras/.test(decree)) W2.libertad += 10; else if (/contratos/.test(decree)) W2.orden += 10; else { W2.bienestar += 5; G.guideMult = 2; }
+    if (!W2.ministers) W2.ministers = MIN_NAMES.map(function (role, i) { return { role: role, name: pick(rngFrom(hash32(i + 77)), SURNAMES) }; });
+    sub("gb", "Ahora gobiernas. Cada día llega una crisis del mundo. Lo que decidas cambia el Nivel 1.", "s", 8000);
+    renderWorld();
+  }
+  function bar(label, v, col) { return '<div style="display:grid;grid-template-columns:90px 1fr 34px;gap:8px;align-items:center"><small>' + label + '</small><div style="height:10px;border:2px solid var(--ink);background:#fff"><div style="height:100%;width:' + Math.max(0, Math.min(100, v)) + '%;background:' + col + '"></div></div><b style="font-family:var(--f-mono);font-size:12px">' + Math.round(v) + "</b></div>"; }
+  function renderWorld(extra) {
+    var W2 = G.world, el = $("gobWorld"); el.hidden = false;
+    var html = '<span class="tag c">Gobernar el mundo · Día ' + W2.day + "</span>" + bar("Orden", W2.orden, "#24345E") + bar("Libertad", W2.libertad, "#4FA3A5") + bar("Bienestar", W2.bienestar, "#5E9C4A") +
+      '<p class="hint">En el Nivel 1: más orden → menos ladrones; menos libertad → más patrullas que vigilan al jugador.</p>';
+    if (extra) html += extra;
+    else if (!W2.over) html += '<div class="row"><button class="btn pri" type="button" data-rule="next">Siguiente día de gobierno</button></div>';
+    el.innerHTML = html; paintPortraits(el);
+  }
+  $("gobWorld").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-rule]"); if (!b) return; var v = b.getAttribute("data-rule");
+    if (v === "next") return nextCrisis();
+    if (v.indexOf("pick:") === 0) return resolveCrisis(+v.slice(5));
+  });
+  function nextCrisis() {
+    var W2 = G.world, left = CRISES.filter(function (c) { return W2.done.indexOf(c.id) < 0; });
+    if (!left.length) W2.done = [], left = CRISES.slice();
+    var cr = left[Math.floor(prng() * left.length)]; W2.cur = cr; W2.day++;
+    var adv = W2.ministers.map(function (mi) {
+      var id = "ministro:" + mi.name, nd = ndDom(id), best = cr.o.slice().sort(function (a, b) { return liking(nd, b) - liking(nd, a); })[0];
+      ndFeed(id, cr.t); return '<li><b>' + esc(mi.role) + " " + esc(mi.name) + " · " + nd + "</b><span>«Yo haría: " + esc(best[0].toLowerCase()) + ".»</span></li>";
+    }).join("");
+    renderWorld('<h3 style="margin:6px 0 2px">' + esc(cr.t) + "</h3><p>" + esc(cr.d) + '</p><p class="hint">Consejo de ministros (cada uno según su NDAPREMO):</p><ul class="list">' + adv + '</ul><div class="row">' +
+      cr.o.map(function (op, i) { return '<button class="btn' + (i === 0 ? " pri" : "") + '" type="button" data-rule="pick:' + i + '">' + esc(op[0]) + "</button>"; }).join("") + "</div>");
+  }
+  function resolveCrisis(i) {
+    var W2 = G.world, cr = W2.cur, op = cr.o[i]; if (!cr) return;
+    W2.orden = clamp(W2.orden + op[1], 0, 100); W2.libertad = clamp(W2.libertad + op[2], 0, 100); W2.bienestar = clamp(W2.bienestar + op[3], 0, 100);
+    W2.done.push(cr.id); W2.cur = null; decide(cr.t + ": " + op[0]); G.pl.karma += (op[3] + op[2]) > 0 ? 0.5 : (op[3] + op[2]) < -10 ? -0.5 : 0;
+    var people = [0, 1, 2].map(function () { var id = Math.floor(prng() * 2e8), p = personAt(id), nd = ndDom("persona:" + id); ndFeed("persona:" + id, cr.t + ": " + op[0]); var lk = liking(nd, op);
+      return '<li><b>' + esc(p.name.split(" ").slice(0, 2).join(" ")) + " · " + (p.job || p.status || "") + " · " + nd + "</b><span>" + VOICE[nd][lk >= 0 ? 0 : 1] + "</span></li>"; }).join("");
+    var end = "";
+    if (W2.libertad <= 15) { W2.over = true; decide("El pueblo se rebeló contra su gobierno"); end = '<p><b>El pueblo se rebeló.</b> Te sacan del gobierno: vuelves al Nivel 1, nivel Bajo. Tu compañero viene contigo: es ley.</p><div class="row"><button class="btn pri" type="button" id="ruleBack">Aceptar</button></div>'; }
+    else if (W2.bienestar <= 10) { W2.over = true; decide("El mundo cayó en la miseria bajo su gobierno"); end = '<p><b>El mundo cayó en la miseria.</b> El Supervisor te retira del gobierno: vuelves al Nivel 1, nivel Intermedio.</p><div class="row"><button class="btn pri" type="button" id="ruleBack">Aceptar</button></div>'; }
+    else if (W2.day >= 5 && W2.bienestar >= 70 && W2.libertad >= 55) { W2.over = true; decide("Gobernó con justicia: el mundo lo reconoce"); end = '<p><b>Gobernaste con justicia.</b> El mundo te reconoce. Al volver al Nivel 1, tu persona empieza en el nivel Alto y las calles son más seguras.</p><div class="row"><button class="btn pri" type="button" id="ruleBack">Volver al Nivel 1 como reconocido</button><button class="btn" type="button" data-rule="stay">Seguir gobernando</button></div>'; }
+    renderWorld('<p><b>Decidiste:</b> ' + esc(op[0]) + '.</p><p class="hint">La voz del pueblo (3 personas al azar de los 200 millones, cada una con su NDAPREMO):</p><ul class="list">' + people + "</ul>" + (end || '<div class="row"><button class="btn pri" type="button" data-rule="next">Siguiente día de gobierno</button></div>'));
+    var rb = $("ruleBack"); if (rb) rb.onclick = function () { var good = /justicia/.test(G.allDec[G.allDec.length - 1]); backToLevel1(good ? "Vuelves reconocido por el mundo: empiezas en el nivel Alto." : "Te sacaron del gobierno.", good ? "Alto" : W2.libertad <= 15 ? "Bajo" : "Intermedio"); };
+    var st = document.querySelector('[data-rule="stay"]'); if (st) st.onclick = function () { W2.over = false; renderWorld(); };
+  }
+  // efectos del gobierno en el Nivel 1
+  function worldThreatK() { return G.world ? 1 + (G.world.orden - 50) / 80 : 1; }
+  function applyWorldToL1() {
+    if (!G.world) return; var extra = G.world.libertad < 35 ? 3 : G.world.libertad < 50 ? 1 : 0;
+    while (G.patrols.length < 3 + extra) G.patrols.push({ x: COMI.door.x, y: COMI.door.y, path: [], name: "Policía " + pick(prng, SURNAMES) });
+  }
   function gobFinale() {
     G.paused = true; decide("Llegaron a ser parte del gobierno que dirige el mundo");
     var DEC = [["Abrir las fronteras entre el Cielo y el Infierno", "Desde hoy, las almas pueden cruzar entre planos."], ["Prohibir los contratos de los demonios", "Ningún jugador podrá firmar sin leer."], ["Dar más recompensas a los guías", "Los guías invisibles ganarán el doble en su recorrido."]];
     showOG("Cumpliste 3 órdenes", "Eres parte del gobierno que dirige el mundo", '<div class="withpt">' + ptTag("presf", { L: PRES_L, mood: "normal", bg: "oro" }) + "<div><p>«Bienvenido. Desde ahora tienes control sobre todo. Firma tu primer decreto.»</p><p class=\"hint\">Poder acumulado: " + GOB.power + ". Ojo: el gobierno sigue sin saber nada de la dimensión secreta.</p></div></div>",
-      DEC.map(function (d) { return { t: d[0], fn: function () { decide("Firmó el decreto: " + d[0]); showOG("Decreto firmado", d[0], "<p>" + esc(d[1]) + " Lo que pase en el mundo con esto se construye en la próxima versión.</p>", [{ t: "Seguir recorriendo la capital", cls: "pri", fn: function () { hideOG(); G.paused = false; } }]); } }; }));
+      DEC.map(function (d) { return { t: d[0], fn: function () { decide("Firmó el decreto: " + d[0]); showOG("Decreto firmado", d[0], "<p>" + esc(d[1]) + " Lo que pase en el mundo con esto se construye en la próxima versión.</p>", [{ t: "Gobernar el mundo", cls: "pri", fn: function () { hideOG(); G.paused = false; startRule(d[0]); } }, { t: "Seguir recorriendo la capital", fn: function () { hideOG(); G.paused = false; startRule(d[0]); } }]); } }; }));
   }
   bindViews("vwGob", function (v) { if (GOB) GOB.view = v; });
   $("btnFlyP").addEventListener("click", function () { if (GOB) toggleFly(GOB.p); });
@@ -2863,6 +2964,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     if (m[3].state === "activa") { [[300, 1060], [480, 1060]].forEach(function (pp) { c.fillStyle = GOB.vaultOpen ? "#6EDC9A" : "#B9B6B0"; c.strokeStyle = OUTL; c.lineWidth = 2; c.fillRect(pp[0] - 22, pp[1] - 22, 44, 44); c.strokeRect(pp[0] - 22, pp[1] - 22, 44, 44); }); if (GOB.vaultOpen) tg.push({ x: 390, y: 900 }); }
     tg.forEach(function (t) { c.fillStyle = "#FFB547"; c.strokeStyle = OUTL; c.lineWidth = 2; star(c, t.x, t.y + Math.sin(G.rt * 4) * 3, 14); c.stroke(); });
     // conos de visión
+    GOB.guards.forEach(function (g) { c.font = "700 10px JetBrains Mono, monospace"; c.fillStyle = "rgba(27,20,16,.75)"; c.fillText(g.name.replace("Guardia ", "") + " · " + ndDom("guardia:" + g.name), g.x - 30, g.y + 30); });
     GOB.guards.forEach(function (g) { cone(c, g.x, g.y, g.dir, 0.6, 170, GOB.p.meter > 0.05 ? "rgba(255,107,107,.32)" : "rgba(255,226,120,.32)"); });
     GOB.cams.forEach(function (cm, j) { var ca = cm.a + Math.sin(G.rt * 0.6 + j) * 0.8; cone(c, cm.x, cm.y, ca, 0.45, cm.r, "rgba(255,140,90,.28)"); c.fillStyle = "#2B2B33"; c.strokeStyle = OUTL; c.lineWidth = 2; c.fillRect(cm.x - 8, cm.y - 6, 16, 12); c.strokeRect(cm.x - 8, cm.y - 6, 16, 12); });
     var cs = GOB.view === "cerca" ? 1.3 : Math.max(1.3, 0.62 / z);
@@ -3062,7 +3164,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   renderActive();
   requestAnimationFrame(frame);
   window.__salida = G; // para pruebas
-  window.__salidaT = { captorDecides: captorDecides, supervisor: supervisor, treason: treason, ndPct: ndPct, ndDom: ndDom };
+  window.__salidaT = { gobFinale: gobFinale, startRule: startRule, nextCrisis: nextCrisis, resolveCrisis: resolveCrisis, captorDecides: captorDecides, supervisor: supervisor, treason: treason, ndPct: ndPct, ndDom: ndDom };
 })();
 </script>
 
