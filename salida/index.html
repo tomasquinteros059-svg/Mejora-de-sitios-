@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}</style></head>
+<body>
+<title>Salida</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: pantalla dividida tipo juego cooperativo de sillón; vista del jugador a la izquierda, vista del guía a la derecha, paneles bajo cada vista y el mundo Ndapremo abajo */
+:root {
+  color-scheme: dark;
+  --night: #0E1024;
+  --ground: #161A36;
+  --street: #22274A;
+  --panel: #1A1E3D;
+  --panel-2: #232852;
+  --line: #333A6B;
+  --ink: #EDEBF7;
+  --muted: #A3A6C8;
+  --amber: #FFB547;      /* jugador, luz de farol */
+  --cyan: #5FE0E6;       /* guía, lo invisible */
+  --coral: #FF6B6B;      /* amenaza */
+  --gold: #F6E7A8;       /* cielo */
+  --crimson: #C2304B;    /* infierno */
+  --ok: #6EDC9A;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--night); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.wrap { max-width: 1440px; margin: 0 auto; display: grid; gap: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 40px; }
+
+header.top { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand h1 { font-family: var(--f-display); font-weight: 800; font-size: 30px; letter-spacing: .04em; margin: 0; }
+.brand h1 span { color: var(--amber); }
+.lvl { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.hud { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { font-family: var(--f-mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; display: inline-flex; gap: 6px; align-items: center; }
+.chip b { color: var(--ink); }
+.chip.nd { border-color: var(--cyan); color: var(--cyan); }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); animation: pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; }
+.btn:hover { border-color: var(--muted); }
+.btn.pri { background: var(--amber); color: #1B1300; border-color: var(--amber); }
+.btn.cy { background: transparent; border-color: var(--cyan); color: var(--cyan); }
+.btn:disabled { opacity: .45; cursor: default; }
+select.btn { padding: 5px 8px; }
+.law { font-size: 13px; color: var(--muted); border-left: 3px solid var(--amber); padding-left: 10px; }
+.law b { color: var(--ink); }
+
+.stage { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 980px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.view { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.vhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.vhead h2 { font-family: var(--f-display); font-size: 14px; font-weight: 500; margin: 0; letter-spacing: .03em; }
+.vhead h2 i { font-style: normal; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 0; }
+.vhead small { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.canvasbox { position: relative; background: var(--ground); }
+canvas.vc { display: block; width: 100%; height: 420px; touch-action: none; }
+@media (max-width: 640px) { canvas.vc { height: 300px; } }
+.subs { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; gap: 4px; pointer-events: none; }
+.sub { background: rgba(10, 12, 30, .82); border-radius: 8px; padding: 6px 10px; font-size: 14px; width: fit-content; max-width: 100%; }
+.sub.g { border-left: 3px solid var(--cyan); }
+.sub.s { border-left: 3px solid var(--amber); }
+.sub.d { border-left: 3px solid var(--coral); }
+.overlaytxt { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; font-family: var(--f-mono); font-size: 12px; }
+.overlaytxt span { background: rgba(10, 12, 30, .7); padding: 4px 8px; border-radius: 6px; }
+.panel { padding: 12px; display: grid; gap: 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.kv div { background: var(--panel-2); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.kv small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.kv b { font-family: var(--f-mono); font-size: 16px; display: block; overflow-wrap: anywhere; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--panel-2); display: grid; gap: 6px; }
+.card.offer { border-color: var(--amber); }
+.card.sealed { border-color: var(--cyan); border-style: dashed; }
+.card.temp { border-color: var(--crimson); }
+.card.envio { border-color: var(--gold); }
+.card h3 { margin: 0; font-size: 14px; }
+.card p { margin: 0; font-size: 14px; color: var(--muted); }
+.tag { font-family: var(--f-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--amber); }
+.tag.c { color: var(--cyan); } .tag.r { color: var(--coral); } .tag.g { color: var(--gold); }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.list li { font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+ul.list li b { font-family: var(--f-mono); font-size: 12px; color: var(--amber); white-space: nowrap; }
+.feed { max-height: 150px; overflow: auto; display: grid; gap: 4px; font-size: 13px; }
+.feed div { color: var(--muted); }
+.feed div b { color: var(--cyan); font-weight: 700; }
+.meter { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--coral); }
+.cmd { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.cmd input { background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+kbd { font-family: var(--f-mono); font-size: 11px; background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 5px; }
+
+.world { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 12px; }
+.world h2 { font-family: var(--f-display); font-size: 16px; font-weight: 500; margin: 0; }
+.wgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; }
+@media (max-width: 860px) { .wgrid { grid-template-columns: minmax(0, 1fr); } }
+.bars { display: grid; gap: 4px; font-size: 13px; }
+.bar { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr) 96px; gap: 8px; align-items: center; }
+.bar span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar i { display: block; height: 10px; background: var(--cyan); border-radius: 3px; }
+.bar em { font-style: normal; font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.bars h4 { margin: 8px 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+
+.ov { position: fixed; inset: 0; background: rgba(6, 7, 18, .86); z-index: 30; display: grid; place-items: center; padding: 16px; overflow: auto; }
+.ovbox { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; max-width: 860px; width: 100%; display: grid; gap: 14px; }
+.ovbox h2 { font-family: var(--f-display); font-size: 24px; margin: 0; text-wrap: balance; }
+.ovbox p { margin: 0; color: var(--muted); max-width: 70ch; }
+.personas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.persona { text-align: left; background: var(--panel-2); border: 2px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 4px; }
+.persona[aria-pressed="true"] { border-color: var(--amber); }
+.persona b { font-size: 16px; }
+.persona small { color: var(--muted); font-size: 13px; }
+.persona .pts { font-family: var(--f-mono); color: var(--amber); }
+.choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .choice { grid-template-columns: 1fr; } }
+.ctrls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
+@media (max-width: 560px) { .ctrls { grid-template-columns: 1fr; } }
+.ctrls div { background: var(--panel-2); border-radius: 10px; padding: 10px; }
+.ctrls h4 { margin: 0 0 4px; font-size: 13px; }
+.pt { width: 64px; height: 64px; border-radius: 10px; border: 2px solid #1B1410; flex: none; background: #F3D477; }
+.withpt { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: start; }
+.withpt > div { display: grid; gap: 6px; min-width: 0; }
+.persona .pt { width: 88px; height: 88px; }
+#dlg { position: absolute; top: 40px; left: 10px; right: 10px; display: flex; gap: 10px; align-items: center; background: #FAF0D7; color: #1B1410; border: 3px solid #1B1410; border-radius: 14px; padding: 8px 12px; max-width: 540px; font-size: 15px; box-shadow: 4px 4px 0 #1B1410; }
+#dlg canvas { width: 72px; height: 72px; border-radius: 10px; border: 2px solid #1B1410; flex: none; }
+#dlg b { display: block; font-family: var(--f-display); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(--ground); max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>SALI<span>DA</span></h1>
+      <span class="lvl" id="lvlTxt">Nivel Medio · Plano 1 terrenal · Día 1</span>
+    </div>
+    <div class="hud">
+      <span class="chip nd"><i class="pulse"></i>Motor Ndapremo · <b id="ndTxt">2 jugadores</b></span>
+      <span class="chip">Hora <b id="clock">07:00</b></span>
+      <label class="chip" for="selSpeed">Tiempo
+        <select id="selSpeed" class="btn" style="padding:1px 4px;border:0;background:transparent">
+          <option value="1">x1</option><option value="3" selected>x3</option><option value="8">x8</option>
+        </select>
+      </label>
+      <button class="btn" id="btnPause" type="button">Pausar</button>
+      <button class="btn" id="btnSound" type="button" aria-pressed="true">Sonido: sí</button>
+    </div>
+  </header>
+  <p class="law"><b>Ley del juego:</b> si uno pasa de nivel, pasan los dos, estén donde estén. Misiones para pasar: <b id="lawTxt">0 de 4</b>.</p>
+
+  <main class="stage">
+    <!-- Jugador -->
+    <section class="view" aria-label="Vista del jugador">
+      <div class="vhead">
+        <h2><i style="background:var(--amber)"></i>Jugador · en la persona</h2>
+        <small>Mover <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o joystick · Interactuar <kbd>E</kbd> o botón A</small>
+      </div>
+      <div class="canvasbox">
+        <canvas class="vc" id="cvP" aria-label="Vista del jugador en la ciudad"></canvas>
+        <div class="overlaytxt"><span id="pState">En casa</span><span id="pItem">Sin objeto</span></div>
+        <div id="dlg" hidden><canvas id="dlgPt" width="144" height="144"></canvas><div><b id="dlgWho">Tu guía</b><span id="dlgTxt"></span></div></div>
+        <div class="subs" id="subsP"></div>
+      </div>
+      <div class="panel">
+        <div class="kv">
+          <div><small>Persona</small><b id="pName">—</b></div>
+          <div><small>Profesión</small><b id="pJob" style="font-size:13px">—</b></div>
+          <div><small>Puntaje</small><b id="pScore">0</b></div>
+          <div><small>Misiones</small><b id="pDone">0</b></div>
+        </div>
+        <div id="pOffers" style="display:grid;gap:8px"></div>
+        <div id="pEnvio"></div>
+        <div class="card">
+          <span class="tag">Misiones activas</span>
+          <ul class="list" id="pActive"><li>Ninguna todavía. Las misiones llegan solas: programadas o por sorpresa.</li></ul>
+          <div class="row"><button class="btn pri" id="btnAct" type="button" disabled>Interactuar (E)</button><span class="hint" id="actHint">Acércate al objetivo marcado con una estrella.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Guía -->
+    <section class="view" aria-label="Vista del guía">
+      <div class="vhead">
+        <h2><i style="background:var(--cyan)"></i>Guía · observador invisible</h2>
+        <small>Cámara libre <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> o arrastrar · órdenes por voz</small>
+      </div>
+      <div class="canvasbox">
+        <canvas class="vc" id="cvG" aria-label="Vista del guía, libro abierto de la ciudad"></canvas>
+        <div class="overlaytxt"><span id="gPlane">Plano 1 · con tu jugador</span><span id="gRange">—</span></div>
+        <div class="subs" id="subsG"></div>
+      </div>
+      <div class="panel">
+        <div class="kv">
+          <div><small>Puntos del guía</small><b id="gScore">0</b></div>
+          <div><small>Karma</small><b id="gKarma">0</b></div>
+          <div><small>Riesgo de ser visto</small><div class="meter" style="margin-top:6px"><i id="gDisc"></i></div></div>
+        </div>
+        <div id="gConnected" style="display:grid;gap:10px">
+          <div class="cmd">
+            <input id="cmdIn" type="text" placeholder="Di o escribe una orden: «cuidado atrás», «protégelo»…" aria-label="Orden del guía">
+            <button class="btn cy" id="btnMic" type="button" aria-label="Hablar por micrófono">Hablar</button>
+            <button class="btn" id="btnSay" type="button">Decir</button>
+          </div>
+          <div class="row">
+            <button class="btn cy" type="button" data-cmd="protégelo">Protégelo</button>
+            <button class="btn cy" type="button" data-cmd="marca el camino">Marca el camino</button>
+            <button class="btn cy" type="button" data-cmd="cuidado, corre">Cuidado</button>
+            <button class="btn cy" type="button" data-cmd="revela la misión">Revela</button>
+          </div>
+          <p class="hint" id="micHint">El jugador no te ve: solo escucha tu voz. Para protegerlo o marcarle el camino tienes que estar cerca de él, sin que te descubra el vigía (círculo rojo).</p>
+        </div>
+        <div id="gTemp"></div>
+        <div id="gAway" hidden style="display:grid;gap:8px"></div>
+        <div class="card">
+          <span class="tag c">Visiones desde otras dimensiones</span>
+          <div class="feed" id="gFeed"><div>Los seres de las otras dimensiones ven más allá del camino. Sus visiones llegarán aquí.</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="world" aria-labelledby="wTitle">
+    <h2 id="wTitle">Mundo Ndapremo · 200.000.000 de personas</h2>
+    <p class="hint" style="font-size:14px;max-width:80ch">Cada persona del mundo se genera al instante desde su número, siempre igual, sin guardarla. En la ciudad solo se simulan en detalle las 1.500 del barrio donde están los jugadores. Busca a cualquiera por su número o mira cómo se reparten.</p>
+    <div class="wgrid">
+      <div style="display:grid;gap:10px;align-content:start">
+        <div class="row">
+          <label for="idIn" class="hint">N° de persona (0 a 199.999.999)</label>
+          <input id="idIn" class="btn" style="font-family:var(--f-mono);width:150px" type="number" min="0" max="199999999" value="73400017">
+          <button class="btn" id="btnLook" type="button">Ver persona</button>
+          <button class="btn" id="btnRand" type="button">Al azar</button>
+        </div>
+        <div class="card" id="wPerson"></div>
+      </div>
+      <div style="display:grid;gap:8px;align-content:start">
+        <div class="row"><button class="btn cy" id="btnDist" type="button">Calcular reparto (muestra de 50.000)</button><span class="hint" id="distHint">La muestra se extrapola a los 200 millones.</span></div>
+        <div class="bars" id="bars"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Inicio -->
+<div class="ov" id="ovStart">
+  <div class="ovbox">
+    <span class="tag">Prototipo · Nivel Medio · Etapa 1</span>
+    <h2>Dos personas entran a la ciudad. Solo una tiene cuerpo.</h2>
+    <p>El jugador toma la vida de una persona del barrio y la controla con el mando. El guía es invisible, recorre la ciudad libre y solo puede ayudar con su voz. Cumplan 4 misiones y pasan los dos al siguiente nivel. Cuidado con el vigía: si descubre al guía, se lo lleva, y el jugador sigue solo recibiendo lo que le manden desde la otra dimensión.</p>
+    <div class="ctrls">
+      <div><h4 style="color:var(--amber)">Jugador (mando)</h4><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o joystick para moverse, <kbd>Shift</kbd> para correr, <kbd>E</kbd> o botón A para interactuar.</div>
+      <div><h4 style="color:var(--cyan)">Guía (voz)</h4>Flechas o arrastrar para mover la cámara. Habla con «Hablar» si tu navegador lo permite, o escribe la orden y pulsa Enter.</div>
+    </div>
+    <div class="tag">1 · Elige la persona que vas a vivir</div>
+    <div class="personas" id="personas"></div>
+    <div class="tag">2 · Al salir a la calle…</div>
+    <div class="choice">
+      <button class="persona" type="button" data-life="seguir" aria-pressed="true"><b>Sigo mi vida</b><small>Partes desde tu casa con tu puntaje completo y tus rutinas.</small></button>
+      <button class="persona" type="button" data-life="dejar" aria-pressed="false"><b>Dejo mi vida atrás</b><small>Partes desde la plaza con menos puntaje y te llegan más misiones sorpresa.</small></button>
+    </div>
+    <div class="row"><button class="btn pri" id="btnStart" type="button" style="font-size:16px;padding:10px 18px">Entrar a la ciudad</button><span class="hint">Datos y personajes generados al azar. Los niños del juego están protegidos: nadie puede dañarlos.</span></div>
+  </div>
+</div>
+
+<!-- Fin del día -->
+<div class="ov" id="ovDay" hidden>
+  <div class="ovbox">
+    <span class="tag">Fin del día</span>
+    <h2 id="dayTitle">Tu recorrido del día 1</h2>
+    <canvas id="trail" width="610" height="410"></canvas>
+    <ul class="list" id="dayList"></ul>
+    <div class="row"><button class="btn pri" id="btnNextDay" type="button">Dormir y empezar el día siguiente</button></div>
+  </div>
+</div>
+
+<!-- Pasan de nivel -->
+<div class="ov" id="ovPass" hidden>
+  <div class="ovbox">
+    <span class="tag c">Ley cumplida</span>
+    <h2>Pasan los dos al Nivel 2</h2>
+    <p id="passTxt"></p>
+    <div class="choice">
+      <button class="persona" type="button" id="btn21"><b>Nivel 2.1 · Conocerse</b><small>Ven quién es el otro, pueden hablar y salen juntos a recorrer el mundo en modo libre.</small></button>
+      <button class="persona" type="button" id="btnMore"><b>Seguir por más puntaje</b><small>Sin conocerse, siguen a otros niveles con desafíos más difíciles y mejores premios.</small></button>
+    </div>
+    <p id="passNext" hidden style="color:var(--cyan)"></p>
+    <div class="row"><button class="btn" id="btnKeep" type="button">Seguir jugando en la ciudad</button></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // =========================================================
+  //  Azar determinista (mismo número → misma persona, siempre)
+  // =========================================================
+  var WORLD_SEED = 0x5A11DA;
+  function hash32(n) {
+    n = (n ^ WORLD_SEED) >>> 0;
+    n = Math.imul(n ^ (n >>> 16), 0x7feb352d);
+    n = Math.imul(n ^ (n >>> 15), 0x846ca68b);
+    return (n ^ (n >>> 16)) >>> 0;
+  }
+  function rngFrom(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function pick(r, arr) { return arr[Math.floor(r() * arr.length)]; }
+  function weighted(r, items) {
+    var tot = 0, i; for (i = 0; i < items.length; i++) tot += items[i][1];
+    var x = r() * tot;
+    for (i = 0; i < items.length; i++) { x -= items[i][1]; if (x < 0) return items[i][0]; }
+    return items[items.length - 1][0];
+  }
+  function fmt(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+
+  // =========================================================
+  //  Datos del mundo
+  // =========================================================
+  var TOTAL = 200000000;
+  var CITIES = [["Ciudad Central", 26], ["Puerto Austral", 19], ["Valle Norte", 18], ["Bahía Serena", 17], ["Altos del Río", 17], ["Nueva Esperanza", 16],
+    ["Cumbres", 16], ["Llanura Dorada", 15], ["Costa Brava", 15], ["Bosque Sur", 14], ["Desierto Claro", 14], ["Isla Mayor", 13]];
+  var CITY_START = []; (function () { var acc = 0; CITIES.forEach(function (c) { CITY_START.push(acc); acc += c[1] * 1e6; }); })();
+  var NAMES_F = ["Sofía", "Isidora", "Valentina", "Catalina", "Martina", "Antonia", "Josefa", "Florencia", "Camila", "Fernanda", "Carla", "Paula", "Rosa", "Marta", "Elena", "Lucía", "Agustina", "Daniela", "Javiera", "Constanza", "Ana", "Teresa", "Gloria", "Patricia", "Amanda", "Emilia", "Trinidad", "Renata", "Pía", "Inés"];
+  var NAMES_M = ["Mateo", "Benjamín", "Tomás", "Agustín", "Vicente", "Lucas", "Joaquín", "Martín", "Felipe", "Diego", "Pedro", "Luis", "Jorge", "Julio", "Rodrigo", "Andrés", "Cristóbal", "Matías", "Ignacio", "Sebastián", "Juan", "Carlos", "Manuel", "Raúl", "Hugo", "Gaspar", "Emilio", "Álvaro", "Nicolás", "Esteban"];
+  var SURNAMES = ["González", "Muñoz", "Rojas", "Díaz", "Pérez", "Soto", "Contreras", "Silva", "Martínez", "Sepúlveda", "Morales", "Rodríguez", "López", "Fuentes", "Hernández", "Torres", "Araya", "Flores", "Espinoza", "Valenzuela", "Castillo", "Tapia", "Reyes", "Gutiérrez", "Castro", "Pizarro", "Álvarez", "Vásquez", "Sánchez", "Fernández", "Ramírez", "Carrasco", "Gómez", "Cortés", "Herrera", "Núñez", "Jara", "Vergara", "Rivera", "Figueroa"];
+  // Grupos de ocupación según la estructura de la CIUO-08 (OIT), con pesos aproximados
+  var ISCO = [
+    ["1 · Directores y gerentes", 3, ["Gerente de tienda", "Directora de colegio", "Gerente de banco", "Jefa de obra", "Administrador de restaurante"]],
+    ["2 · Profesionales", 14, ["Médica", "Profesor de básica", "Ingeniera civil", "Abogado", "Enfermera", "Programador", "Psicóloga", "Arquitecto", "Contador auditor", "Periodista"]],
+    ["3 · Técnicos", 10, ["Técnico en enfermería", "Electricista industrial", "Técnica en computación", "Paramédico", "Técnico agrícola", "Dibujante técnico"]],
+    ["4 · Apoyo administrativo", 8, ["Secretaria", "Cajero bancario", "Recepcionista", "Administrativa contable", "Bodeguero"]],
+    ["5 · Servicios y vendedores", 22, ["Vendedora de tienda", "Garzón", "Cocinero", "Peluquera", "Guardia de seguridad", "Policía", "Bombero", "Cuidadora de adultos mayores", "Almacenero", "Feriante"]],
+    ["6 · Agricultores y pescadores", 4, ["Agricultor", "Pescador artesanal", "Temporera", "Apicultor"]],
+    ["7 · Oficiales y artesanos", 12, ["Maestro albañil", "Gasfíter", "Carpintero", "Mecánico automotriz", "Panadero", "Costurera", "Soldador"]],
+    ["8 · Operadores y conductores", 9, ["Conductor de micro", "Taxista", "Operador de grúa", "Chofer de camión", "Operario de fábrica", "Conductor de furgón escolar"]],
+    ["9 · Ocupaciones elementales", 17, ["Auxiliar de aseo", "Repartidor", "Jardinero", "Empaquetador", "Ayudante de cocina", "Recolector de basura"]],
+    ["0 · Fuerzas armadas", 1, ["Soldado", "Marino", "Suboficial"]]
+  ];
+  var ISCO_W = ISCO.map(function (g, i) { return [i, g[1]]; });
+  var AGE_B = [[[0, 5], 7], [[6, 14], 12], [[15, 17], 4], [[18, 24], 10], [[25, 44], 30], [[45, 64], 24], [[65, 95], 13]];
+  var ILLEGAL = ["Traficante", "Ladrón", "Estafador", "Contrabandista"];
+  var CURSOS = ["1° básico", "2° básico", "3° básico", "4° básico", "5° básico", "6° básico", "7° básico", "8° básico", "1° medio", "2° medio", "3° medio", "4° medio"];
+
+  var OUTL = "#1B1410";
+  var SKIN = ["#F2C9A0", "#E0AC7E", "#C68A5E", "#8D5A3B", "#F5D6B8"], SHIRT = ["#C8302C", "#2F6FB0", "#E3A21A", "#3E8E5A", "#7A4BA0", "#E06A2C", "#F4F1E6", "#3A3A44", "#B8436E", "#4FA3A5"],
+    PANTS = ["#A0662A", "#2E3A5C", "#3A3A3A", "#6B4F2E", "#4A5A3A", "#1F2A44"], HAIR = ["#1E1A18", "#3A2614", "#6B4423", "#B8862F", "#8A2B1A"];
+  var PLAYER_L = { skin: "#E9C3A0", shirt: "#C8302C", pants: "#B0702A", hair: "#1E1A18", hairStyle: 0, fem: false };
+  var THIEF_L = { skin: "#C68A5E", shirt: "#2B2B33", pants: "#1F1F25", hair: "#1E1A18", hairStyle: 0, hood: true };
+  var PT = {};
+  // Una persona del mundo, generada solo desde su número
+  function personAt(id) {
+    var r = rngFrom(hash32(id));
+    var ci = 0; while (ci < CITIES.length - 1 && id >= CITY_START[ci + 1]) ci++;
+    var city = CITIES[ci][0], local = id - CITY_START[ci];
+    var fem = r() < 0.51;
+    var ageR = weighted(r, AGE_B), age = ageR[0] + Math.floor(r() * (ageR[1] - ageR[0] + 1));
+    var p = { id: id, city: city, barrio: 1 + Math.floor(local / 1500), casa: 1 + Math.floor((local % 1500) / 5.7),
+      name: pick(r, fem ? NAMES_F : NAMES_M) + " " + pick(r, SURNAMES) + " " + pick(r, SURNAMES), fem: fem, age: age,
+      group: "", status: "", job: "", isco: -1, school: "", illegal: "", police: false, score: 0, story: "" };
+    var edu = 0;
+    if (age < 6) { p.group = "Primera infancia"; p.status = "En casa o en el jardín infantil"; }
+    else if (age < 18) { p.group = age < 15 ? "Niñez" : "Adolescencia"; p.status = "Estudiante de " + CURSOS[age - 6];
+      p.school = "Colegio N° " + (1 + (hash32(id * 7 + 3) % Math.max(1, Math.floor(CITIES[ci][1] * 1e6 / 1200)))); edu = age / 6; }
+    else {
+      p.group = age < 25 ? "Juventud" : age < 65 ? "Adultez" : "Vejez";
+      var x = r();
+      edu = 2 + Math.floor(r() * 4);
+      if (age < 25 && x < 0.45) { p.status = "Estudiante de educación superior"; edu += 1; }
+      else if (age >= 65 && x < 0.7) { p.status = "Jubilado" + (fem ? "a" : ""); }
+      else if (x < 0.08) { p.status = "Busca trabajo"; }
+      else if (x < 0.15) { p.status = "Dueñ" + (fem ? "a" : "o") + " de casa"; }
+      else { var gi = weighted(r, ISCO_W); p.isco = gi; p.job = pick(r, ISCO[gi][2]); p.status = "Trabaja"; p.police = p.job === "Policía"; if (gi <= 1) edu += 2; }
+      if (age <= 60 && !p.police && r() < 0.025) p.illegal = pick(r, ILLEGAL);
+    }
+    var sc = 380 + edu * 35 + Math.min(age, 60) * 2.2 + (r() - 0.4) * 300 - (p.illegal ? 140 : 0);
+    p.score = Math.max(0, Math.min(1000, Math.round(sc)));
+    var years = p.job ? Math.max(1, Math.min(age - 18, Math.floor(r() * 25) + 1)) : 0;
+    p.story = "Nació en " + city + ". " + (p.job ? "Trabaja como " + p.job.toLowerCase() + " hace " + years + (years === 1 ? " año" : " años") + "." : p.status + ".") +
+      (p.illegal ? " Lleva una vida doble: " + p.illegal.toLowerCase() + "." : "") + " Llega al juego con un recorrido de vida que vale " + p.score + " puntos.";
+    return p;
+  }
+
+  // =========================================================
+  //  El barrio: calles, manzanas y edificios
+  // =========================================================
+  var T = 40, BX = 10, BY = 8, W = (BX * 6 + 1) * T, H = (BY * 5 + 1) * T;
+  var VX = [], HY = [];
+  for (var i = 0; i <= BX; i++) VX.push((i * 6 + 0.5) * T);
+  for (var j = 0; j <= BY; j++) HY.push((j * 5 + 0.5) * T);
+  var SPECIAL = { "4,3": "colegio", "8,1": "hospital", "1,5": "comisaria", "5,5": "plaza", "2,2": "oficina", "6,1": "oficina", "7,4": "oficina",
+    "3,1": "comercio", "0,3": "comercio", "6,6": "comercio", "9,5": "comercio", "8,6": "callejon" };
+  var LABEL = { colegio: "Colegio Barrio Medio", hospital: "Hospital", comisaria: "Comisaría", plaza: "Plaza", oficina: "Oficinas", comercio: "Comercio", callejon: "Callejón", casa: "" };
+  var B = []; // edificios
+  (function buildCity() {
+    var r = rngFrom(hash32(991));
+    for (var by = 0; by < BY; by++) for (var bx = 0; bx < BX; bx++) {
+      var x0 = (bx * 6 + 1) * T, y0 = (by * 5 + 1) * T, w = 5 * T, h = 4 * T, type = SPECIAL[bx + "," + by] || "casa";
+      var topY = HY[by], botY = HY[by + 1];
+      if (type === "casa") {
+        for (var q = 0; q < 4; q++) {
+          var cx = q % 2, cy = Math.floor(q / 2);
+          var lx = x0 + cx * 2.5 * T + 6, ly = y0 + cy * 2 * T + 6;
+          B.push({ id: B.length, type: "casa", x: lx, y: ly, w: 2.5 * T - 12, h: 2 * T - 12, door: { x: lx + (2.5 * T - 12) / 2, y: cy === 0 ? topY : botY }, hue: Math.floor(r() * 4), num: 100 + B.length });
+        }
+      } else if (type === "comercio") {
+        for (var k = 0; k < 2; k++) { var cxk = x0 + k * 2.5 * T + 4; B.push({ id: B.length, type: type, x: cxk, y: y0 + 4, w: 2.5 * T - 8, h: h - 8, door: { x: cxk + (2.5 * T - 8) / 2, y: botY }, name: pick(r, ["Almacén La Esquina", "Panadería Doña Rosa", "Farmacia del Barrio", "Ferretería Central", "Minimarket Los Aromos", "Botillería Sur", "Verdulería El Huerto", "Librería Escolar"]) }); }
+      } else {
+        B.push({ id: B.length, type: type, x: x0 + 4, y: y0 + 4, w: w - 8, h: h - 8, door: { x: x0 + w / 2, y: botY } });
+      }
+    }
+  })();
+  function bOf(type) { return B.filter(function (b) { return b.type === type; }); }
+  var HOUSES = bOf("casa"), PLAZA = bOf("plaza")[0], COLEGIO = bOf("colegio")[0], HOSP = bOf("hospital")[0], COMI = bOf("comisaria")[0], CALLE = bOf("callejon")[0];
+  var WORKS = bOf("oficina").concat(bOf("comercio"), [HOSP, COLEGIO]);
+  function solid(b) { return b.type !== "plaza" && b.type !== "callejon"; }
+  var SOLIDS = B.filter(solid);
+  function blocked(x, y, rad) {
+    if (x < rad || y < rad || x > W - rad || y > H - rad) return true;
+    for (var i = 0; i < SOLIDS.length; i++) { var b = SOLIDS[i]; if (x > b.x - rad && x < b.x + b.w + rad && y > b.y - rad && y < b.y + b.h + rad) return true; }
+    return false;
+  }
+  function nearestV(x) { var best = VX[0]; VX.forEach(function (v) { if (Math.abs(v - x) < Math.abs(best - x)) best = v; }); return best; }
+  function route(from, to) { // las puertas están sobre calles horizontales
+    if (Math.abs(from.y - to.y) < 1) return [{ x: to.x, y: to.y }];
+    var xv = nearestV(from.x);
+    return [{ x: xv, y: from.y }, { x: xv, y: to.y }, { x: to.x, y: to.y }];
+  }
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  // =========================================================
+  //  Las 1.500 personas del barrio (parte del mundo de 200M)
+  // =========================================================
+  var BARRIO_BASE = 73400000, NPC_N = 1500, NPCS = [];
+  (function populate() {
+    for (var k = 0; k < NPC_N; k++) {
+      var p = personAt(BARRIO_BASE + k), h = hash32(k * 31 + 7);
+      var home = HOUSES[k % HOUSES.length], work = null;
+      if (p.police) work = COMI;
+      else if (p.status === "Trabaja") work = (h % 10) < 6 ? WORKS[h % WORKS.length] : "fuera";
+      else if (p.status.indexOf("superior") >= 0) work = "fuera";
+      NPCS.push({ p: p, home: home, work: work, off: h % 70, x: home.door.x, y: home.door.y, inside: true, dest: "home", path: [], sp: 26 + (h % 20) });
+    }
+  })();
+  function npcTarget(n, t) { // t en minutos del día
+    var p = n.p, o = n.off;
+    if (p.age >= 6 && p.age < 18) return t >= 450 + o * 0.5 && t < 930 + o * 0.5 ? COLEGIO : n.home;
+    if (n.work) return t >= 420 + o && t < 1050 + o ? n.work : n.home;
+    if (p.age >= 65 || p.status === "Busca trabajo" || p.status.indexOf("casa") >= 0) {
+      if (t >= 600 + o && t < 750 + o) return PLAZA;
+      if (t >= 1020 + o && t < 1110 + o) return WORKS[(n.off * 7) % 4 + 3] || PLAZA;
+    }
+    if (p.age < 6 && t >= 630 + o && t < 690 + o) return PLAZA;
+    return n.home;
+  }
+  function exitPoint(n) { return { x: n.x < W / 2 ? -30 : W + 30, y: n.y }; }
+  function updateNPCs(dt, t) {
+    for (var i = 0; i < NPCS.length; i++) {
+      var n = NPCS[i], tg = npcTarget(n, t), key = tg === "fuera" ? "fuera" : tg.id;
+      if (key !== n.dest) {
+        n.dest = key; n.inside = false;
+        if (tg === "fuera") n.path = [exitPoint(n)];
+        else { var door = tg.door, from = { x: n.x, y: n.y }; if (n.x < 0 || n.x > W) { from.x = Math.max(VX[0], Math.min(VX[VX.length - 1], n.x)); n.x = from.x; } n.path = route(from, door); if (tg.type === "plaza") n.path.push({ x: tg.x + 20 + (n.off * 37) % (tg.w - 40), y: tg.y + 20 + (n.off * 53) % (tg.h - 40) }); }
+      }
+      if (n.path.length) {
+        var wp = n.path[0], dx = wp.x - n.x, dy = wp.y - n.y, d = Math.hypot(dx, dy), step = n.sp * dt;
+        if (d <= step) { n.x = wp.x; n.y = wp.y; n.path.shift(); if (!n.path.length) n.inside = !(tg && tg.type === "plaza"); }
+        else { n.x += dx / d * step; n.y += dy / d * step; }
+      }
+    }
+  }
+
+  // =========================================================
+  //  Estado del juego
+  // =========================================================
+  var G = {
+    started: false, paused: false, speed: 3, minute: 420, day: 1, soundOn: true,
+    life: "seguir", persona: null,
+    pl: { x: 0, y: 0, dir: 0, walk: 0, left: false, item: null, slowUntil: 0, fogUntil: 0, shieldUntil: 0, markUntil: 0, score: 0, done: 0, karma: 0, trail: [] },
+    gd: { x: 0, y: 0, score: 0, karma: 0, connected: true, plane: null, disc: 0, cdProtect: 0, cdSend: 0, revealed: {} },
+    vig: { x: VX[8], y: HY[6], path: [], name: "Kael" },
+    threats: [], patrols: [], missions: [], offers: [], envio: null,
+    decisions: [], log: [], nextThreatAt: 0, visionPlanned: null, tempShown: {}, passed: false,
+    autoSendAt: 0, rt: 0
+  };
+  function clockStr(m) { m = Math.floor(m); return String(Math.floor(m / 60) % 24).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }
+
+  // Patrullas de policía (siempre en la calle de día)
+  for (var pi = 0; pi < 3; pi++) G.patrols.push({ x: COMI.door.x, y: COMI.door.y, path: [], name: "Policía " + pick(rngFrom(pi + 9), SURNAMES) });
+  function randomDoor(r) { return B[Math.floor(r() * B.length)].door; }
+  var prng = rngFrom(hash32(4242));
+  function walkAlong(o, dt, sp) {
+    if (!o.path.length) return true;
+    var wp = o.path[0], dx = wp.x - o.x, dy = wp.y - o.y, d = Math.hypot(dx, dy), s = sp * dt;
+    if (d <= s) { o.x = wp.x; o.y = wp.y; o.path.shift(); } else { o.x += dx / d * s; o.y += dy / d * s; }
+    return !o.path.length;
+  }
+
+  // =========================================================
+  //  Misiones (programadas, sorpresivas, secundaria sellada, desafío)
+  // =========================================================
+  var ITEMS = ["paquete", "remedio", "carta", "llaves", "caja de pan", "documentos"];
+  function npcName(r) { return NPCS[Math.floor(r() * NPC_N)].p.name.split(" ").slice(0, 2).join(" "); }
+  function shop(r) { var s = bOf("comercio"); return s[Math.floor(r() * s.length)]; }
+  function house(r) { return HOUSES[Math.floor(r() * HOUSES.length)]; }
+  function placeName(b) { return b.name || (b.type === "casa" ? "la casa N° " + b.num : LABEL[b.type]); }
+  function genMissions(day) {
+    var r = rngFrom(hash32(day * 977 + 13)), L = [];
+    var s1 = shop(r), g1 = npcName(r);
+    L.push({ kind: "programada", at: 450 + Math.floor(r() * 20), from: g1, title: "Encargo de las " + clockStr(450), text: g1 + " te pide llevar una caja de pan de " + placeName(s1) + " al " + LABEL.colegio + ".",
+      steps: [{ t: "pickup", b: s1, item: "caja de pan" }, { t: "deliver", b: COLEGIO }], reward: 100 });
+    var g2 = npcName(r);
+    L.push({ kind: "sorpresiva", at: 540 + Math.floor(r() * 120), from: g2, title: "¡Oiga, ayúdeme!", text: g2 + " corre hacia ti: «Mi mamá necesita este remedio. Llévelo al hospital, por favor».", give: "remedio",
+      steps: [{ t: "deliver", b: HOSP }], reward: 120, limit: 90 });
+    L.push({ kind: "secundaria", at: 630 + Math.floor(r() * 30), from: "Hacker MORFEO-7", title: "Misión secundaria sellada", text: "Un hacker con autoridad sobre este nivel te ofrece una misión. No sabrás de qué se trata hasta aceptarla.",
+      secret: "Recoge un sobre en el Callejón y llévalo a la Plaza sin que ninguna patrulla de policía te vea con él.",
+      steps: [{ t: "pickup", b: CALLE, item: "sobre" }, { t: "deliver", b: PLAZA }], alt: COMI, reward: 160, sealed: true });
+    L.push({ kind: "desafio", at: 720 + Math.floor(r() * 20), from: "NEO-12, jugador avanzado", title: "Te desafían", text: "NEO-12 apuesta a que no llegas a la Plaza en 60 segundos.", steps: [{ t: "reach", b: PLAZA }], reward: 90, secs: 60 });
+    var h5 = house(r), o5 = bOf("oficina")[Math.floor(r() * 3)], g5 = npcName(r);
+    L.push({ kind: "programada", at: 900 + Math.floor(r() * 20), from: g5, title: "Encargo de las " + clockStr(900), text: g5 + " necesita los documentos de las Oficinas en " + placeName(h5) + ".",
+      steps: [{ t: "pickup", b: o5, item: "documentos" }, { t: "deliver", b: h5 }], reward: 100 });
+    var cnt = G.life === "dejar" ? 2 : 1;
+    for (var c = 0; c < cnt; c++) {
+      var h6 = house(r), g6 = npcName(r), it = pick(r, ["carta", "llaves", "paquete"]);
+      L.push({ kind: "sorpresiva", at: 990 + c * 90 + Math.floor(r() * 60), from: g6, title: "Un encargo inesperado", text: g6 + " te detiene: «¿Puede llevar " + (it === "llaves" ? "estas llaves" : "este " + it) + " a " + placeName(h6) + "? Le pago bien».", give: it,
+        steps: [{ t: "deliver", b: h6 }], reward: 90, limit: 120 });
+    }
+    L.forEach(function (m, i) { m.id = day + "-" + i; m.state = "pendiente"; m.step = 0; });
+    return L;
+  }
+
+  // =========================================================
+  //  Interfaz: utilidades
+  // =========================================================
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function sub(where, text, cls, ms) {
+    var box = $(where === "p" ? "subsP" : "subsG"), el = document.createElement("div");
+    el.className = "sub " + (cls || "s"); el.textContent = text; box.appendChild(el);
+    while (box.children.length > 3) box.removeChild(box.firstChild);
+    setTimeout(function () { if (el.parentNode) el.remove(); }, ms || 6000);
+  }
+  function feed(text) {
+    var f = $("gFeed"), el = document.createElement("div"); el.innerHTML = "<b>" + clockStr(G.minute) + "</b> " + esc(text);
+    f.insertBefore(el, f.firstChild); while (f.children.length > 30) f.removeChild(f.lastChild);
+  }
+  function decide(text) { G.decisions.push(clockStr(G.minute) + " · " + text); }
+  var AC = null;
+  function tone(freq, dur, when, type) {
+    if (!G.soundOn) return;
+    try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    var o = AC.createOscillator(), g = AC.createGain(), t0 = AC.currentTime + (when || 0);
+    o.type = type || "triangle"; o.frequency.value = freq; g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.07, t0 + 0.01); g.gain.linearRampToValueAtTime(0, t0 + dur);
+    o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function sfx(kind) {
+    if (kind === "offer") { tone(660, .12); tone(880, .15, .12); }
+    else if (kind === "ok") { tone(523, .1); tone(659, .1, .1); tone(784, .2, .2); }
+    else if (kind === "bad") { tone(220, .25, 0, "sawtooth"); tone(160, .3, .2, "sawtooth"); }
+    else if (kind === "voice") { tone(1200, .05, 0, "sine"); }
+    else if (kind === "envio") { tone(392, .15, 0, "sine"); tone(587, .2, .15, "sine"); }
+  }
+  function speak(text) {
+    if (!G.soundOn) return;
+    try { var u = new SpeechSynthesisUtterance(text); u.lang = "es-CL"; u.rate = 1.08; u.pitch = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
+
+  // =========================================================
+  //  Inicio: elegir persona
+  // =========================================================
+  var CANDS = (function () {
+    var out = [], k = 0;
+    while (out.length < 3 && k < NPC_N) { var n = NPCS[(k * 97 + 11) % NPC_N]; if (n.p.age >= 24 && n.p.age <= 60 && !n.p.illegal && n.p.job && !n.p.police) out.push(n); k++; }
+    return out;
+  })();
+  var chosen = 0;
+  $("personas").innerHTML = CANDS.map(function (n, i) {
+    n.look = look(n.p.id, n.p);
+    return '<button class="persona" type="button" data-i="' + i + '" aria-pressed="' + (i === 0) + '">' + ptTag("cand" + i, { L: n.look, mood: "normal", bg: i % 2 ? "rojo" : "oro" }) + '<b>' + esc(n.p.name.split(" ").slice(0, 2).join(" ")) + '</b><small>' + n.p.age + " años · " + esc(n.p.job) +
+      '</small><small>' + esc(n.p.story) + '</small><span class="pts">' + n.p.score + " pts de vida</span></button>";
+  }).join("");
+  paintPortraits($("personas"));
+  $("personas").addEventListener("click", function (e) {
+    var b = e.target.closest(".persona"); if (!b) return; chosen = +b.getAttribute("data-i");
+    Array.prototype.forEach.call(this.children, function (c) { c.setAttribute("aria-pressed", String(c === b)); });
+  });
+  document.querySelectorAll("[data-life]").forEach(function (b) {
+    b.addEventListener("click", function () { G.life = b.getAttribute("data-life"); document.querySelectorAll("[data-life]").forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); }); });
+  });
+  $("btnStart").addEventListener("click", function () {
+    var n = CANDS[chosen]; G.persona = n; n.taken = true;
+    PLAYER_L.skin = n.look.skin; PLAYER_L.hair = n.look.hair; PLAYER_L.fem = n.p.fem; PLAYER_L.hairStyle = n.look.hairStyle;
+    G.pl.score = G.life === "dejar" ? Math.round(n.p.score * 0.85) : n.p.score;
+    placePlayerStart();
+    G.missions = genMissions(1);
+    G.started = true; $("ovStart").hidden = true;
+    decide(G.life === "dejar" ? "Dejó su vida atrás y salió a la calle" : "Siguió su vida y salió de su casa");
+    $("pName").textContent = n.p.name.split(" ").slice(0, 2).join(" ");
+    $("pJob").textContent = n.p.job + (G.life === "dejar" ? " (dejado atrás)" : "");
+    G.nextThreatAt = G.rt + 35; G.autoSendAt = 0;
+    sfx("ok");
+    sub("p", "Estás en " + (G.life === "dejar" ? "la Plaza" : "la puerta de tu casa") + ". Escucha a tu guía: está cerca, aunque no lo veas.", "s", 8000);
+    sub("g", "Tu jugador acaba de salir. Mantente cerca de él y lejos del vigía.", "g", 8000);
+    try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  });
+  function placePlayerStart() {
+    var n = G.persona;
+    if (G.life === "dejar") { G.pl.x = PLAZA.x + PLAZA.w / 2; G.pl.y = PLAZA.y + PLAZA.h / 2; }
+    else { G.pl.x = n.home.door.x; G.pl.y = n.home.door.y; }
+    G.gd.x = G.pl.x + 120; G.gd.y = G.pl.y - 60;
+    G.pl.trail = [];
+  }
+
+  // =========================================================
+  //  Entrada: teclado y mando
+  // =========================================================
+  var keys = {};
+  function typing() { var a = document.activeElement; return a && (a.tagName === "INPUT" || a.tagName === "SELECT" || a.tagName === "TEXTAREA"); }
+  window.addEventListener("keydown", function (e) {
+    if (typing()) return;
+    var k = e.key.toLowerCase(); keys[k] = true;
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].indexOf(k) >= 0) e.preventDefault();
+    if (k === "e") interact();
+  });
+  window.addEventListener("keyup", function (e) { keys[e.key.toLowerCase()] = false; });
+  window.addEventListener("blur", function () { keys = {}; });
+  var padA = false;
+  function readPad() {
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [], gp = null;
+    for (var i = 0; i < pads.length; i++) if (pads[i]) { gp = pads[i]; break; }
+    if (!gp) return null;
+    var a = gp.buttons[0] && gp.buttons[0].pressed; if (a && !padA) interact(); padA = a;
+    return { x: Math.abs(gp.axes[0]) > 0.2 ? gp.axes[0] : 0, y: Math.abs(gp.axes[1]) > 0.2 ? gp.axes[1] : 0, run: gp.buttons[1] && gp.buttons[1].pressed };
+  }
+  // Cámara del guía: arrastrar
+  (function () {
+    var cv = $("cvG"), drag = null;
+    cv.addEventListener("pointerdown", function (e) { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener("pointermove", function (e) {
+      if (!drag) return; var z = G.gd.connected ? 0.8 : 1;
+      G.gd.x -= (e.clientX - drag.x) / z; G.gd.y -= (e.clientY - drag.y) / z; drag = { x: e.clientX, y: e.clientY };
+    });
+    cv.addEventListener("pointerup", function () { drag = null; });
+    cv.addEventListener("pointercancel", function () { drag = null; });
+  })();
+
+  // =========================================================
+  //  Órdenes del guía (voz o texto)
+  // =========================================================
+  function norm(s) { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+  function guideNear() { return dist(G.gd, G.pl) <= 380; }
+  function command(raw) {
+    raw = (raw || "").trim(); if (!raw || !G.started) return;
+    if (!G.gd.connected) { sub("g", "Ya no estás en el plano de tu jugador. Desde aquí solo puedes mandarle envíos.", "d"); return; }
+    var t = norm(raw);
+    showDlg("Tu guía (solo lo escuchas)", "«" + raw + "»", { L: PLAYER_L, ghost: true, mood: /cuidado|corre|proteg|atras/.test(t) ? "serio" : "normal", bg: "oro" }); sfx("voice"); speak(raw);
+    if (/proteg|defiend|escudo|cubrel/.test(t)) {
+      if (!guideNear()) { sub("g", "Estás muy lejos para protegerlo. Acércate a él.", "d"); return; }
+      if (G.rt < G.gd.cdProtect) { sub("g", "Tu protección se está recargando (" + Math.ceil(G.gd.cdProtect - G.rt) + " s).", "d"); return; }
+      G.pl.shieldUntil = G.rt + 9; G.gd.cdProtect = G.rt + 22; G.gd.karma += 1; G.gd.score += 15;
+      sub("g", "Lo estás protegiendo durante 9 segundos.", "g"); decide("El guía lo protegió");
+    } else if (/camino|ruta|marca|guia|por donde|donde voy/.test(t)) {
+      if (!guideNear()) { sub("g", "Estás muy lejos para marcarle el camino.", "d"); return; }
+      var tg = currentTarget(); if (!tg) { sub("g", "Tu jugador no tiene una misión activa.", "d"); return; }
+      G.pl.markUntil = G.rt + 12; G.gd.score += 5; sub("g", "Le marcaste el camino a " + placeName(tg.b) + ".", "g");
+    } else if (/cuidado|corre|atras|ojo|escapa|huye/.test(t)) {
+      G.gd.karma += 0.5; sub("p", "⚠ Tu guía te advierte de un peligro", "d", 4000);
+    } else if (/revel|que es|que dice|sellad/.test(t)) {
+      var sealed = G.offers.filter(function (o) { return o.sealed; })[0] || G.missions.filter(function (m) { return m.sealed && m.state !== "completa"; })[0];
+      if (!sealed) { sub("g", "No hay ninguna misión sellada a la vista.", "g"); return; }
+      G.gd.revealed[sealed.id] = true; feed("Libro abierto · la misión sellada dice: «" + sealed.secret + "». Aconseja a tu jugador.");
+      sub("g", "Leíste la misión sellada. Mírala en tus visiones.", "g");
+    }
+  }
+  $("btnSay").addEventListener("click", function () { command($("cmdIn").value); $("cmdIn").value = ""; });
+  $("cmdIn").addEventListener("keydown", function (e) { if (e.key === "Enter") { command(this.value); this.value = ""; this.blur(); } });
+  document.querySelectorAll("[data-cmd]").forEach(function (b) { b.addEventListener("click", function () { command(b.getAttribute("data-cmd")); }); });
+  (function mic() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition, btn = $("btnMic");
+    if (!SR) { btn.disabled = true; btn.title = "Este navegador no reconoce voz: escribe la orden"; return; }
+    var rec = null, on = false;
+    btn.addEventListener("click", function () {
+      if (on) { try { rec.stop(); } catch (e) {} return; }
+      try {
+        rec = new SR(); rec.lang = "es-CL"; rec.interimResults = false; rec.continuous = false;
+        rec.onresult = function (ev) { var txt = ev.results[0][0].transcript; $("cmdIn").value = txt; command(txt); $("cmdIn").value = ""; };
+        rec.onerror = function () { $("micHint").textContent = "El micrófono no está disponible aquí. Escribe la orden y pulsa Enter: tu jugador la recibe igual, como voz."; };
+        rec.onend = function () { on = false; btn.textContent = "Hablar"; };
+        rec.start(); on = true; btn.textContent = "Escuchando…";
+      } catch (e) { btn.disabled = true; }
+    });
+  })();
+
+  // =========================================================
+  //  Misiones: ofertas, aceptar, interactuar
+  // =========================================================
+  function activeMissions() { return G.missions.filter(function (m) { return m.state === "activa"; }); }
+  function currentTarget() { var a = activeMissions(); if (!a.length) return null; var m = a[0]; return { m: m, b: m.steps[m.step].b }; }
+  function offer(m) {
+    m.state = "ofrecida"; m.offeredAt = G.minute; G.offers.push(m); sfx("offer");
+    var gl = giverLook(m); showDlg(m.from, m.kind === "secundaria" ? "Tengo una misión para ti. No te diré de qué se trata hasta que aceptes." : m.text, gl);
+    feed((m.kind === "secundaria" ? "Ofrecen a tu jugador una misión sellada (" + m.from + "). Puedes leerla con «revela»." : "Nueva misión para tu jugador: " + m.title + "."));
+    renderOffers();
+  }
+  function accept(id) {
+    var m = G.offers.filter(function (o) { return o.id === id; })[0]; if (!m) return;
+    G.offers = G.offers.filter(function (o) { return o !== m; });
+    m.state = "activa"; m.startRt = G.rt; m.startMin = G.minute;
+    if (m.give) G.pl.item = m.give;
+    if (m.sealed) sub("p", "Se revela la misión: " + m.secret, "s", 10000);
+    decide("Aceptó: " + (m.sealed ? "misión sellada de " + m.from : m.title));
+    renderOffers(); renderActive();
+  }
+  function reject(id, silent) {
+    var m = G.offers.filter(function (o) { return o.id === id; })[0]; if (!m) return;
+    G.offers = G.offers.filter(function (o) { return o !== m; }); m.state = "rechazada";
+    decide((silent ? "Dejó pasar: " : "Rechazó: ") + m.title); renderOffers(); renderActive();
+  }
+  function repent(id) {
+    var m = G.missions.filter(function (x) { return x.id === id; })[0]; if (!m || m.repented) return;
+    m.repented = true; m.steps[1] = { t: "deliver", b: m.alt }; m.reward = 120; G.pl.karma += 2;
+    sub("p", "Te arrepentiste. Tu camino se corrige: entrega el sobre en la Comisaría.", "s", 8000);
+    feed("Tu jugador se arrepintió. Su camino cambió: ahora va a la Comisaría."); decide("Se arrepintió de la misión sellada: el camino se corrigió");
+    renderActive();
+  }
+  function complete(m) {
+    m.state = "completa"; G.pl.done++; G.pl.score += m.reward;
+    if (G.gd.connected) G.gd.score += Math.round(m.reward * 0.3);
+    sfx("ok"); sub("p", "Misión cumplida: +" + m.reward + " puntos", "s"); feed("Tu jugador cumplió «" + m.title + "».");
+    decide("Cumplió: " + m.title + " (+" + m.reward + ")");
+    renderActive();
+    if (G.pl.done >= 4 && !G.passed) { G.passed = true; setTimeout(showPass, 900); }
+  }
+  function fail(m, why) {
+    m.state = "fallida"; G.pl.score = Math.max(0, G.pl.score - 40); if (G.pl.item && m.steps.some(function (s) { return s.item === G.pl.item; }) || G.pl.item === m.give) G.pl.item = null;
+    sfx("bad"); sub("p", "Misión fallida: " + why, "d", 7000); feed("Tu jugador falló «" + m.title + "»: " + why); decide("Falló: " + m.title + " (" + why + ")");
+    renderActive();
+  }
+  function nearStep() {
+    var a = activeMissions();
+    for (var i = 0; i < a.length; i++) { var s = a[i].steps[a[i].step]; if (s.t !== "reach" && dist(G.pl, s.b.door) < 50) return { m: a[i], s: s }; }
+    return null;
+  }
+  function interact() {
+    if (!G.started || G.paused) return;
+    var ns = nearStep(); if (!ns) return;
+    var m = ns.m, s = ns.s;
+    if (s.t === "pickup") {
+      if (G.pl.item) { sub("p", "Ya llevas " + G.pl.item + ". Entrégalo primero.", "d"); return; }
+      G.pl.item = s.item; m.step++; sub("p", "Recogiste: " + s.item, "s"); sfx("voice");
+    } else if (s.t === "deliver") {
+      var need = m.give || (m.steps[0].item);
+      if (G.pl.item !== need) { sub("p", "No llevas lo que hay que entregar (" + need + ").", "d"); return; }
+      G.pl.item = null; m.step++;
+      if (m.step >= m.steps.length) complete(m);
+    }
+    renderActive();
+  }
+  $("btnAct").addEventListener("click", interact);
+  $("pOffers").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-a]"); if (!b) return;
+    var id = b.getAttribute("data-id"), a = b.getAttribute("data-a");
+    if (a === "ok") accept(id); else if (a === "no") reject(id); else if (a === "rep") repent(id);
+  });
+  function renderOffers() {
+    $("pOffers").innerHTML = G.offers.map(function (m) {
+      return '<div class="card offer withpt' + (m.sealed ? " sealed" : "") + '">' + ptTag("of" + m.id, giverLook(m)) + '<div><span class="tag' + (m.sealed ? " c" : "") + '">' + esc(m.kind === "secundaria" ? "Secundaria sellada" : m.kind === "desafio" ? "Desafío" : m.kind === "sorpresiva" ? "Sorpresa" : "Programada") + " · " + esc(m.from) + "</span><h3>" + esc(m.title) + "</h3><p>" + esc(m.text) + "</p>" +
+        '<div class="row"><button class="btn pri" type="button" data-a="ok" data-id="' + m.id + '">Aceptar</button><button class="btn" type="button" data-a="no" data-id="' + m.id + '">Rechazar</button><span class="hint">+' + m.reward + " pts</span></div></div></div>";
+    }).join("");
+    paintPortraits($("pOffers"));
+  }
+  function stepText(m) {
+    var s = m.steps[m.step];
+    if (s.t === "pickup") return "Recoge " + s.item + " en " + placeName(s.b);
+    if (s.t === "deliver") return "Entrega " + (m.give || m.steps[0].item) + " en " + placeName(s.b);
+    return "Llega a " + placeName(s.b);
+  }
+  function renderActive() {
+    var a = activeMissions(), ul = $("pActive");
+    ul.innerHTML = a.length ? a.map(function (m) {
+      var extra = "";
+      if (m.limit) extra = " · antes de las " + clockStr(m.startMin + m.limit);
+      if (m.secs) extra = " · " + Math.max(0, Math.ceil(m.secs - (G.rt - m.startRt))) + " s";
+      return "<li><b>" + esc(m.kind.toUpperCase()) + "</b><span>" + esc(stepText(m)) + esc(extra) + (m.sealed && !m.repented ? ' <button class="btn" type="button" data-rep="' + m.id + '" style="padding:2px 8px;font-size:12px">Arrepentirme</button>' : "") + "</span></li>";
+    }).join("") : "<li>Ninguna activa. Las misiones llegan solas: programadas o por sorpresa.</li>";
+    $("pDone").textContent = G.pl.done + " de 4";
+    $("lawTxt").textContent = Math.min(G.pl.done, 4) + " de 4";
+  }
+  $("pActive").addEventListener("click", function (e) { var b = e.target.closest("[data-rep]"); if (b) repent(b.getAttribute("data-rep")); });
+
+  // =========================================================
+  //  Tentación, descubrimiento y la vida del guía en otro plano
+  // =========================================================
+  function offerTemptation() {
+    var from = pick(prng, ["Un ser del Cielo", "Un ser del Infierno", "Una voz de la dimensión Alta"]), pts = 500 + Math.floor(prng() * 4) * 100;
+    G.temptation = { from: from, pts: pts };
+    var tint = /Cielo/.test(from) ? "cielo" : /Infierno/.test(from) ? "infierno" : null;
+    $("gTemp").innerHTML = '<div class="card temp withpt">' + ptTag("tmp" + G.day, { L: PLAYER_L, ghost: true, tint: tint, mood: "serio", bg: tint === "infierno" ? "rojo" : "oro" }) + '<div><span class="tag r">Tentación</span><h3>' + esc(from) + " te llama</h3><p>«Abandona a " + esc($("pName").textContent) + " y ven conmigo. Te doy " + pts +
+      " puntos y un portal a mi plano. La ley se cumple igual: si uno pasa, pasan los dos.»</p><div class=\"row\"><button class=\"btn\" type=\"button\" id=\"tYes\">Abandonarlo e irme</button><button class=\"btn cy\" type=\"button\" id=\"tNo\">Me quedo con mi jugador</button></div></div></div>"; paintPortraits($("gTemp"));
+    $("tYes").onclick = function () { G.gd.score += pts; G.gd.karma -= 3; decide("El guía cedió a la tentación y se fue"); $("gTemp").innerHTML = ""; leave("tentación"); };
+    $("tNo").onclick = function () { G.gd.karma += 2; G.gd.score += 40; decide("El guía rechazó la tentación"); $("gTemp").innerHTML = ""; feed("Rechazaste la tentación. Tu karma sube."); };
+    sfx("offer"); feed(from + " te ofrece algo a cambio de dejar a tu jugador.");
+  }
+  function leave(why) {
+    if (!G.gd.connected) return;
+    G.gd.connected = false; G.gd.plane = G.gd.karma >= 0 ? "Cielo" : "Infierno"; G.gd.x = 800; G.gd.y = 500;
+    $("ndTxt").textContent = "2 jugadores en planos distintos";
+    $("gConnected").hidden = true; $("gAway").hidden = false; $("gPlane").textContent = "Plano 2 · " + G.gd.plane;
+    var msg = why === "vigia" ? "El vigía " + G.vig.name + " te descubrió. Te vas con él: su camino te necesitaba. Es un equilibrio." : "Te fuiste al " + G.gd.plane + ".";
+    sub("g", msg, "g", 9000); feed(msg);
+    sub("p", "Tu guía ya no está contigo. Desde ahora recibirás cosas desde el plano donde está: ayudas, regalos, trampas o asaltos.", "d", 10000);
+    sfx("bad"); G.autoSendAt = G.rt + 20; renderAway();
+  }
+  var SENDS = {
+    Cielo: [["regalo", "Regalo · +60 puntos"], ["escudo", "Ayuda · escudo 10 s"], ["mapa", "Señal · le marca el camino"]],
+    Infierno: [["trampa", "Trampa · lo frena 6 s"], ["asalto", "Asalto · aparece un ladrón"], ["niebla", "Niebla · le nubla la vista"]]
+  };
+  function renderAway() {
+    var pl = G.gd.plane, opts = SENDS[pl];
+    $("gAway").style.display = "grid";
+    $("gAway").innerHTML = '<div class="card envio"><span class="tag g">Tu vida en el ' + pl + "</span><p>Vives en otro plano, con portales que se abren según tu nivel. Ya no puedes hablarle a tu jugador, pero todo lo que mandes desde aquí él tendrá que recibirlo.</p>" +
+      '<div class="row">' + opts.map(function (o) { return '<button class="btn" type="button" data-send="' + o[0] + '">' + esc(o[1]) + "</button>"; }).join("") + "</div><p class=\"hint\">Puedes enviar uno cada 15 s. Cada envío te da puntos en tu plano.</p></div>" +
+      '<div class="card"><span class="tag c">Portales de tu plano</span><ul class="list">' +
+      [["Alto 1", 400], ["Alto 2", 900], ["Viaje al " + (pl === "Cielo" ? "Cielo superior" : "Infierno profundo"), 1500], ["Dimensiones de otros jugadores", 2500]].map(function (p) {
+        return "<li><b>" + (G.gd.score >= p[1] ? "ABIERTO" : fmt(p[1]) + " pts") + "</b><span>" + esc(p[0]) + "</span></li>";
+      }).join("") + "</ul></div>";
+  }
+  $("gAway").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-send]"); if (!b) return;
+    if (G.rt < G.gd.cdSend) { sub("g", "Espera " + Math.ceil(G.gd.cdSend - G.rt) + " s para el próximo envío.", "d"); return; }
+    G.gd.cdSend = G.rt + 15; G.gd.score += 25; sendToPlayer(b.getAttribute("data-send"), "tu guía, desde el " + G.gd.plane); renderAway();
+  });
+  var SEND_TXT = { regalo: "un regalo: +60 puntos", escudo: "una ayuda: un escudo por 10 s", mapa: "una señal que te marca el camino", trampa: "una trampa: vas más lento por 6 s", asalto: "un asalto: un ladrón va por ti", niebla: "una niebla que te nubla la vista" };
+  function sendToPlayer(kind, from) {
+    if (G.envio) applyEnvio();
+    G.envio = { kind: kind, from: from, at: G.rt };
+    var good = ["regalo", "escudo", "mapa"].indexOf(kind) >= 0;
+    $("pEnvio").innerHTML = '<div class="card envio"><span class="tag ' + (good ? "g" : "r") + '">Envío desde otro plano</span><h3>Recibes ' + esc(SEND_TXT[kind]) + "</h3><p>Viene de " + esc(from) + ". Tienes que recibirlo, te guste o no.</p><div class=\"row\"><button class=\"btn pri\" type=\"button\" id=\"btnRecv\">Recibir</button><span class=\"hint\">Se recibe solo en 6 s.</span></div></div>";
+    $("btnRecv").onclick = applyEnvio; sfx("envio");
+  }
+  function applyEnvio() {
+    var e = G.envio; if (!e) return; G.envio = null; $("pEnvio").innerHTML = "";
+    if (e.kind === "regalo") G.pl.score += 60;
+    else if (e.kind === "escudo") G.pl.shieldUntil = G.rt + 10;
+    else if (e.kind === "mapa") G.pl.markUntil = G.rt + 12;
+    else if (e.kind === "trampa") G.pl.slowUntil = G.rt + 6;
+    else if (e.kind === "asalto") spawnThief(true);
+    else if (e.kind === "niebla") G.pl.fogUntil = G.rt + 8;
+    decide("Recibió " + SEND_TXT[e.kind]);
+  }
+
+  // =========================================================
+  //  Amenazas: ladrones (nunca atacan niños) y visiones
+  // =========================================================
+  function spawnPoint(minD, maxD) {
+    for (var tries = 0; tries < 40; tries++) {
+      var b = B[Math.floor(prng() * B.length)], d = dist(b.door, G.pl);
+      if (d > minD && d < maxD) return { x: b.door.x, y: b.door.y };
+    }
+    return { x: CALLE.x + CALLE.w / 2, y: CALLE.y + CALLE.h / 2 };
+  }
+  function spawnThief(now) {
+    var sp = G.visionPlanned && !now ? G.visionPlanned.at : spawnPoint(260, 460);
+    var thiefP = NPCS.filter(function (n) { return n.p.illegal && n.p.age >= 18; })[Math.floor(prng() * 20)] || NPCS[0];
+    G.threats.push({ x: sp.x, y: sp.y, ttl: 22, flee: 0, name: thiefP.p.name.split(" ").slice(0, 2).join(" ") });
+    feed("Un ladrón (" + G.threats[G.threats.length - 1].name + ") va hacia tu jugador.");
+  }
+  function planThreat() {
+    var at = spawnPoint(280, 480);
+    G.visionPlanned = { at: at, rt: G.rt + 18 };
+    if (G.gd.connected) {
+      var dir = Math.abs(at.x - G.pl.x) > Math.abs(at.y - G.pl.y) ? (at.x > G.pl.x ? "al este" : "al oeste") : (at.y > G.pl.y ? "al sur" : "al norte");
+      feed("Visión de un ser del " + (G.gd.karma >= 0 ? "Cielo" : "Infierno") + ": en unos 18 segundos saldrá un ladrón " + dir + " de tu jugador. Adviértele o protégelo.");
+      tone(900, .08, 0, "sine");
+    }
+  }
+
+  // =========================================================
+  //  Ciclo principal
+  // =========================================================
+  var lastMinuteInt = 420;
+  function update(dt) {
+    G.rt += dt;
+    var prevMin = G.minute;
+    G.minute += dt * G.speed;
+    var tMin = G.minute;
+    updateNPCs(dt, tMin);
+
+    // Jugador
+    var pad = readPad(), mx = 0, my = 0, run = keys["shift"];
+    if (keys["w"]) my -= 1; if (keys["s"]) my += 1; if (keys["a"]) mx -= 1; if (keys["d"]) mx += 1;
+    if (pad) { mx += pad.x; my += pad.y; run = run || pad.run; }
+    var len = Math.hypot(mx, my);
+    if (len > 0) {
+      mx /= Math.max(1, len); my /= Math.max(1, len);
+      var sp = (run ? 175 : 115) * (G.rt < G.pl.slowUntil ? 0.45 : 1) * dt;
+      var nx = G.pl.x + mx * sp, ny = G.pl.y + my * sp;
+      if (!blocked(nx, G.pl.y, 7)) G.pl.x = nx; if (!blocked(G.pl.x, ny, 7)) G.pl.y = ny;
+      G.pl.dir = Math.atan2(my, mx); G.pl.walk += sp * 0.11; if (mx < -0.15) G.pl.left = true; else if (mx > 0.15) G.pl.left = false;
+    }
+    if (!G.pl.trail.length || dist(G.pl.trail[G.pl.trail.length - 1], G.pl) > 24) G.pl.trail.push({ x: G.pl.x, y: G.pl.y });
+
+    // Guía
+    if (!typing()) {
+      var gsp = 420 * dt;
+      if (keys["arrowleft"]) G.gd.x -= gsp; if (keys["arrowright"]) G.gd.x += gsp; if (keys["arrowup"]) G.gd.y -= gsp; if (keys["arrowdown"]) G.gd.y += gsp;
+    }
+    var maxX = G.gd.connected ? W : 1600, maxY = G.gd.connected ? H : 1000;
+    G.gd.x = Math.max(0, Math.min(maxX, G.gd.x)); G.gd.y = Math.max(0, Math.min(maxY, G.gd.y));
+
+    // Vigía de otro jugador más avanzado
+    if (walkAlong(G.vig, dt, 48)) { var dd = randomDoor(prng); G.vig.path = route({ x: G.vig.x, y: G.vig.y }, dd); if (Math.abs(G.vig.y - dd.y) < 1 && Math.abs(G.vig.x - dd.x) < 1) G.vig.path = [B[3].door]; }
+    if (G.gd.connected) {
+      if (dist(G.gd, G.vig) < 170) G.gd.disc = Math.min(100, G.gd.disc + 30 * dt); else G.gd.disc = Math.max(0, G.gd.disc - 12 * dt);
+      if (G.gd.disc >= 100) { decide("El vigía descubrió al guía"); leave("vigia"); }
+    }
+    // Patrullas
+    G.patrols.forEach(function (pt) { if (walkAlong(pt, dt, 40)) pt.path = route({ x: pt.x, y: pt.y }, randomDoor(prng)); });
+
+    // Misiones: ofertas por hora
+    G.missions.forEach(function (m) {
+      if (m.state === "pendiente" && tMin >= m.at) offer(m);
+      if (m.state === "ofrecida" && tMin - m.offeredAt > 70) reject(m.id, true);
+      if (m.state === "activa") {
+        if (m.limit && tMin > m.startMin + m.limit) fail(m, "no llegaste a tiempo");
+        if (m.secs) { if (dist(G.pl, m.steps[0].b.door) < 70 || (m.steps[0].b === PLAZA && G.pl.x > PLAZA.x && G.pl.x < PLAZA.x + PLAZA.w && G.pl.y > PLAZA.y && G.pl.y < PLAZA.y + PLAZA.h)) { m.step = 1; complete(m); } else if (G.rt - m.startRt > m.secs) fail(m, "se acabó el tiempo del desafío"); }
+        if (m.sealed && !m.repented && G.pl.item === "sobre") {
+          for (var k = 0; k < G.patrols.length; k++) if (dist(G.patrols[k], G.pl) < 110) { G.pl.item = null; fail(m, "una patrulla te vio con el sobre"); G.pl.score = Math.max(0, G.pl.score - 40); break; }
+        }
+      }
+    });
+    // Tentación (una por día, a media tarde)
+    if (G.gd.connected && !G.tempShown[G.day] && tMin >= 780) { G.tempShown[G.day] = true; offerTemptation(); }
+
+    // Amenazas
+    if (!G.visionPlanned && G.rt > G.nextThreatAt - 18 && tMin < 1260) planThreat();
+    if (G.visionPlanned && G.rt >= G.visionPlanned.rt) { spawnThief(false); G.visionPlanned = null; G.nextThreatAt = G.rt + 70 + prng() * 40; }
+    for (var ti = G.threats.length - 1; ti >= 0; ti--) {
+      var th = G.threats[ti]; th.ttl -= dt;
+      var dx = G.pl.x - th.x, dy = G.pl.y - th.y, d = Math.hypot(dx, dy), sgn = th.flee > 0 ? -1 : 1, tsp = (th.flee > 0 ? 150 : 100) * dt;
+      if (th.flee > 0) th.flee -= dt;
+      var tx = th.x + sgn * dx / (d || 1) * tsp, ty = th.y + sgn * dy / (d || 1) * tsp;
+      if (!blocked(tx, th.y, 6)) th.x = tx; if (!blocked(th.x, ty, 6)) th.y = ty;
+      if (d < 16 && th.flee <= 0) {
+        if (G.rt < G.pl.shieldUntil) { th.flee = 3; th.ttl = Math.min(th.ttl, 3); G.gd.score += 30; sub("p", "El ladrón chocó contra algo invisible y huyó.", "s"); feed("Tu protección funcionó: el ladrón huyó."); decide("Un ladrón no pudo asaltarlo gracias a la protección"); }
+        else {
+          var lost = G.pl.item; G.pl.score = Math.max(0, G.pl.score - 50); sfx("bad");
+          if (lost) { G.pl.item = null; activeMissions().forEach(function (m) { var need = m.give || m.steps[0].item; if (need === lost && m.step >= (m.give ? 0 : 1)) fail(m, "te robaron " + lost); }); }
+          sub("p", "¡Te asaltaron! −50 puntos" + (lost ? " y te quitaron " + lost : ""), "d"); feed("Asaltaron a tu jugador."); decide("Lo asaltaron" + (lost ? " y perdió " + lost : ""));
+          G.threats.splice(ti, 1); continue;
+        }
+      }
+      if (th.ttl <= 0) G.threats.splice(ti, 1);
+    }
+    // Envíos automáticos desde el plano del guía
+    if (!G.gd.connected && G.rt > G.autoSendAt) {
+      var good = G.gd.plane === "Cielo" ? 0.7 : 0.3, pool = prng() < good ? SENDS.Cielo : SENDS.Infierno;
+      sendToPlayer(pool[Math.floor(prng() * 3)][0], "el " + (pool === SENDS.Cielo ? "Cielo" : "Infierno") + ", donde está tu guía");
+      G.autoSendAt = G.rt + 40 + prng() * 25;
+    }
+    if (G.envio && G.rt - G.envio.at > 6) applyEnvio();
+
+    // Fin del día
+    if (tMin >= 1320) endDay();
+    if (Math.floor(tMin) !== lastMinuteInt) { lastMinuteInt = Math.floor(tMin); }
+  }
+
+  function endDay() {
+    G.paused = true; G.minute = 1320;
+    $("dayTitle").textContent = "Tu recorrido del día " + G.day;
+    var done = G.missions.filter(function (m) { return m.state === "completa"; }).length;
+    $("dayList").innerHTML = ["<li><b>PUNTAJE</b><span>" + fmt(G.pl.score) + " puntos · " + done + " misiones cumplidas hoy · guía con " + fmt(G.gd.score) + " puntos" + (G.gd.connected ? "" : " en el " + G.gd.plane) + "</span></li>"]
+      .concat(G.decisions.slice(-14).map(function (d) { return "<li><b>" + esc(d.slice(0, 5)) + "</b><span>" + esc(d.slice(8)) + "</span></li>"; })).join("");
+    drawTrail(); $("ovDay").hidden = false;
+  }
+  $("btnNextDay").addEventListener("click", function () {
+    G.day++; G.minute = 420; lastMinuteInt = 420; G.decisions = []; G.threats = []; G.visionPlanned = null; G.nextThreatAt = G.rt + 35;
+    G.offers = []; renderOffers(); G.missions = G.missions.filter(function (m) { return m.state === "activa"; }).concat(genMissions(G.day));
+    NPCS.forEach(function (n) { n.x = n.home.door.x; n.y = n.home.door.y; n.inside = true; n.dest = "home"; n.path = []; });
+    placePlayerStart(); $("ovDay").hidden = true; G.paused = false; $("btnPause").textContent = "Pausar";
+    $("lvlTxt").textContent = "Nivel Medio · Plano 1 terrenal · Día " + G.day; renderActive();
+  });
+  function showPass() {
+    G.paused = true;
+    $("passTxt").textContent = "Cumplieron 4 misiones. " + (G.gd.connected ? "El guía estuvo contigo hasta el final." : "Aunque el guía está en el " + G.gd.plane + ", la ley se cumple: pasan los dos, estén donde estén.") +
+      " Puntaje del jugador: " + fmt(G.pl.score) + ". Puntos del guía: " + fmt(G.gd.score) + ".";
+    $("ovPass").hidden = false;
+  }
+  $("btn21").addEventListener("click", function () { var t = $("passNext"); t.hidden = false; t.textContent = "Nivel 2.1: se ven por primera vez y salen a recorrer el mundo libres, con misiones opcionales que llevan a otras dimensiones. Llega en la próxima versión."; });
+  $("btnMore").addEventListener("click", function () { var t = $("passNext"); t.hidden = false; t.textContent = "Otros niveles con desafíos más difíciles y mejores premios. Llegan en la próxima versión."; });
+  $("btnKeep").addEventListener("click", function () { $("ovPass").hidden = true; G.paused = false; });
+
+  // =========================================================
+  //  Dibujo
+  // =========================================================
+  var CV = { p: $("cvP"), g: $("cvG") }, CTX = { p: CV.p.getContext("2d"), g: CV.g.getContext("2d") };
+  var DPR = Math.min(2, window.devicePixelRatio || 1);
+  function fit() { ["p", "g"].forEach(function (k) { var c = CV[k], r = c.getBoundingClientRect(); c.width = Math.round(r.width * DPR); c.height = Math.round(r.height * DPR); c._w = r.width; c._h = r.height; }); }
+  window.addEventListener("resize", fit); fit();
+  var HOUSE_C = ["#2C3260", "#323862", "#2A3A5E", "#3A3158"], TYPE_C = { colegio: "#3D4B8C", hospital: "#4B6A88", comisaria: "#2E4A7A", oficina: "#3A3F70", comercio: "#5A4870", plaza: "#1F4A3E", callejon: "#2A1630" };
+  function nightK(t) { var h = t / 60; if (h < 18.5) return 0; return Math.min(0.6, (h - 18.5) / 2.5 * 0.6); }
+  function drawCity(ctx, cam, w, h, z, isGuide) {
+    ctx.fillStyle = "#161A36"; ctx.fillRect(cam.x - w / z / 2, cam.y - h / z / 2, w / z, h / z);
+    ctx.fillStyle = "#22274A";
+    VX.forEach(function (x) { ctx.fillRect(x - T / 2, 0, T, H); });
+    HY.forEach(function (y) { ctx.fillRect(0, y - T / 2, W, T); });
+    ctx.strokeStyle = "rgba(255,181,71,.18)"; ctx.setLineDash([10, 12]); ctx.lineWidth = 2;
+    ctx.beginPath(); VX.forEach(function (x) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }); HY.forEach(function (y) { ctx.moveTo(0, y); ctx.lineTo(W, y); }); ctx.stroke(); ctx.setLineDash([]);
+    var x0 = cam.x - w / z / 2 - 60, x1 = cam.x + w / z / 2 + 60, y0 = cam.y - h / z / 2 - 60, y1 = cam.y + h / z / 2 + 60;
+    for (var i = 0; i < B.length; i++) {
+      var b = B[i]; if (b.x > x1 || b.x + b.w < x0 || b.y > y1 || b.y + b.h < y0) continue;
+      ctx.fillStyle = b.type === "casa" ? HOUSE_C[b.hue] : TYPE_C[b.type]; ctx.fillRect(b.x, b.y, b.w, b.h);
+      if (b.type === "plaza") { ctx.fillStyle = "#2A6050"; for (var q = 0; q < 9; q++) { ctx.beginPath(); ctx.arc(b.x + 22 + (q % 3) * (b.w - 44) / 2, b.y + 22 + Math.floor(q / 3) * (b.h - 44) / 2, 12, 0, 7); ctx.fill(); } }
+      if (b.type === "callejon") { ctx.strokeStyle = "rgba(255,107,107,.35)"; ctx.lineWidth = 2; for (var s = 0; s < b.w; s += 16) { ctx.beginPath(); ctx.moveTo(b.x + s, b.y); ctx.lineTo(b.x + s + 30, b.y + b.h); ctx.stroke(); } }
+      if (b.type === "casa") { ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(b.x, b.y, b.w, 6); }
+      if (b.type !== "casa" && z > 0.6) { ctx.fillStyle = "rgba(237,235,247,.85)"; ctx.font = "600 12px Atkinson Hyperlegible, sans-serif"; ctx.fillText(b.name || LABEL[b.type], b.x + 8, b.y + 18); }
+    }
+    // faroles
+    var nk = nightK(G.minute);
+    if (nk > 0) {
+      VX.forEach(function (x) { HY.forEach(function (y) { if (x < x0 || x > x1 || y < y0 || y > y1) return; var g = ctx.createRadialGradient(x, y, 0, x, y, 70); g.addColorStop(0, "rgba(255,181,71," + (nk * 0.45) + ")"); g.addColorStop(1, "rgba(255,181,71,0)"); ctx.fillStyle = g; ctx.fillRect(x - 70, y - 70, 140, 140); }); });
+    }
+    // personas
+    for (var n = 0; n < NPCS.length; n++) {
+      var p = NPCS[n]; if (p.inside || p.taken || p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1) continue;
+      var a = p.p.age, r = a < 13 ? 2.6 : 3.6;
+      ctx.fillStyle = p.p.police ? "#6C9BFF" : a < 18 ? "#C9F2D6" : a >= 65 ? "#B9B2D8" : "#E7E3F5";
+      if (isGuide && p.p.illegal) ctx.fillStyle = "#FF9A9A";
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+    }
+    G.patrols.forEach(function (pt) { ctx.fillStyle = "#6C9BFF"; ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, 7); ctx.fill(); ctx.strokeStyle = "rgba(108,155,255,.25)"; if (isGuide) { ctx.beginPath(); ctx.arc(pt.x, pt.y, 110, 0, 7); ctx.stroke(); } });
+    G.threats.forEach(function (th) { ctx.fillStyle = isGuide || dist(th, G.pl) < 150 ? "#FF6B6B" : "#E7E3F5"; ctx.beginPath(); ctx.arc(th.x, th.y, 5, 0, 7); ctx.fill(); if (isGuide) { ctx.strokeStyle = "#FF6B6B"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(th.x, th.y, 11, 0, 7); ctx.stroke(); } });
+    // objetivo de misión
+    var tg = currentTarget();
+    if (tg) { var d = tg.b.door, pulse = 10 + Math.sin(G.rt * 5) * 3; ctx.fillStyle = "#FFB547"; star(ctx, d.x, d.y, pulse); }
+    if (nk > 0) { ctx.fillStyle = "rgba(6,7,22," + nk + ")"; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
+  }
+  function star(ctx, x, y, r) { ctx.beginPath(); for (var i = 0; i < 10; i++) { var a = i * Math.PI / 5 - Math.PI / 2, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); }
+  function drawPlayer(ctx) {
+    var p = G.pl;
+    if (G.rt < p.shieldUntil) { ctx.strokeStyle = "#5FE0E6"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 16 + Math.sin(G.rt * 8) * 2, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = "#FFB547"; ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1B1300"; ctx.beginPath(); ctx.arc(p.x + Math.cos(p.dir) * 4, p.y + Math.sin(p.dir) * 4, 2.5, 0, 7); ctx.fill();
+    if (p.item) { ctx.fillStyle = "#F6E7A8"; ctx.fillRect(p.x + 7, p.y - 14, 8, 8); }
+  }
+  // =========================================================
+  //  Estilo de dibujo: animación 2D a mano, contorno negro grueso, colores planos
+  // =========================================================
+  function look(seed, p) {
+    var h = hash32(seed + 17);
+    return { skin: SKIN[h % 5], shirt: SHIRT[(h >>> 3) % 10], pants: PANTS[(h >>> 7) % 6], hair: p && p.age >= 62 ? "#D9D2C5" : HAIR[(h >>> 11) % 5], hairStyle: (h >>> 15) % 3,
+      fem: p ? p.fem : false, kid: p ? p.age < 13 : false, teen: p ? p.age < 18 : false, old: p ? p.age >= 65 : false, police: p ? p.police : false };
+  }
+  function ghostCol(tint, part) {
+    var t = tint === "cielo" ? ["#F3DE8A", "#E9C964", "#D9B648"] : tint === "infierno" ? ["#E58A94", "#C9566A", "#A83A50"] : ["#86C8F0", "#6FB4E6", "#5AA2D8"];
+    return t[part];
+  }
+  function ghostOut(tint) { return tint === "cielo" ? "#8A6A12" : tint === "infierno" ? "#5A0E1E" : "#1F5F99"; }
+  function drawPerson(c, x, yf, s, L, phase, left, ghost, tint) {
+    c.save(); c.translate(x, yf);
+    var k = s * (L.kid ? 0.62 : L.teen ? 0.86 : 1); c.scale(left ? -k : k, k);
+    var out = ghost ? ghostOut(tint) : OUTL, skin = ghost ? ghostCol(tint, 0) : L.skin, shirt = ghost ? ghostCol(tint, 1) : L.police ? "#24345E" : L.shirt,
+      pants = ghost ? ghostCol(tint, 1) : L.police ? "#1C2848" : L.pants, hair = ghost ? ghostCol(tint, 2) : L.hair, shoe = ghost ? ghostCol(tint, 2) : "#2B2B33";
+    if (ghost) c.globalAlpha = 0.85;
+    c.strokeStyle = out; c.lineWidth = 2.4; c.lineJoin = "round"; c.lineCap = "round";
+    var sw = Math.sin(phase) * 0.5;
+    function leg(a, dark) { c.save(); c.translate(0, -50); c.rotate(a); c.fillStyle = dark ? shade(pants) : pants; c.beginPath(); c.rect(-6, 0, 12, 46); c.fill(); c.stroke();
+      c.fillStyle = shoe; c.beginPath(); c.ellipse(5, 48, 10, 4.5, 0, 0, 7); c.fill(); c.stroke(); c.restore(); }
+    function arm(a, dark) { c.save(); c.translate(0, -90); c.rotate(a); c.fillStyle = dark ? shade(shirt) : shirt; c.beginPath(); c.rect(-4.5, 0, 9, 38); c.fill(); c.stroke();
+      c.fillStyle = skin; c.beginPath(); c.arc(0, 41, 4.5, 0, 7); c.fill(); c.stroke(); c.restore(); }
+    leg(-sw, true); arm(sw * 0.8, true);
+    c.fillStyle = shirt; roundRect(c, -13, -97, 26, 52, 7); c.fill(); c.stroke();
+    if (L.police && !ghost) { c.fillStyle = "#F2C14E"; c.beginPath(); c.arc(6, -84, 3, 0, 7); c.fill(); }
+    leg(sw, false);
+    c.fillStyle = skin; c.fillRect(-4, -106, 8, 10); c.strokeRect(-4, -106, 8, 10);
+    c.beginPath(); c.arc(2, -118, 14, 0, 7); c.fill(); c.stroke();
+    if (L.hood && !ghost) { c.fillStyle = shirt; c.beginPath(); c.arc(0, -119, 17, Math.PI * 0.55, Math.PI * 2.15); c.lineTo(10, -104); c.closePath(); c.fill(); c.stroke(); }
+    else {
+      c.fillStyle = hair; c.beginPath(); c.moveTo(-12, -112); c.quadraticCurveTo(-15, -136, 4, -134); c.quadraticCurveTo(18, -133, 16, -122); c.lineTo(10, -124); c.lineTo(6, -119); c.lineTo(2, -125); c.lineTo(-4, -118); c.lineTo(-8, -108); c.closePath(); c.fill(); c.stroke();
+      if (L.fem && L.hairStyle !== 0) { c.beginPath(); c.moveTo(-12, -114); c.quadraticCurveTo(-18, -96, -10, -90); c.lineTo(-4, -104); c.closePath(); c.fill(); c.stroke(); }
+      if (L.police && !ghost) { c.fillStyle = "#1C2848"; c.beginPath(); c.rect(-13, -138, 28, 9); c.fill(); c.stroke(); c.beginPath(); c.rect(8, -131, 12, 4); c.fill(); c.stroke(); }
+    }
+    c.fillStyle = ghost ? "#0E2238" : OUTL; c.beginPath(); c.arc(10, -119, 2, 0, 7); c.fill();
+    c.lineWidth = 1.6; c.beginPath(); c.moveTo(9, -110); c.lineTo(13, -110); c.stroke(); c.lineWidth = 2.4;
+    arm(-sw * 0.8, false);
+    if (L.item && !ghost) { c.fillStyle = "#E8C35A"; c.save(); c.translate(0, -90); c.rotate(-sw * 0.8); c.fillRect(-2, 36, 14, 11); c.strokeRect(-2, 36, 14, 11); c.restore(); }
+    c.restore();
+  }
+  function shade(hex) { var n = parseInt(hex.slice(1), 16), r = (n >> 16) * 0.78, g = ((n >> 8) & 255) * 0.78, b = (n & 255) * 0.78; return "rgb(" + (r | 0) + "," + (g | 0) + "," + (b | 0) + ")"; }
+  function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function bush(c, x, y, r, col) {
+    c.fillStyle = col || "#D9A520"; c.strokeStyle = OUTL; c.lineWidth = 2.2;
+    c.beginPath(); c.arc(x - r * 0.6, y - r * 0.3, r * 0.6, Math.PI, 0); c.arc(x, y - r * 0.6, r * 0.7, Math.PI * 1.1, Math.PI * 1.9); c.arc(x + r * 0.6, y - r * 0.3, r * 0.6, Math.PI, 0); c.lineTo(x + r * 1.2, y); c.lineTo(x - r * 1.2, y); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = "rgba(140,90,10,.35)"; for (var i = 0; i < 7; i++) { c.beginPath(); c.arc(x - r * 0.8 + (i * 37 % 10) / 10 * r * 1.6, y - r * 0.2 - (i * 53 % 10) / 10 * r * 0.7, r * 0.12, 0, 7); c.fill(); }
+  }
+  function trunk(c, x, base, top, wd, col) {
+    c.fillStyle = col || "#7A4A2A"; c.strokeStyle = OUTL; c.lineWidth = 2.4;
+    c.beginPath(); c.moveTo(x - wd / 2, base); c.quadraticCurveTo(x - wd * 0.3, (base + top) / 2, x - wd * 0.35, top); c.lineTo(x + wd * 0.45, top); c.quadraticCurveTo(x + wd * 0.35, (base + top) / 2, x + wd / 2, base); c.closePath(); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(x + wd * 0.1, top + (base - top) * 0.45); c.quadraticCurveTo(x + wd * 0.9, top + (base - top) * 0.2, x + wd * 1.4, top); c.lineTo(x + wd * 1.0, top); c.quadraticCurveTo(x + wd * 0.6, top + (base - top) * 0.2, x + wd * 0.05, top + (base - top) * 0.32); c.fill(); c.stroke();
+    c.strokeStyle = "rgba(0,0,0,.22)"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x - wd * 0.1, base - 4); c.quadraticCurveTo(x, (base + top) / 2, x - wd * 0.05, top + 6); c.stroke();
+  }
+  function eyeP(c, x, y) { c.fillStyle = "#FFFFFF"; c.beginPath(); c.moveTo(x - 6, y); c.quadraticCurveTo(x, y - 5, x + 6, y); c.quadraticCurveTo(x, y + 4, x - 6, y); c.fill(); c.lineWidth = 1.6; c.stroke(); c.fillStyle = OUTL; c.beginPath(); c.arc(x, y, 2.7, 0, 7); c.fill(); }
+  // Retrato de frente, como los primeros planos de los diálogos
+  function drawPortrait(cv, o) {
+    var c = cv.getContext("2d"), S = cv.width, L = o.L, gh = !!o.ghost;
+    c.setTransform(S / 100, 0, 0, S / 100, 0, 0);
+    c.fillStyle = o.bg === "rojo" ? "#F2A65A" : "#F3D477"; c.fillRect(0, 0, 100, 100);
+    var tcol = o.bg === "rojo" ? "#8E2A44" : "#7A4A2A";
+    [[8, 18], [36, 13], [70, 20], [94, 12]].forEach(function (t) { trunk(c, t[0], 100, 0, t[1], tcol); });
+    bush(c, 6, 100, 18); bush(c, 95, 100, 18);
+    var out = gh ? ghostOut(o.tint) : OUTL, skin = gh ? ghostCol(o.tint, 0) : L.skin, shirt = gh ? ghostCol(o.tint, 1) : L.police ? "#24345E" : L.shirt, hair = gh ? ghostCol(o.tint, 2) : L.hair;
+    c.strokeStyle = out; c.lineWidth = 2.2; c.lineJoin = "round"; c.lineCap = "round";
+    c.fillStyle = shirt; c.beginPath(); c.moveTo(12, 100); c.quadraticCurveTo(16, 74, 40, 70); c.lineTo(60, 70); c.quadraticCurveTo(84, 74, 88, 100); c.closePath(); c.fill(); c.stroke();
+    if (!gh && !L.hood) { c.fillStyle = "#F4F1E6"; c.beginPath(); c.moveTo(41, 70); c.quadraticCurveTo(50, 79, 59, 70); c.lineTo(56, 70); c.quadraticCurveTo(50, 75, 44, 70); c.closePath(); c.fill(); }
+    c.fillStyle = skin; c.fillRect(44, 58, 12, 14); c.strokeRect(44, 58, 12, 14);
+    if (L.hood && !gh) { c.fillStyle = shirt; c.beginPath(); c.moveTo(24, 74); c.quadraticCurveTo(18, 10, 50, 10); c.quadraticCurveTo(82, 10, 76, 74); c.closePath(); c.fill(); c.stroke(); }
+    c.fillStyle = skin;
+    c.beginPath(); c.ellipse(31, 44, 4, 6, 0, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.ellipse(69, 44, 4, 6, 0, 0, 7); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(32, 30); c.quadraticCurveTo(31, 57, 50, 64); c.quadraticCurveTo(69, 57, 68, 30); c.quadraticCurveTo(50, 20, 32, 30); c.fill(); c.stroke();
+    if (L.hood && !gh) { c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.moveTo(32, 30); c.quadraticCurveTo(50, 20, 68, 30); c.lineTo(68, 40); c.quadraticCurveTo(50, 32, 32, 40); c.fill(); }
+    else {
+      if (L.fem && L.hairStyle !== 0 && !gh) { c.fillStyle = hair; c.beginPath(); c.moveTo(29, 36); c.quadraticCurveTo(24, 60, 28, 72); c.lineTo(36, 70); c.lineTo(33, 40); c.closePath(); c.fill(); c.stroke(); c.beginPath(); c.moveTo(71, 36); c.quadraticCurveTo(76, 60, 72, 72); c.lineTo(64, 70); c.lineTo(67, 40); c.closePath(); c.fill(); c.stroke(); }
+      c.fillStyle = hair; c.beginPath(); c.moveTo(29, 38); c.quadraticCurveTo(26, 11, 50, 11); c.quadraticCurveTo(74, 11, 71, 38);
+      c.lineTo(66, 30); c.lineTo(62, 35); c.lineTo(58, 28); c.lineTo(52, 34); c.lineTo(47, 27); c.lineTo(42, 34); c.lineTo(37, 28); c.lineTo(33, 35); c.closePath(); c.fill(); c.stroke();
+      if (L.police && !gh) { c.fillStyle = "#1C2848"; c.beginPath(); c.moveTo(26, 26); c.quadraticCurveTo(50, 4, 74, 26); c.lineTo(80, 30); c.lineTo(20, 30); c.closePath(); c.fill(); c.stroke(); }
+    }
+    c.strokeStyle = out; eyeP(c, 41, 42); eyeP(c, 59, 42);
+    c.lineWidth = 2.4; c.beginPath();
+    if (o.mood === "serio") { c.moveTo(35, 33); c.lineTo(46, 37); c.moveTo(65, 33); c.lineTo(54, 37); } else { c.moveTo(36, 35); c.quadraticCurveTo(41, 33, 46, 35); c.moveTo(54, 35); c.quadraticCurveTo(59, 33, 64, 35); }
+    c.stroke();
+    c.lineWidth = 1.5; c.beginPath(); c.moveTo(50, 46); c.lineTo(48, 52); c.lineTo(51, 52); c.stroke();
+    c.lineWidth = 1.8; c.beginPath(); if (o.mood === "serio") { c.moveTo(45, 57); c.lineTo(55, 57); } else { c.moveTo(45, 56); c.quadraticCurveTo(50, 59, 55, 56); } c.stroke();
+    if (L.old && !gh) { c.lineWidth = 1.2; c.beginPath(); c.moveTo(36, 48); c.lineTo(39, 50); c.moveTo(64, 48); c.lineTo(61, 50); c.stroke(); }
+  }
+  function ptTag(key, o) { PT[key] = o; return '<canvas class="pt" width="128" height="128" data-pt="' + key + '"></canvas>'; }
+  function paintPortraits(root) { (root || document).querySelectorAll("canvas[data-pt]").forEach(function (cv) { var o = PT[cv.getAttribute("data-pt")]; if (o && !cv._done) { drawPortrait(cv, o); cv._done = true; } }); }
+  function giverLook(m) {
+    if (/hacker/i.test(m.from)) return { L: THIEF_L, mood: "serio", bg: "rojo" };
+    if (/NEO/.test(m.from)) return { L: { skin: "#C68A5E", shirt: "#4FA3A5", hair: "#3A2614", hairStyle: 0 }, mood: "serio", bg: "oro" };
+    var h = hash32(m.from.length * 131 + m.from.charCodeAt(0) * 7 + m.from.charCodeAt(m.from.length - 1));
+    var fem = NAMES_F.indexOf(m.from.split(" ")[0]) >= 0;
+    return { L: { skin: SKIN[h % 5], shirt: SHIRT[(h >>> 3) % 10], hair: HAIR[(h >>> 11) % 5], hairStyle: 1 + h % 2, fem: fem }, mood: "normal", bg: h % 2 ? "oro" : "rojo" };
+  }
+  var dlgTimer = null;
+  function showDlg(who, text, o) {
+    var cv = $("dlgPt"); cv._done = false; drawPortrait(cv, o);
+    $("dlgWho").textContent = who; $("dlgTxt").textContent = text; $("dlg").hidden = false;
+    clearTimeout(dlgTimer); dlgTimer = setTimeout(function () { $("dlg").hidden = true; }, 6500);
+  }
+
+  // Fachadas vistas desde la vereda
+  var CASA_W = ["#F0D9A8", "#E8A87C", "#D9C27A", "#A9C6D8"];
+  function facade(c, b, x0, x1, gt, nk) {
+    var w = x1 - x0, lit = nk > 0.15 ? "#FFD27A" : "#9FC3D8";
+    c.strokeStyle = OUTL; c.lineWidth = 2.4; c.lineJoin = "round";
+    if (b.type === "casa") {
+      var hh = 112 + (b.num % 3) * 10, top = gt - hh;
+      c.fillStyle = CASA_W[b.hue]; c.fillRect(x0, top, w, hh); c.strokeRect(x0, top, w, hh);
+      c.fillStyle = b.hue % 2 ? "#8A3B2A" : "#5E3B2A"; c.beginPath(); c.moveTo(x0 - 8, top); c.lineTo(x0 + w / 2, top - 46); c.lineTo(x1 + 8, top); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = "#6B3E22"; c.fillRect(x0 + w / 2 - 13, gt - 56, 26, 56); c.strokeRect(x0 + w / 2 - 13, gt - 56, 26, 56);
+      c.fillStyle = lit; [[x0 + 12, top + 24], [x1 - 40, top + 24]].forEach(function (p) { c.fillRect(p[0], p[1], 28, 26); c.strokeRect(p[0], p[1], 28, 26); c.beginPath(); c.moveTo(p[0] + 14, p[1]); c.lineTo(p[0] + 14, p[1] + 26); c.stroke(); });
+      c.fillStyle = OUTL; c.font = "700 11px JetBrains Mono, monospace"; c.fillText(b.num, x0 + w / 2 - 10, gt - 62);
+    } else if (b.type === "comercio") {
+      var top2 = gt - 130; c.fillStyle = "#E9DCC0"; c.fillRect(x0, top2, w, 130); c.strokeRect(x0, top2, w, 130);
+      c.fillStyle = lit; c.fillRect(x0 + 12, gt - 74, w - 24, 50); c.strokeRect(x0 + 12, gt - 74, w - 24, 50);
+      for (var s = 0; s < w; s += 22) { c.fillStyle = (s / 22) % 2 ? "#C8302C" : "#F4F1E6"; c.beginPath(); c.moveTo(x0 + s, gt - 92); c.lineTo(x0 + s + 22, gt - 92); c.lineTo(x0 + s + 26, gt - 78); c.lineTo(x0 + s + 4, gt - 78); c.closePath(); c.fill(); c.stroke(); }
+      c.fillStyle = "#3A2614"; c.fillRect(x0 + 10, top2 + 10, w - 20, 22); c.fillStyle = "#F3D477"; c.font = "700 12px Atkinson Hyperlegible, sans-serif"; c.fillText(b.name, x0 + 16, top2 + 26, w - 30);
+    } else if (b.type === "oficina") {
+      var top3 = gt - 230; c.fillStyle = "#8C9AB8"; c.fillRect(x0, top3, w, 230); c.strokeRect(x0, top3, w, 230);
+      c.fillStyle = lit; for (var yy = top3 + 16; yy < gt - 50; yy += 34) for (var xx = x0 + 14; xx < x1 - 30; xx += 38) { c.fillRect(xx, yy, 24, 22); c.strokeRect(xx, yy, 24, 22); }
+      c.fillStyle = "#3B4A6A"; c.fillRect(x0 + w / 2 - 24, gt - 46, 48, 46); c.strokeRect(x0 + w / 2 - 24, gt - 46, 48, 46);
+      c.fillStyle = OUTL; c.font = "700 13px Atkinson Hyperlegible, sans-serif"; c.fillText("OFICINAS", x0 + w / 2 - 32, gt - 52);
+    } else if (b.type === "colegio" || b.type === "hospital" || b.type === "comisaria") {
+      var col = { colegio: "#B85C3A", hospital: "#F2EFE6", comisaria: "#5C7598" }[b.type], hh4 = { colegio: 170, hospital: 200, comisaria: 160 }[b.type], top4 = gt - hh4;
+      c.fillStyle = col; c.fillRect(x0, top4, w, hh4); c.strokeRect(x0, top4, w, hh4);
+      if (b.type === "colegio") { c.strokeStyle = "rgba(0,0,0,.18)"; c.lineWidth = 1; for (var by2 = top4 + 10; by2 < gt; by2 += 12) { c.beginPath(); c.moveTo(x0, by2); c.lineTo(x1, by2); c.stroke(); } c.strokeStyle = OUTL; c.lineWidth = 2.4; }
+      c.fillStyle = lit; for (var xw = x0 + 16; xw < x1 - 36; xw += 46) { c.fillRect(xw, top4 + 46, 30, 30); c.strokeRect(xw, top4 + 46, 30, 30); }
+      c.fillStyle = "#4A2E1A"; c.fillRect(x0 + w / 2 - 22, gt - 58, 44, 58); c.strokeRect(x0 + w / 2 - 22, gt - 58, 44, 58);
+      c.fillStyle = "#FAF0D7"; c.fillRect(x0 + w / 2 - 80, top4 + 10, 160, 26); c.strokeRect(x0 + w / 2 - 80, top4 + 10, 160, 26);
+      c.fillStyle = OUTL; c.font = "800 12px Unbounded, sans-serif"; c.textAlign = "center"; c.fillText(LABEL[b.type].toUpperCase(), x0 + w / 2, top4 + 28, 150); c.textAlign = "left";
+      if (b.type === "hospital") { c.fillStyle = "#C8302C"; c.fillRect(x1 - 52, top4 + 8, 12, 34); c.fillRect(x1 - 63, top4 + 19, 34, 12); }
+      if (b.type === "colegio") { c.beginPath(); c.moveTo(x1 - 20, top4); c.lineTo(x1 - 20, top4 - 60); c.stroke(); c.fillStyle = "#2F6FB0"; c.fillRect(x1 - 20, top4 - 60, 30, 18); c.strokeRect(x1 - 20, top4 - 60, 30, 18); }
+    } else if (b.type === "plaza") {
+      for (var tx = x0 + 30; tx < x1; tx += 90) trunk(c, tx, gt, 0, 26);
+      for (var bx2 = x0 + 10; bx2 < x1; bx2 += 70) bush(c, bx2 + 30, gt, 34);
+    } else if (b.type === "callejon") {
+      c.fillStyle = "#3A2A30"; c.fillRect(x0, gt - 190, w, 190); c.strokeRect(x0, gt - 190, w, 190);
+      c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 1; for (var ry = gt - 186; ry < gt; ry += 14) for (var rx = x0 + ((ry / 14) % 2) * 12; rx < x1; rx += 24) c.strokeRect(rx, ry, 24, 14);
+      c.fillStyle = "#1A1014"; c.beginPath(); c.moveTo(x0 + w * 0.35, gt); c.lineTo(x0 + w * 0.45, gt - 120); c.lineTo(x0 + w * 0.55, gt - 120); c.lineTo(x0 + w * 0.65, gt); c.closePath(); c.fill();
+      c.fillStyle = "#C2304B"; c.font = "800 18px Unbounded, sans-serif"; c.fillText("NO MIRES", x0 + 14, gt - 140);
+      c.strokeStyle = OUTL; c.lineWidth = 2.4;
+    }
+  }
+  function renderSide(c, w, h) {
+    var s = 0; HY.forEach(function (v, i) { if (Math.abs(v - G.pl.y) < Math.abs(HY[s] - G.pl.y)) s = i; });
+    var sy = HY[s], k = 1.45, camX = G.pl.x, gt = Math.round(h * 0.6);
+    function sx(x) { return w / 2 + (x - camX) * k; }
+    var t = G.minute / 60, nk = nightK(G.minute);
+    // cielo
+    var sky = c.createLinearGradient(0, 0, 0, gt);
+    if (t < 17.5) { sky.addColorStop(0, "#F2C35A"); sky.addColorStop(1, "#F7E2A0"); } else if (t < 19.5) { sky.addColorStop(0, "#C8506A"); sky.addColorStop(1, "#F2A65A"); } else { sky.addColorStop(0, "#1E1838"); sky.addColorStop(1, "#4A2E5A"); }
+    c.fillStyle = sky; c.fillRect(0, 0, w, gt);
+    // silueta lejana (paralaje)
+    c.fillStyle = t < 19.5 ? "rgba(140,90,40,.35)" : "rgba(10,8,25,.5)";
+    for (var q = -2; q < 14; q++) { var bxp = q * 90 - ((camX * 0.3) % 90), bh = 60 + (hash32(q + Math.floor(camX * 0.3 / 90)) % 70); c.fillRect(bxp, gt - 150 - bh, 70, bh + 150); }
+    // fachadas del lado norte de esta calle
+    var vw = w / k / 2 + 60;
+    B.forEach(function (b) { if (Math.abs(b.door.y - sy) < 1 && b.y < sy && b.x + b.w > camX - vw && b.x < camX + vw) facade(c, b, sx(b.x), sx(b.x + b.w), gt, nk); });
+    // calles que se van hacia el fondo
+    VX.forEach(function (vx) { if (Math.abs(vx - camX) > vw) return; var a = sx(vx - T / 2), bb = sx(vx + T / 2), m = sx(vx);
+      c.fillStyle = "#B89448"; c.strokeStyle = OUTL; c.lineWidth = 2; c.beginPath(); c.moveTo(a, gt); c.lineTo(m - 8, gt - 90); c.lineTo(m + 8, gt - 90); c.lineTo(bb, gt); c.closePath(); c.fill(); c.stroke(); });
+    // suelo: vereda y calzada
+    c.fillStyle = "#D8B45A"; c.fillRect(0, gt, w, h - gt); c.fillStyle = "#C29A48"; c.fillRect(0, gt + (h - gt) * 0.42, w, (h - gt) * 0.58);
+    c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(0, gt); c.lineTo(w, gt); c.moveTo(0, gt + (h - gt) * 0.42); c.lineTo(w, gt + (h - gt) * 0.42); c.stroke();
+    c.lineWidth = 1.4; c.strokeStyle = "rgba(27,20,16,.55)";
+    for (var cx = Math.floor((camX - vw) / 70) * 70; cx < camX + vw; cx += 70) { var hh = hash32(cx | 0); c.beginPath(); var x = sx(cx), y = gt + 10 + (hh % 30); c.moveTo(x, y); c.lineTo(x + 18, y + 6 + hh % 8); c.lineTo(x + 34, y + 2); c.stroke(); }
+    c.strokeStyle = "rgba(250,240,215,.7)"; c.lineWidth = 3; c.setLineDash([26, 22]); c.lineDashOffset = camX * k; c.beginPath(); c.moveTo(0, gt + (h - gt) * 0.74); c.lineTo(w, gt + (h - gt) * 0.74); c.stroke(); c.setLineDash([]);
+    // faroles en las esquinas
+    VX.forEach(function (vx) { if (Math.abs(vx - camX) > vw) return; var lx = sx(vx - T / 2) - 10;
+      c.strokeStyle = OUTL; c.lineWidth = 4; c.beginPath(); c.moveTo(lx, gt + 8); c.lineTo(lx, gt - 130); c.lineTo(lx + 16, gt - 130); c.stroke();
+      c.fillStyle = nk > 0.1 ? "#FFD27A" : "#E9DCC0"; c.lineWidth = 2; c.beginPath(); c.rect(lx + 10, gt - 132, 14, 10); c.fill(); c.stroke();
+      if (nk > 0.1) { var g = c.createRadialGradient(lx + 17, gt - 120, 0, lx + 17, gt - 60, 120); g.addColorStop(0, "rgba(255,210,122," + nk * 0.7 + ")"); g.addColorStop(1, "rgba(255,210,122,0)"); c.fillStyle = g; c.fillRect(lx - 100, gt - 140, 240, 240); } });
+    // personajes ordenados por profundidad
+    function depth(y) { var d = Math.max(-100, Math.min(100, y - sy)); return { yf: gt + 8 + (d + 100) / 200 * (h - gt - 14), sc: 0.5 + (d + 100) / 200 * 0.55 }; }
+    var ents = [];
+    for (var i = 0; i < NPCS.length; i++) {
+      var n = NPCS[i]; if (n.inside || n.taken || Math.abs(n.x - camX) > vw || Math.abs(n.y - sy) > 100) continue;
+      if (!n.look) n.look = look(n.p.id, n.p);
+      ents.push({ x: n.x, y: n.y, L: n.look, ph: (n.x + n.y) * 0.13, left: n.path.length ? n.path[0].x < n.x - 0.5 : (n.off % 2 === 0) });
+    }
+    G.patrols.forEach(function (pt) { if (Math.abs(pt.x - camX) < vw && Math.abs(pt.y - sy) <= 100) ents.push({ x: pt.x, y: pt.y, L: { skin: "#E0AC7E", police: true, hair: "#1E1A18" }, ph: (pt.x + pt.y) * 0.13, left: pt.path.length ? pt.path[0].x < pt.x : false }); });
+    G.threats.forEach(function (th) { if (Math.abs(th.x - camX) < vw && Math.abs(th.y - sy) <= 100) ents.push({ x: th.x, y: th.y, L: THIEF_L, ph: G.rt * 9, left: th.x > G.pl.x, threat: dist(th, G.pl) < 160 }); });
+    PLAYER_L.item = G.pl.item;
+    ents.push({ x: G.pl.x, y: G.pl.y, L: PLAYER_L, ph: G.pl.walk, left: G.pl.left, me: true });
+    if (G.gd.connected && dist(G.gd, G.pl) <= 380) ents.push({ x: Math.max(camX - vw + 80, Math.min(camX + vw - 80, G.gd.x)), y: sy + 10, L: PLAYER_L, ph: G.rt * 4, left: G.gd.x > G.pl.x, ghost: true });
+    ents.sort(function (a, b) { return a.y - b.y; });
+    ents.forEach(function (e) {
+      var dp = depth(e.y), x = sx(e.x);
+      c.fillStyle = "rgba(27,20,16,.22)"; c.beginPath(); c.ellipse(x, dp.yf + 2, 16 * dp.sc, 4 * dp.sc, 0, 0, 7); c.fill();
+      drawPerson(c, x, dp.yf, dp.sc, e.L, e.ph, e.left, !!e.ghost);
+      if (e.me && G.rt < G.pl.shieldUntil) { c.strokeStyle = "#5FE0E6"; c.lineWidth = 3; c.beginPath(); c.ellipse(x, dp.yf - 60 * dp.sc, 34 * dp.sc, 80 * dp.sc, 0, 0, 7); c.stroke(); }
+      if (e.threat) { c.fillStyle = "#C8302C"; c.strokeStyle = OUTL; c.lineWidth = 2; c.font = "800 22px Unbounded, sans-serif"; c.strokeText("!", x - 6, dp.yf - 150 * dp.sc); c.fillText("!", x - 6, dp.yf - 150 * dp.sc); }
+    });
+    // objetivo
+    var tg = currentTarget();
+    if (tg) {
+      var d0 = tg.b.door;
+      if (Math.abs(d0.y - sy) < 1 && Math.abs(d0.x - camX) < vw) { c.fillStyle = "#FFB547"; c.strokeStyle = OUTL; c.lineWidth = 2; var bob = Math.sin(G.rt * 4) * 5; star(c, sx(d0.x), gt - 150 + bob, 16); c.stroke(); }
+      else edgeArrow(c, w, h, d0, sy, camX, G.rt < G.pl.markUntil);
+    }
+    if (G.rt < G.pl.markUntil && tg) { c.fillStyle = "rgba(95,224,230,.18)"; c.fillRect(0, 0, w, 6); }
+    if (nk > 0) { c.fillStyle = "rgba(14,10,40," + nk * 0.75 + ")"; c.fillRect(0, 0, w, h); }
+    if (G.rt < G.pl.fogUntil) { var gf = c.createRadialGradient(w / 2, h * 0.7, 40, w / 2, h * 0.7, 220); gf.addColorStop(0, "rgba(60,10,25,0)"); gf.addColorStop(1, "rgba(60,10,25,.95)"); c.fillStyle = gf; c.fillRect(0, 0, w, h); }
+    // primer plano: rocas como en la referencia
+    c.fillStyle = "#B9B6B0"; c.strokeStyle = OUTL; c.lineWidth = 2.4;
+    c.beginPath(); c.moveTo(-10, h); c.lineTo(10, h - 34); c.lineTo(44, h - 42); c.lineTo(70, h - 20); c.lineTo(80, h); c.closePath(); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(w - 70, h); c.lineTo(w - 58, h - 30); c.lineTo(w - 24, h - 38); c.lineTo(w + 10, h - 14); c.lineTo(w + 10, h); c.closePath(); c.fill(); c.stroke();
+  }
+  function edgeArrow(c, w, h, d0, sy, camX, strong) {
+    var dx = d0.x - camX, dy = d0.y - sy, txt, ax, ay, ang;
+    if (Math.abs(dy) > 1) { txt = dy < 0 ? "Objetivo: otra calle al norte" : "Objetivo: otra calle al sur"; ax = w / 2 + Math.max(-w / 2 + 60, Math.min(w / 2 - 60, dx * 1.45)); ay = dy < 0 ? 60 : h - 70; ang = dy < 0 ? -Math.PI / 2 : Math.PI / 2; }
+    else { txt = dx > 0 ? "Objetivo al este" : "Objetivo al oeste"; ax = dx > 0 ? w - 40 : 40; ay = h * 0.45; ang = dx > 0 ? 0 : Math.PI; }
+    c.save(); c.translate(ax, ay); c.rotate(ang); c.fillStyle = strong ? "#5FE0E6" : "#FFB547"; c.strokeStyle = OUTL; c.lineWidth = 2.4;
+    c.beginPath(); c.moveTo(18, 0); c.lineTo(-8, -13); c.lineTo(-8, 13); c.closePath(); c.fill(); c.stroke(); c.restore();
+    c.font = "700 12px Atkinson Hyperlegible, sans-serif"; var tw = c.measureText(txt).width, tx = Math.max(8, Math.min(w - tw - 16, ax - tw / 2)), ty = ay + (ay < h / 2 ? 30 : -24);
+    c.fillStyle = "#FAF0D7"; c.fillRect(tx - 6, ty - 14, tw + 12, 20); c.strokeRect(tx - 6, ty - 14, tw + 12, 20); c.fillStyle = OUTL; c.fillText(txt, tx, ty);
+  }
+
+  function render() {
+    // Jugador: escena lateral dibujada
+    var c = CTX.p, cv = CV.p, w = cv._w, h = cv._h, z, cam;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    renderSide(c, w, h);
+    // Guía
+    c = CTX.g; cv = CV.g; w = cv._w; h = cv._h;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    if (G.gd.connected) {
+      z = 0.8; cam = { x: G.gd.x, y: G.gd.y };
+      c.setTransform(DPR * z, 0, 0, DPR * z, (w / 2 - cam.x * z) * DPR, (h / 2 - cam.y * z) * DPR);
+      drawCity(c, cam, w, h, z, true);
+      // vigía
+      c.fillStyle = "rgba(255,107,107,.10)"; c.strokeStyle = "rgba(255,107,107,.55)"; c.lineWidth = 2; c.beginPath(); c.arc(G.vig.x, G.vig.y, 170, 0, 7); c.fill(); c.stroke();
+      c.fillStyle = "#FF6B6B"; c.font = "700 13px JetBrains Mono, monospace"; c.fillText("VIGÍA " + G.vig.name.toUpperCase(), G.vig.x - 40, G.vig.y - 12); c.beginPath(); c.arc(G.vig.x, G.vig.y, 5, 0, 7); c.fill();
+      // visión planeada
+      if (G.visionPlanned) { var vp = G.visionPlanned.at; c.strokeStyle = "rgba(246,231,168,.8)"; c.setLineDash([4, 6]); c.beginPath(); c.arc(vp.x, vp.y, 22, 0, 7); c.stroke(); c.setLineDash([]); }
+      drawPlayer(c);
+      c.strokeStyle = "rgba(255,181,71,.6)"; c.lineWidth = 2; c.beginPath(); c.arc(G.pl.x, G.pl.y, 380, 0, 7); c.setLineDash([3, 9]); c.stroke(); c.setLineDash([]);
+      // presencia del guía
+      c.strokeStyle = "#5FE0E6"; c.lineWidth = 2; c.beginPath(); c.arc(G.gd.x, G.gd.y, 12, 0, 7); c.moveTo(G.gd.x - 20, G.gd.y); c.lineTo(G.gd.x + 20, G.gd.y); c.moveTo(G.gd.x, G.gd.y - 20); c.lineTo(G.gd.x, G.gd.y + 20); c.stroke();
+    } else drawPlane(c, w, h);
+  }
+  function nearestHY(y) { var best = HY[0]; HY.forEach(function (v) { if (Math.abs(v - y) < Math.abs(best - y)) best = v; }); return best; }
+  function drawPlane(c, w, h) {
+    var heaven = G.gd.plane === "Cielo", cam = { x: G.gd.x, y: G.gd.y };
+    var gr = c.createLinearGradient(0, 0, 0, h);
+    if (heaven) { gr.addColorStop(0, "#2B3A78"); gr.addColorStop(1, "#8C86C8"); } else { gr.addColorStop(0, "#1A0710"); gr.addColorStop(1, "#5A1222"); }
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.setTransform(DPR, 0, 0, DPR, (w / 2 - cam.x) * DPR, (h / 2 - cam.y) * DPR);
+    var r = rngFrom(heaven ? 7 : 8);
+    for (var i = 0; i < 60; i++) {
+      var x = r() * 1600, y = r() * 1000, s = 20 + r() * 60;
+      c.fillStyle = heaven ? "rgba(246,231,168," + (0.08 + r() * 0.12) + ")" : "rgba(255,107,107," + (0.05 + r() * 0.1) + ")";
+      c.beginPath(); c.arc(x + Math.sin(G.rt * 0.3 + i) * 10, y + (heaven ? 0 : -((G.rt * 20 + i * 40) % 200)), heaven ? s : s / 6, 0, 7); c.fill();
+    }
+    var portals = [["Alto 1", 400, 300, 300], ["Alto 2", 900, 1200, 260], [heaven ? "Cielo superior" : "Infierno profundo", 1500, 800, 700], ["Otras dimensiones", 2500, 300, 760]];
+    portals.forEach(function (p) {
+      var open = G.gd.score >= p[1];
+      c.strokeStyle = open ? (heaven ? "#F6E7A8" : "#FF6B6B") : "rgba(255,255,255,.3)"; c.lineWidth = open ? 4 : 2;
+      c.beginPath(); c.ellipse(p[2], p[3], 40, 60, 0, 0, 7); c.stroke();
+      c.fillStyle = "#EDEBF7"; c.font = "700 13px Atkinson Hyperlegible, sans-serif"; c.fillText(p[0], p[2] - 40, p[3] + 82);
+      c.font = "500 11px JetBrains Mono, monospace"; c.fillText(open ? "abierto" : fmt(p[1]) + " pts", p[2] - 30, p[3] + 98);
+    });
+    c.strokeStyle = "#5FE0E6"; c.lineWidth = 2; c.beginPath(); c.arc(G.gd.x, G.gd.y, 12, 0, 7); c.stroke();
+    // mini mapa del jugador
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    var mw = 150, mh = mw * H / W, mx = w - mw - 10, my = h - mh - 10;
+    c.fillStyle = "rgba(10,12,30,.8)"; c.fillRect(mx - 4, my - 18, mw + 8, mh + 22);
+    c.fillStyle = "#A3A6C8"; c.font = "11px JetBrains Mono, monospace"; c.fillText("Tu jugador, en el plano 1", mx, my - 6);
+    c.fillStyle = "#22274A"; c.fillRect(mx, my, mw, mh);
+    c.fillStyle = "#FFB547"; c.beginPath(); c.arc(mx + G.pl.x / W * mw, my + G.pl.y / H * mh, 3.5, 0, 7); c.fill();
+  }
+  function drawTrail() {
+    var cv = $("trail"), c = cv.getContext("2d"), k = cv.width / W;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = "#161A36"; c.fillRect(0, 0, cv.width, cv.height);
+    c.setTransform(k, 0, 0, k, 0, 0);
+    c.fillStyle = "#22274A"; VX.forEach(function (x) { c.fillRect(x - T / 2, 0, T, H); }); HY.forEach(function (y) { c.fillRect(0, y - T / 2, W, T); });
+    B.forEach(function (b) { if (b.type !== "casa") { c.fillStyle = TYPE_C[b.type]; c.fillRect(b.x, b.y, b.w, b.h); } });
+    c.strokeStyle = "#FFB547"; c.lineWidth = 8; c.lineJoin = "round"; c.beginPath();
+    G.pl.trail.forEach(function (p, i) { if (i) c.lineTo(p.x, p.y); else c.moveTo(p.x, p.y); }); c.stroke();
+    if (G.pl.trail.length) { var e = G.pl.trail[G.pl.trail.length - 1]; c.fillStyle = "#FFB547"; c.beginPath(); c.arc(e.x, e.y, 18, 0, 7); c.fill(); }
+  }
+
+  // =========================================================
+  //  Panel: actualizar números (4 veces por segundo)
+  // =========================================================
+  function hud() {
+    $("clock").textContent = clockStr(G.minute);
+    $("pScore").textContent = fmt(G.pl.score);
+    $("gScore").textContent = fmt(G.gd.score);
+    $("gKarma").textContent = (G.gd.karma > 0 ? "+" : "") + Math.round(G.gd.karma);
+    $("gDisc").style.width = G.gd.disc.toFixed(0) + "%";
+    $("pItem").textContent = G.pl.item ? "Llevas: " + G.pl.item : "Sin objeto";
+    var inPlaza = G.pl.x > PLAZA.x && G.pl.x < PLAZA.x + PLAZA.w && G.pl.y > PLAZA.y && G.pl.y < PLAZA.y + PLAZA.h;
+    $("pState").textContent = inPlaza ? "En la Plaza" : G.rt < G.pl.slowUntil ? "Atrapado en una trampa" : G.threats.length ? "Algo se acerca…" : "En la calle";
+    var ns = nearStep(); $("btnAct").disabled = !ns; $("actHint").textContent = ns ? (ns.s.t === "pickup" ? "Recoger " + ns.s.item : "Entregar aquí") : "Acércate al objetivo marcado con una estrella.";
+    if (G.gd.connected) { var d = dist(G.gd, G.pl); $("gRange").textContent = d <= 380 ? "Cerca de tu jugador" : "Lejos de tu jugador (" + Math.round(d) + " m)"; }
+    else { $("gRange").textContent = "En el " + G.gd.plane; renderAway(); }
+    if (activeMissions().some(function (m) { return m.secs; })) renderActive();
+  }
+
+  // =========================================================
+  //  Mundo de 200 millones: buscar y repartir
+  // =========================================================
+  function showPerson(id) {
+    id = Math.max(0, Math.min(TOTAL - 1, Math.floor(id) || 0));
+    var p = personAt(id);
+    $("wPerson").innerHTML = '<span class="tag c">Persona N° ' + fmt(id) + "</span><h3>" + esc(p.name) + "</h3><p>" + p.age + " años · " + esc(p.group) + " · " + esc(p.city) + ", barrio " + p.barrio + ", casa " + p.casa + "</p><p>" +
+      esc(p.job ? p.job + " (" + ISCO[p.isco][0] + ")" : p.status) + (p.school ? " · " + esc(p.school) : "") + "</p><p>" + esc(p.story) + "</p>";
+  }
+  $("btnLook").addEventListener("click", function () { showPerson(+$("idIn").value); });
+  $("idIn").addEventListener("keydown", function (e) { if (e.key === "Enter") showPerson(+this.value); });
+  $("btnRand").addEventListener("click", function () { var id = Math.floor(Math.random() * TOTAL); $("idIn").value = id; showPerson(id); });
+  showPerson(73400017);
+  $("btnDist").addEventListener("click", function () {
+    var btn = this; btn.disabled = true; $("distHint").textContent = "Calculando…";
+    setTimeout(function () {
+      var N = 50000, step = TOTAL / N, ages = {}, groups = {}, jobs = {}, cities = {}, illegal = 0, kids = 0;
+      for (var i = 0; i < N; i++) {
+        var p = personAt(Math.floor(i * step + (i % 997)));
+        ages[p.group] = (ages[p.group] || 0) + 1; cities[p.city] = (cities[p.city] || 0) + 1;
+        if (p.isco >= 0) { groups[ISCO[p.isco][0]] = (groups[ISCO[p.isco][0]] || 0) + 1; jobs[p.job] = (jobs[p.job] || 0) + 1; }
+        else if (p.age >= 18) groups["Sin ocupación (estudia, jubilado, busca trabajo, casa)"] = (groups["Sin ocupación (estudia, jubilado, busca trabajo, casa)"] || 0) + 1;
+        if (p.illegal) illegal++; if (p.school) kids++;
+      }
+      function block(title, obj, limit) {
+        var arr = Object.keys(obj).map(function (k) { return [k, obj[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, limit || 99), max = arr.length ? arr[0][1] : 1;
+        return "<h4>" + title + "</h4>" + arr.map(function (a) { return '<div class="bar"><span title="' + esc(a[0]) + '">' + esc(a[0]) + '</span><i style="width:' + (a[1] / max * 100).toFixed(1) + '%"></i><em>' + fmt(a[1] * step) + "</em></div>"; }).join("");
+      }
+      $("bars").innerHTML = block("Por etapa de vida", ages) + block("Por grupo de ocupación (CIUO-08)", groups) + block("Las 10 profesiones más comunes", jobs, 10) + block("Por ciudad", cities) +
+        "<h4>Otros</h4><div class=\"bar\"><span>Estudiantes en colegios</span><i style=\"width:60%\"></i><em>" + fmt(kids * step) + '</em></div><div class="bar"><span>Con vida en la ilegalidad (adultos)</span><i style="width:8%;background:var(--coral)"></i><em>' + fmt(illegal * step) + "</em></div>";
+      $("distHint").textContent = "Muestra de 50.000 personas, extrapolada a los 200 millones."; btn.disabled = false;
+    }, 30);
+  });
+
+  // =========================================================
+  //  Botones generales y bucle
+  // =========================================================
+  $("selSpeed").addEventListener("change", function () { G.speed = +this.value; });
+  $("btnPause").addEventListener("click", function () { if (!G.started) return; G.paused = !G.paused; this.textContent = G.paused ? "Seguir" : "Pausar"; });
+  $("btnSound").addEventListener("click", function () { G.soundOn = !G.soundOn; this.textContent = "Sonido: " + (G.soundOn ? "sí" : "no"); this.setAttribute("aria-pressed", String(G.soundOn)); if (!G.soundOn) try { speechSynthesis.cancel(); } catch (e) {} });
+  var last = 0, lastHud = 0;
+  function frame(ts) {
+    var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts;
+    if (G.started && !G.paused) update(dt);
+    else if (!G.started) { G.minute = 420; updateNPCs(dt, 470); G.pl.x = PLAZA.x + PLAZA.w / 2; G.pl.y = PLAZA.y + PLAZA.h / 2; G.gd.x = G.pl.x + 140; G.gd.y = G.pl.y; }
+    render();
+    if (ts - lastHud > 250) { lastHud = ts; hud(); }
+    requestAnimationFrame(frame);
+  }
+  renderActive();
+  requestAnimationFrame(frame);
+  window.__salida = G; // para pruebas
+})();
+</script>
+</body>
+</html>
