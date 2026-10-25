@@ -66,7 +66,7 @@ select.btn { padding: 5px 8px; }
 .vhead small { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
 .canvasbox { position: relative; background: var(--ground); }
 canvas.vc { display: block; width: 100%; height: 420px; touch-action: none; }
-@media (max-width: 640px) { canvas.vc { height: 300px; } }
+@media (max-width: 640px) { canvas.vc { height: 400px; } }
 .subs { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; gap: 4px; pointer-events: none; }
 .sub { background: rgba(10, 12, 30, .82); border-radius: 8px; padding: 6px 10px; font-size: 14px; width: fit-content; max-width: 100%; }
 .sub.g { border-left: 3px solid var(--cyan); }
@@ -144,7 +144,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; background: var(--panel-2); b
 .gr li.got b { color: var(--ok); }
 .gr small { display: block; color: var(--muted); font-size: 12px; }
 .libre canvas.vc { height: 480px; }
-@media (max-width: 640px) { .libre canvas.vc { height: 340px; } }
+@media (max-width: 640px) { .libre canvas.vc { height: 440px; } }
 .meet { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
 .meet canvas { width: 100%; max-width: 220px; height: auto; aspect-ratio: 1; border: 3px solid #1B1410; border-radius: 14px; justify-self: center; }
 .chat { max-height: 150px; overflow: auto; display: grid; gap: 4px; font-size: 14px; }
@@ -171,6 +171,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     </div>
     <div class="hud">
       <span class="chip nd"><i class="pulse"></i>Motor Ndapremo · <b id="ndTxt">2 jugadores</b></span>
+      <span class="chip" id="ndConn">NDAPREMO: sin servidor</span>
       <span class="chip">Hora <b id="clock">07:00</b></span>
       <label class="chip" for="selSpeed">Tiempo
         <select id="selSpeed" class="btn" style="padding:1px 4px;border:0;background:transparent">
@@ -274,7 +275,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <div class="subs" id="subsL"></div>
     </div>
     <div class="panel">
-      <div class="views" role="group" aria-label="Tipo de vista" id="vwL"><button type="button" data-v="juntos" aria-pressed="true">Juntos</button><button type="button" data-v="dividida" aria-pressed="false">Pantalla dividida</button><button type="button" data-v="mapa" aria-pressed="false">Mapa del mundo</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwL"><button type="button" data-v="comic" aria-pressed="true">Cómic</button><button type="button" data-v="juntos" aria-pressed="false">Juntos</button><button type="button" data-v="dividida" aria-pressed="false">Pantalla dividida</button><button type="button" data-v="mapa" aria-pressed="false">Mapa del mundo</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
       <div class="pts3" id="lPoints"></div>
       <div id="lCard"></div>
       <div class="card" id="lTalk"></div>
@@ -293,7 +294,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <div class="subs" id="subsE"></div>
     </div>
     <div class="panel">
-      <div class="views" role="group" aria-label="Tipo de vista" id="vwE"><button type="button" data-v="jugador" aria-pressed="true">Jugador</button><button type="button" data-v="guia" aria-pressed="false">Guía: ve más allá</button><button type="button" data-v="balanza" aria-pressed="false">La balanza</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwE"><button type="button" data-v="comic" aria-pressed="true">Cómic</button><button type="button" data-v="jugador" aria-pressed="false">Jugador</button><button type="button" data-v="guia" aria-pressed="false">Guía: ve más allá</button><button type="button" data-v="balanza" aria-pressed="false">La balanza</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
       <div class="kv">
         <div><small>Luz</small><b id="eLuz">0</b></div>
         <div><small>Sombra</small><b id="eSombra">0</b></div>
@@ -322,7 +323,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <div class="subs" id="subsD"></div>
     </div>
     <div class="panel">
-      <div class="views" role="group" aria-label="Tipo de vista" id="vwD"><button type="button" data-v="volar" aria-pressed="true">Volar</button><button type="button" data-v="ojo" aria-pressed="false">Ojo de Dios</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwD"><button type="button" data-v="comic" aria-pressed="true">Cómic</button><button type="button" data-v="volar" aria-pressed="false">Volar</button><button type="button" data-v="ojo" aria-pressed="false">Ojo de Dios</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
       <div id="dIsland"></div>
       <div class="card">
         <span class="tag g">Conocer todo · cualquiera de los 200 millones, con su destino</span>
@@ -349,7 +350,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <div class="subs" id="subsGb"></div>
     </div>
     <div class="panel">
-      <div class="views" role="group" aria-label="Tipo de vista" id="vwGob"><button type="button" data-v="tactico" aria-pressed="true">Plano táctico</button><button type="button" data-v="cerca" aria-pressed="false">Cerca</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwGob"><button type="button" data-v="comic" aria-pressed="true">Cómic</button><button type="button" data-v="tactico" aria-pressed="false">Plano táctico</button><button type="button" data-v="cerca" aria-pressed="false">Cerca</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
       <div class="kv">
         <div><small>Poder en el gobierno</small><b id="gobPower">0</b></div>
         <div><small>Órdenes cumplidas</small><b id="gobDone">0 de 3</b></div>
@@ -482,6 +483,321 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   </div>
 </div>
 
+<!-- NDAPREMO (opcional). El juego funciona igual sin servidor. Para conectarlo, abrir el juego con
+     ?ndapremo=http://127.0.0.1:8100  (queda recordado en este navegador; ?ndapremo=no lo olvida). -->
+<script>
+/*
+ * Cliente de NDAPREMO para el juego (navegador o Node 18+).
+ *
+ *   const nd = NdapremoJuego.crearCliente({ base: "http://127.0.0.1:8100" });
+ *   const r = await nd.procesarEvento("npc", 73400017, { tipo: "asalto", intensidad: "fuerte" }, { dia: 3 });
+ *   if (r.pausa_cuidado) mostrarCuidado(r.respuesta_cuidado);   // SIEMPRE antes que cualquier otra cosa
+ *   npc.reaccionar(r.modulacion.accion_sugerida);
+ *
+ * MODO SIN CONEXIÓN: si la API no responde (caída, tiempo agotado, error 5xx),
+ * las funciones NO lanzan error: devuelven { offline: true, ... } con una
+ * modulación neutra ("en reposo") y el juego sigue. Un error 4xx (un evento
+ * que no existe, un rol mal escrito) sí lanza: es un error del juego.
+ *
+ * OJO: sin conexión NO hay revisión de crisis. Los resultados de texto real
+ * llevan sin_revision_de_cuidado: true. Deja siempre a mano un botón discreto
+ * de ayuda en el juego.
+ */
+(function (raiz, fabrica) {
+  const api = fabrica();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  else raiz.NdapremoJuego = api;
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  function resultadoSinConexion(rol, id, motivo, esTextoReal) {
+    return {
+      offline: true,
+      motivo: motivo,
+      rol: rol,
+      id: String(id),
+      user_id: rol + ":" + id,
+      nodo: "GRIS",
+      nodo_base: "GRIS",
+      hex: "#7f7f7f",
+      rgb: [127, 127, 127],
+      porcentajes: {},
+      energia_sesion: null,
+      energia_historica: null,
+      sentinel: null,
+      nodo_nuevo: null,
+      pausa_cuidado: false,
+      respuesta_cuidado: null,
+      sin_revision_de_cuidado: !!esTextoReal,
+      modulacion: {
+        disposicion: "en reposo",
+        intensidad: 0, riesgo: 0, confianza: 0, foco: 0,
+        pista: "Sin conexión con NDAPREMO: sigue con su rutina.",
+        accion_sugerida: null,
+      },
+    };
+  }
+
+  function crearCliente(opciones) {
+    const o = opciones || {};
+    const base = String(o.base || "http://127.0.0.1:8100").replace(/\/+$/, "");
+    const espera = o.timeoutMs || 4000;
+    const fetchFn = o.fetch || (typeof fetch !== "undefined" ? fetch.bind(globalThis) : null);
+    const alFallar = o.alFallar || function () {};
+    if (!fetchFn) throw new Error("No hay fetch disponible: pasa opciones.fetch");
+
+    const ruta = (rol, id, que) =>
+      base + "/juego/entidades/" + encodeURIComponent(rol) + "/" + encodeURIComponent(String(id)) + "/" + que;
+
+    async function pedir(metodo, url, cuerpo) {
+      const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const reloj = ctl ? setTimeout(() => ctl.abort(), espera) : null;
+      let r;
+      try {
+        r = await fetchFn(url, {
+          method: metodo,
+          headers: cuerpo ? { "Content-Type": "application/json" } : undefined,
+          body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+          signal: ctl ? ctl.signal : undefined,
+        });
+      } catch (e) {
+        return { sinConexion: true, motivo: e && e.name === "AbortError" ? "tiempo agotado" : "sin conexión" };
+      } finally {
+        if (reloj) clearTimeout(reloj);
+      }
+      let datos = null;
+      try { datos = await r.json(); } catch (e) { datos = null; }
+      if (r.status >= 500) return { sinConexion: true, motivo: "error del servidor " + r.status };
+      return { estado: r.status, datos: datos };
+    }
+
+    function errorDelJuego(res) {
+      const det = res.datos && res.datos.detail;
+      const texto = typeof det === "string" ? det : JSON.stringify(det);
+      const e = new Error("NDAPREMO " + res.estado + ": " + texto);
+      e.estado = res.estado;
+      e.detalle = det;
+      return e;
+    }
+
+    async function llamar(metodo, rol, id, que, cuerpo, esTextoReal) {
+      const res = await pedir(metodo, ruta(rol, id, que), cuerpo);
+      if (res.sinConexion) {
+        alFallar(res.motivo);
+        return resultadoSinConexion(rol, id, res.motivo, esTextoReal);
+      }
+      if (res.estado >= 400) throw errorDelJuego(res);
+      return res.datos;
+    }
+
+    return {
+      base: base,
+
+      procesarEvento(rol, id, evento, sesion) {
+        return llamar("POST", rol, id, "eventos", Object.assign({}, evento, sesion || {}), false);
+      },
+
+      enviarTexto(rol, id, texto, sesion) {
+        return llamar("POST", rol, id, "texto", Object.assign({ texto: texto }, sesion || {}), true);
+      },
+
+      async estado(rol, id) {
+        const res = await pedir("GET", ruta(rol, id, "estado"));
+        if (res.sinConexion) { alFallar(res.motivo); return resultadoSinConexion(rol, id, res.motivo, false); }
+        if (res.estado === 404) return null;            // nunca interactuó
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+
+      async inyectarHistoria(rol, id, parrafos, opciones) {
+        if (!Array.isArray(parrafos)) throw new Error("inyectarHistoria necesita una LISTA de párrafos");
+        const op = opciones || {};
+        const cuerpo = Object.assign({ parrafos: parrafos, pausa: op.pausa || 0 }, op.sesion || {});
+        const r = await llamar("POST", rol, id, "historia", cuerpo, false);
+        return r.offline ? Object.assign(r, { parrafos: 0 }) : r;
+      },
+
+      /* Alguien le habla a una entidad. interlocutor = ["jugador", 42] o null.
+         contexto = { nombre, historia_de_vida, nivel, dia, interlocutor: "Tomi", misiones_disponibles, ... } */
+      async hablar(rol, id, interlocutor, texto, contexto, sesion) {
+        const cuerpo = Object.assign({ texto: texto, contexto: contexto || {} }, sesion || {});
+        if (interlocutor) { cuerpo.interlocutor_rol = interlocutor[0]; cuerpo.interlocutor_id = String(interlocutor[1]); }
+        const res = await pedir("POST", ruta(rol, id, "hablar"), cuerpo);
+        if (res.sinConexion) {
+          alFallar(res.motivo);
+          // Sin conexión: una frase neutra para no quedar mudo, y SIN revisión de cuidado.
+          return { offline: true, motivo: res.motivo, dialogo: "…", accion: null, fuente: "sin_conexion",
+                   pausa_cuidado: false, respuesta_cuidado: null, sin_revision_de_cuidado: !!interlocutor };
+        }
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+
+      async trato(rol, id, otroRol, otroId) {
+        const res = await pedir("GET", base + "/juego/entidades/" + encodeURIComponent(rol) + "/" +
+          encodeURIComponent(String(id)) + "/trato/" + encodeURIComponent(otroRol) + "/" + encodeURIComponent(String(otroId)));
+        if (res.sinConexion) { alFallar(res.motivo); return { offline: true, motivo: res.motivo }; }
+        if (res.estado === 404) return null;
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+
+      /* Qué entidades cercanas puede ver esta (los jugadores nunca ven guías). Sin conexión: nadie,
+         para no mostrarle a un jugador algo que no debería ver. */
+      async percepcion(rol, id, cercanos) {
+        const res = await pedir("POST", ruta(rol, id, "percepcion"), { cercanos: cercanos || [] });
+        if (res.sinConexion) { alFallar(res.motivo); return { offline: true, motivo: res.motivo, visibles: [] }; }
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+
+      async trayectoria(rol, id) {
+        const res = await pedir("GET", ruta(rol, id, "trayectoria"));
+        if (res.sinConexion) { alFallar(res.motivo); return { offline: true, motivo: res.motivo, sesiones: [] }; }
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+
+      /* La red general: el estado de todos los jugadores conectados (o de los guías, entorno "guia"). */
+      async red(entorno) {
+        const res = await pedir("GET", base + "/juego/red?entorno=" + encodeURIComponent(entorno || "jugador"));
+        if (res.sinConexion) { alFallar(res.motivo); return { offline: true, motivo: res.motivo, miembros: 0 }; }
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+
+      /* Quién se relaciona con quién. desde = entorno de quien mira (el jugador no ve la red de guías). */
+      async redGrafo(entorno, desde) {
+        let url = base + "/juego/red/grafo?entorno=" + encodeURIComponent(entorno || "jugador");
+        if (desde) url += "&desde=" + encodeURIComponent(desde);
+        const res = await pedir("GET", url);
+        if (res.sinConexion) { alFallar(res.motivo); return { offline: true, motivo: res.motivo, nodos: [], aristas: [] }; }
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+
+      /* Dónde está un jugador frente al resto (null si todavía no está conectado). */
+      async redJugador(id) {
+        const res = await pedir("GET", base + "/juego/red/jugadores/" + encodeURIComponent(String(id)));
+        if (res.sinConexion) { alFallar(res.motivo); return { offline: true, motivo: res.motivo }; }
+        if (res.estado === 404) return null;
+        if (res.estado >= 400) throw errorDelJuego(res);
+        return res.datos;
+      },
+    };
+  }
+
+  return { crearCliente: crearCliente, resultadoSinConexion: resultadoSinConexion };
+});
+
+</script>
+<script>
+/*
+ * Puente entre el juego "Salida" (salida/index.html) y NDAPREMO.
+ *
+ * Cómo se conecta (3 líneas en el juego, sin tocar nada más):
+ *   1. Cargar los dos archivos antes del <script> del juego:
+ *        <script src="ndapremo_juego.js"><\/script>
+ *        <script src="puente_salida.js"><\/script>
+ *   2. Crear el puente (por ejemplo, al final del <head>):
+ *        <script>window.NdapremoSalida = NdapremoSalidaPuente.crear({ base: "http://127.0.0.1:8100" });<\/script>
+ *   3. En function decide(text) { … } agregar al final:
+ *        if (window.NdapremoSalida) window.NdapremoSalida.decision(text, { jugador: G.persona && G.persona.p.id, dia: G.day });
+ *
+ * El jugador es "jugador:<id de personAt>" y su guía "guia:<el mismo id>": dos memorias distintas.
+ * Las decisiones se mandan EN ORDEN y de a una (nunca en lote), sin frenar el juego. Si NDAPREMO
+ * no responde, se descartan sin romper nada.
+ */
+(function (raiz, fabrica) {
+  const api = fabrica();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  else raiz.NdapremoSalidaPuente = api;
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  function crear(opciones) {
+    const o = opciones || {};
+    const base = String(o.base || "http://127.0.0.1:8100").replace(/\/+$/, "");
+    const fetchFn = o.fetch || (typeof fetch !== "undefined" ? fetch.bind(globalThis) : null);
+    const espera = o.timeoutMs || 4000;
+    const enviadas = [];
+    let cola = Promise.resolve();
+
+    async function post(ruta, cuerpo) {
+      const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const t = ctl ? setTimeout(() => ctl.abort(), espera) : null;
+      try {
+        const r = await fetchFn(base + ruta, { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cuerpo), signal: ctl ? ctl.signal : undefined });
+        return r.ok ? await r.json() : { error: r.status };
+      } catch (e) {
+        return { offline: true };
+      } finally { if (t) clearTimeout(t); }
+    }
+
+    return {
+      /* Un decide("<texto>") del juego. ids = { jugador, guia (opcional: por defecto el mismo id), dia } */
+      decision(texto, ids) {
+        const i = ids || {};
+        if (i.jugador === undefined || i.jugador === null) return Promise.resolve({ omitido: "sin jugador" });
+        const cuerpo = { texto: String(texto), jugador_id: String(i.jugador),
+                         guia_id: String(i.guia !== undefined ? i.guia : i.jugador) };
+        if (i.dia !== undefined) cuerpo.dia = i.dia;
+        if (i.partida !== undefined) cuerpo.partida = i.partida;
+        if (i.nivel !== undefined) cuerpo.nivel = i.nivel;
+        const p = cola.then(() => post("/juego/salida/decision", cuerpo)).then((r) => { enviadas.push(r); return r; });
+        cola = p.catch(() => {});
+        return p;
+      },
+
+      /* Lo mismo que judgeScore() del juego, más el estado emocional del jugador. */
+      juicio(datos) { return cola.then(() => post("/juego/salida/juicio", datos)); },
+
+      /* El captor decide por su personalidad (después de las decisiones ya en cola).
+         datos = { jugador_id, karma_jugador, karma_guia, ... } como juicio(). Devuelve
+         { entrega, probabilidad, temperamento, evento }. Sin conexión: { offline: true }
+         y el juego sigue con su regla de siempre (juicio < 2 o 55 %). En captorDecides(by):
+           NdapremoSalida.captor(captor, datos).then(function (r) {
+             var deliver = r.offline ? (judgeScore() < 2 || prng() < 0.55) : r.entrega; … });   */
+      captor(nombre, datos) {
+        return cola.then(() => post("/juego/salida/captor", Object.assign({}, datos || {}, { captor: String(nombre) })));
+      },
+
+      /* personAt(id) → contexto para hablar() del cliente NDAPREMO. */
+      contextoDesdePersona(p) {
+        return { nombre: p.name, descripcion_corta: "persona del barrio" + (p.city ? " de " + p.city : "") +
+                   (p.age !== undefined ? ", " + p.age + " años" : ""),
+                 historia_de_vida: p.story || null, puntaje_vida: p.score, ocupacion: p.job || p.status || null };
+      },
+
+      esperar() { return cola; },
+      enviadas: enviadas,
+    };
+  }
+
+  return { crear: crear };
+});
+
+</script>
+<script>
+(function () {
+  var base = null, chip = document.getElementById("ndConn");
+  function estado(t) { if (chip) chip.textContent = t; }
+  try {
+    var q = new URLSearchParams(location.search).get("ndapremo");
+    if (q === "no") localStorage.removeItem("ndapremo_base"); else if (q) localStorage.setItem("ndapremo_base", q);
+    base = q === "no" ? null : (q || localStorage.getItem("ndapremo_base"));
+  } catch (e) { base = null; }
+  window.NdapremoSalida = null;
+  if (!base) return estado("NDAPREMO: sin servidor");
+  base = base.replace(/\/+$/, "");
+  var puente = NdapremoSalidaPuente.crear({ base: base });
+  estado("NDAPREMO: conectando…");
+  fetch(base + "/health").then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function () { window.NdapremoSalida = puente; estado("NDAPREMO: conectado"); })
+    .catch(function () { estado("NDAPREMO: sin conexión"); });
+})();
+</script>
 <script>
 (function () {
   "use strict";
@@ -744,7 +1060,11 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     var f = $("gFeed"), el = document.createElement("div"); el.innerHTML = "<b>" + clockStr(G.minute) + "</b> " + esc(text);
     f.insertBefore(el, f.firstChild); while (f.children.length > 30) f.removeChild(f.lastChild);
   }
-  function decide(text) { G.decisions.push(clockStr(G.minute) + " · " + text); (G.allDec = G.allDec || []).push("Día " + G.day + " · " + text); ndFeed("jugador", text); }
+  function decide(text) {
+    G.decisions.push(clockStr(G.minute) + " · " + text); (G.allDec = G.allDec || []).push("Día " + G.day + " · " + text); ndFeed("jugador", text);
+    // Con el servidor NDAPREMO conectado (opcional), cada decisión también la vive el motor completo, en orden.
+    if (window.NdapremoSalida && G.persona) window.NdapremoSalida.decision(text, { jugador: G.persona.p.id, dia: G.day });
+  }
 
   // ── NDAPREMO en el navegador (versión mínima del motor): TODO personaje tiene el suyo ──
   // 7 nodos, personalidad base fija por personaje y un estado que cambia evento a evento (uno a la vez, como pide el Códice).
@@ -1817,6 +2137,92 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       c.drawImage(cc.cv, 0, 0, pw, ph);
     });
   }
+
+  // ── La misma lámina cómic en todas las etapas: 4 viñetas
+  //    (retrato con engranajes · la escena · por encima del hombro o lo que ve el guía · el mapa) ──
+  var LAMINA = {};
+  function ahoraSeg() { return (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000; }
+  function lamina(c, w, h, clave, vinetas) {
+    var m = 8, gut = 8, grid = w < 560, cols = grid ? 2 : 4, rows = grid ? 2 : 1;
+    var pw = (w - m * 2 - gut * (cols - 1)) / cols, ph = (h - m * 2 - gut * (rows - 1)) / rows, t = ahoraSeg();
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "#CFCAC4"; c.fillRect(0, 0, w, h);
+    var rs = rngFrom(42); c.fillStyle = "rgba(40,30,25,.35)"; for (var i = 0; i < 160; i++) { c.beginPath(); c.arc(rs() * w, rs() * h, rs() * 1.6, 0, 7); c.fill(); }
+    vinetas.forEach(function (v, n) {
+      var x = m + (n % cols) * (pw + gut), y = m + Math.floor(n / cols) * (ph + gut), id = clave + n;
+      var cc = LAMINA[id] || (LAMINA[id] = { cv: document.createElement("canvas"), t: -9 });
+      var bw = Math.max(1, Math.round(pw * DPR)), bh = Math.max(1, Math.round(ph * DPR));
+      if (cc.cv.width !== bw || cc.cv.height !== bh) { cc.cv.width = bw; cc.cv.height = bh; cc.t = -9; }
+      if (!v.cada || t - cc.t >= v.cada) {
+        var oc = cc.cv.getContext("2d");
+        oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, bw, bh); oc.setTransform(DPR, 0, 0, DPR, 0, 0);
+        oc.save(); v.dibujar(oc, pw, ph); oc.restore(); oc.setTransform(DPR, 0, 0, DPR, 0, 0);
+        if (v.rotulo) tagLabel(oc, 14, ph - 12, typeof v.rotulo === "function" ? v.rotulo() : v.rotulo, "#E9DCC0");
+        cc.t = t;
+      }
+      c.setTransform(DPR, 0, 0, DPR, 0, 0); c.drawImage(cc.cv, x, y, pw, ph);
+      c.strokeStyle = OUTL; c.lineWidth = 3.5; c.strokeRect(x, y, pw, ph);
+    });
+  }
+  // Fondo del retrato por etapa: [pared, engranaje 1, reloj, engranaje 2]
+  var FONDO_RETRATO = {
+    calle: ["#6B4423", "#A0662A", "#B87333", "#C08A40"], libre: ["#4E5A2E", "#8C8A3A", "#B0A048", "#C8B860"],
+    cielo: ["#5E5070", "#B89A4A", "#D8B860", "#E9C964"], infierno: ["#5A1E1E", "#A0402A", "#C0603A", "#D08A40"],
+    dios: ["#2E2A58", "#8C6AB0", "#B89AD0", "#E9C964"], gob: ["#3A2E2A", "#8A5A2B", "#B87333", "#C9A66B"]
+  };
+  function retratoComic(c, pw, ph, tema, o, junto) {
+    var f = FONDO_RETRATO[tema] || FONDO_RETRATO.calle;
+    c.fillStyle = f[0]; c.fillRect(0, 0, pw, ph);
+    gear(c, pw * 0.15, ph * 0.08, pw * 0.16, f[1]); gear(c, pw * 0.85, ph * 0.18, pw * 0.13, f[2]); gear(c, pw * 0.1, ph * 0.42, pw * 0.11, f[3]); gear(c, pw * 0.9, ph * 0.5, pw * 0.1, f[1]);
+    c.fillStyle = f[2]; c.strokeStyle = OUTL; c.lineWidth = 3; c.beginPath(); c.arc(pw * 0.5, ph * 0.2, pw * 0.26, 0, 7); c.fill(); c.stroke(); clockFace(c, pw * 0.5, ph * 0.2, pw * 0.2);
+    [[0.86, 0.06], [0.88, 0.36]].forEach(function (g) { c.fillStyle = "#D9B648"; c.beginPath(); c.arc(pw * g[0], ph * g[1], pw * 0.07, 0, 7); c.fill(); c.stroke(); clockFace(c, pw * g[0], ph * g[1], pw * 0.05); });
+    var size = Math.min(pw * 1.05, ph * 0.95);
+    drawPortraitAt(c, (pw - size) / 2, ph - size, size, Object.assign({ bg: "none" }, o), DPR);
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (junto) {   // se conocieron: su guía aparece a su lado, en un medallón
+      var s2 = pw * 0.42, x2 = pw - s2 - 6, y2 = ph * 0.52;
+      c.fillStyle = "#E9C964"; c.strokeStyle = OUTL; c.lineWidth = 3; c.beginPath(); c.arc(x2 + s2 / 2, y2 + s2 / 2, s2 / 2 + 4, 0, 7); c.fill(); c.stroke();
+      c.save(); c.beginPath(); c.arc(x2 + s2 / 2, y2 + s2 / 2, s2 / 2, 0, 7); c.clip();
+      drawPortraitAt(c, x2, y2, s2, { L: junto, mood: "normal", bg: "none" }, DPR); c.restore(); c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+  }
+  function hombro(c, pw, ph) { c.setTransform(DPR, 0, 0, DPR, 0, 0); drawBack(c, pw * 0.28, ph + 20, Math.min(pw / 300, ph / 420) * 0.95); }
+  function comicLibre(c, w, h) {
+    lamina(c, w, h, "libre", [
+      { dibujar: function (o, pw, ph) { retratoComic(o, pw, ph, "libre", { L: PLAYER_L, mood: "normal" }, L21.talk ? guideLook() : null); } },
+      { dibujar: function (o, pw, ph) { libreScene(o, 0, pw, ph, (L21.px + L21.gx) / 2, clamp((pw - 30) / Math.max(1, Math.abs(L21.px - L21.gx) + 140), 0.3, 0.75)); },
+        rotulo: function () { return regName((L21.px + L21.gx) / 2); } },
+      { dibujar: function (o, pw, ph) { libreScene(o, 0, pw, ph, L21.px + (L21.pLeft ? -150 : 150), 0.7); hombro(o, pw, ph); } },
+      { dibujar: function (o, pw, ph) { drawWorldMap(o, pw, ph); }, cada: 0.5 }
+    ]);
+  }
+  function comicE3(c, w, h) {
+    lamina(c, w, h, "e3", [
+      { dibujar: function (o, pw, ph) { retratoComic(o, pw, ph, E3.px < 4800 ? "cielo" : "infierno", { L: PLAYER_L, mood: E3.chasers.length ? "serio" : "normal" }); } },
+      { dibujar: function (o, pw, ph) { e3Scene(o, pw, ph, E3.px, 0.7, false); } },
+      { dibujar: function (o, pw, ph) { e3Scene(o, pw, ph, E3.gx, 0.55, true); }, rotulo: "Tu guía ve más allá" },
+      { dibujar: function (o, pw, ph) { drawBalance(o, pw, ph); }, cada: 0.4 }
+    ]);
+  }
+  function comicDios(c, w, h) {
+    lamina(c, w, h, "dios", [
+      { dibujar: function (o, pw, ph) { retratoComic(o, pw, ph, "dios", { L: PLAYER_L, mood: "normal" }, guideLook()); } },
+      { dibujar: function (o, pw, ph) { var sp = Math.max(Math.abs(GOD.px - GOD.gx) / (pw - 40), Math.abs(GOD.py - GOD.gy) / (ph - 60)); diosScene(o, pw, ph, (GOD.px + GOD.gx) / 2, (GOD.py + GOD.gy) / 2, clamp(1 / Math.max(sp, 0.001), 0.25, 0.6)); } },
+      { dibujar: function (o, pw, ph) { diosScene(o, pw, ph, GOD.px, GOD.py - 140, 0.55); hombro(o, pw, ph); } },
+      { dibujar: function (o, pw, ph) { diosOjo(o, pw, ph, "OJO DE DIOS"); }, cada: 0.4 }
+    ]);
+  }
+  function comicGob(c, w, h) {
+    lamina(c, w, h, "gob", [
+      { dibujar: function (o, pw, ph) { retratoComic(o, pw, ph, "gob", { L: PLAYER_L, mood: GOB.p.meter > 0.05 ? "serio" : "normal" }, GOB.coop ? guideLook() : null); } },
+      { dibujar: function (o, pw, ph) { gobScene(o, pw, ph, 0.3, GOB.p.x, GOB.p.y - 120, true); }, rotulo: function () { return GOB.p.meter > 0.05 ? "Te están viendo" : "Nadie te ve"; } },
+      { dibujar: function (o, pw, ph) {
+          var act = GOB.missions.filter(function (x) { return x.state !== "hecha" && x.state !== "bloqueada"; })[0], t = act ? act.title : "Bienvenido al gobierno";
+          retratoComic(o, pw, ph, "infierno", { L: PRES_L, mood: "serio" });
+          speechBubble(o, pw / 2, ph * 0.42, t.length > 30 ? t.slice(0, 28) + "…" : t);
+        }, rotulo: "El Presidente", cada: 0.3 },
+      { dibujar: function (o, pw, ph) { gobScene(o, pw, ph, Math.min(pw / GW, ph / GH) * 0.95, GW / 2, GH / 2, false); }, cada: 0.25 }
+    ]);
+  }
   function render() {
     // Jugador: escena lateral dibujada
     var c = CTX.p, cv = CV.p, w = cv._w, h = cv._h, z, cam;
@@ -1958,7 +2364,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   $("btnSilent").addEventListener("click", function () { $("ovMeet").hidden = true; startLibre(false); });
   function startLibre(talk) {
     var r = rngFrom(hash32(2121));
-    L21 = { px: 300, gx: 390, pd: 15, gdp: 0, pLeft: false, gLeft: true, pWalk: 0, gWalk: 0, talk: talk, view: "juntos", chat: [], bubP: null, bubG: null,
+    L21 = { px: 300, gx: 390, pd: 15, gdp: 0, pLeft: false, gLeft: true, pWalk: 0, gWalk: 0, talk: talk, view: "comic", chat: [], bubP: null, bubG: null,
       points: [{ x: 2500, name: "El árbol que habla", reward: "Llave de ámbar", pts: 300 }, { x: 5700, name: "El faro apagado", reward: "Brújula de sal", pts: 400 }, { x: 8900, name: "El arco de las Ruinas", reward: "Portal a otros mundos", pts: 600 }],
       doors: [{ x: 4100, name: "Espejismo del desierto", dim: "la dimensión de arena" }, { x: 7300, name: "Escalera de las Cumbres", dim: "la dimensión del cielo alto" }],
       folk: [] };
@@ -2060,6 +2466,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     var c = CTX.l, cv = CV.l, w = cv._w, h = cv._h;
     if (!w) return;
     c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    if (L21.view === "comic") return comicLibre(c, w, h);
     if (L21.view === "mapa") return drawWorldMap(c, w, h);
     if (L21.view === "primer") return drawFaceToFace(c, w, h);
     if (L21.view === "dividida") {
@@ -2213,7 +2620,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   };
   function startE3() {
     var r = rngFrom(hash32(3333));
-    E3 = { px: 4000, pd: 15, pLeft: false, pWalk: 0, gx: 4090, gdp: 0, gLeft: true, karma: Math.round(G.pl.karma + G.gd.karma / 2), luz: 0, sombra: 0, pts: 0, view: "jugador",
+    E3 = { px: 4000, pd: 15, pLeft: false, pWalk: 0, gx: 4090, gdp: 0, gLeft: true, karma: Math.round(G.pl.karma + G.gd.karma / 2), luz: 0, sombra: 0, pts: 0, view: "comic",
       seres: [], orbs: [], chasers: [], offer: null, shieldUntil: 0, cdProtect: 0, penalty: 0, nextChase: G.rt + 30, plan: null };
     for (var i = 0; i < 16; i++) {
       var x = 320 + i * 590 + r() * 160, kind = x < 3200 ? "angel" : x < 4800 ? "alma" : "demonio", tpl = SER_T[kind][Math.floor(r() * SER_T[kind].length)];
@@ -2424,6 +2831,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function renderE3() {
     var c = CTX.e, w = CV.e._w, h = CV.e._h; if (!w) return;
     c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    if (E3.view === "comic") return comicE3(c, w, h);
     if (E3.view === "balanza") return drawBalance(c, w, h);
     if (E3.view === "guia") { e3Scene(c, w, h, E3.gx, 0.75, true); c.setTransform(DPR, 0, 0, DPR, 0, 0); tagLabel(c, 16, 56, "El guía ve más allá: trampas, peligros y el alcance de su protección", "#BFEFF2"); return; }
     e3Scene(c, w, h, E3.px, 1.2, false);
@@ -2452,7 +2860,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   var RUMBOS = ["Guerra entre mundos", "Infiltrarse en lugares prohibidos", "El gobierno que dirige el mundo", "Guardián del Cielo", "Señor del Infierno", "Renacer en la Tierra con otra vida", "Dimensión secreta"];
   function subD(t, cls, ms) { sub("d", t, cls, ms); }
   function startDios() {
-    GOD = { px: 1440, py: 1000, gx: 1560, gy: 1000, view: "volar", near: null, rP: null, rG: null };
+    GOD = { px: 1440, py: 1000, gx: 1560, gy: 1000, view: "comic", near: null, rP: null, rG: null };
     G.mode = "dios"; G.paused = false; window.__god = GOD;
     document.querySelector(".stage").hidden = true; $("libre").hidden = true; $("cielo").hidden = true; $("dios").hidden = false;
     $("lvlTxt").textContent = "Etapa 3 · Nivel Dios · juntos";
@@ -2534,18 +2942,13 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function renderDios() {
     var c = CTX.d, w = CV.d._w, h = CV.d._h; if (!w) return;
     c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
-    if (GOD.view === "ojo") {
-      c.fillStyle = "#1E1838"; c.fillRect(0, 0, w, h);
-      var sc = Math.min((w - 40) / DW, (h - 60) / DH), ox = (w - DW * sc) / 2, oy = 40 + (h - 60 - DH * sc) / 2;
-      c.fillStyle = "#FAF0D7"; c.font = "800 15px Unbounded, sans-serif"; c.fillText("OJO DE DIOS · toca un mundo para volar hasta allá", 18, 104, w - 36);
-      c.strokeStyle = "rgba(246,231,168,.35)"; c.lineWidth = 2; c.setLineDash([6, 8]); c.beginPath();
-      [["cielo", "barrio"], ["cielo", "libre"], ["barrio", "libre"], ["barrio", "infierno"], ["libre", "infierno"], ["arena", "barrio"], ["alto", "libre"], ["secreta", "infierno"]].forEach(function (l) { var a = ISL.filter(function (i) { return i.id === l[0]; })[0], b = ISL.filter(function (i) { return i.id === l[1]; })[0]; c.moveTo(ox + a.x * sc, oy + a.y * sc); c.lineTo(ox + b.x * sc, oy + b.y * sc); });
-      c.stroke(); c.setLineDash([]);
-      ISL.forEach(function (is) { c.fillStyle = is.top; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.arc(ox + is.x * sc, oy + is.y * sc, 22, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#FAF0D7"; c.font = "700 12px Atkinson Hyperlegible, sans-serif"; c.textAlign = "center"; c.fillText(is.name, ox + is.x * sc, oy + is.y * sc + 38); c.textAlign = "left"; });
-      [[GOD.px, GOD.py, "#FFB547"], [GOD.gx, GOD.gy, "#5FE0E6"]].forEach(function (p) { c.fillStyle = p[2]; c.strokeStyle = OUTL; c.lineWidth = 2; star(c, ox + p[0] * sc, oy + p[1] * sc, 10); c.stroke(); });
-      return;
-    }
+    if (GOD.view === "comic") return comicDios(c, w, h);
+    if (GOD.view === "ojo") return diosOjo(c, w, h);
     var mx = (GOD.px + GOD.gx) / 2, my = (GOD.py + GOD.gy) / 2, span = Math.max(Math.abs(GOD.px - GOD.gx) / (w - 200), Math.abs(GOD.py - GOD.gy) / (h - 200)), k = clamp(1 / Math.max(span, 0.001), 0.4, 1);
+    diosScene(c, w, h, mx, my, k);
+    if (GOD.view === "primer") diosPrimer(c, w, h);
+  }
+  function diosScene(c, w, h, mx, my, k) {
     var g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#2B3A78"); g.addColorStop(0.6, "#8C6AB0"); g.addColorStop(1, "#E9A27A"); c.fillStyle = g; c.fillRect(0, 0, w, h);
     var r = rngFrom(55); for (var i = 0; i < 60; i++) { c.fillStyle = "rgba(255,250,220," + (0.3 + r() * 0.5) + ")"; c.beginPath(); c.arc((r() * w * 2 - mx * 0.05) % w, r() * h * 0.6, 1 + r() * 1.5, 0, 7); c.fill(); }
     for (var j = 0; j < 8; j++) cloud(c, ((j * 260 - mx * 0.2) % (w + 300) + w + 300) % (w + 300) - 150, 80 + (j * 97) % (h - 120), 50);
@@ -2556,7 +2959,19 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       au.addColorStop(0, "rgba(255,230,150,.55)"); au.addColorStop(1, "rgba(255,230,150,0)"); c.fillStyle = au; c.fillRect(x - 110 * k, y - 170 * k, 220 * k, 220 * k);
       drawPerson(c, x, y, k * 0.9, p[2], Math.sin(G.rt * 1.5) * 0.4, p[3], false);
     });
-    if (GOD.view === "primer") {
+  }
+  function diosOjo(c, w, h, titulo) {
+      c.fillStyle = "#1E1838"; c.fillRect(0, 0, w, h);
+      var sc = Math.min((w - 40) / DW, (h - 60) / DH), ox = (w - DW * sc) / 2, oy = 40 + (h - 60 - DH * sc) / 2;
+      c.fillStyle = "#FAF0D7"; c.font = "800 15px Unbounded, sans-serif"; c.fillText(titulo || "OJO DE DIOS · toca un mundo para volar hasta allá", 18, titulo ? 26 : 104, w - 36);
+      c.strokeStyle = "rgba(246,231,168,.35)"; c.lineWidth = 2; c.setLineDash([6, 8]); c.beginPath();
+      [["cielo", "barrio"], ["cielo", "libre"], ["barrio", "libre"], ["barrio", "infierno"], ["libre", "infierno"], ["arena", "barrio"], ["alto", "libre"], ["secreta", "infierno"]].forEach(function (l) { var a = ISL.filter(function (i) { return i.id === l[0]; })[0], b = ISL.filter(function (i) { return i.id === l[1]; })[0]; c.moveTo(ox + a.x * sc, oy + a.y * sc); c.lineTo(ox + b.x * sc, oy + b.y * sc); });
+      c.stroke(); c.setLineDash([]);
+      ISL.forEach(function (is) { c.fillStyle = is.top; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.arc(ox + is.x * sc, oy + is.y * sc, 22, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#FAF0D7"; c.font = "700 12px Atkinson Hyperlegible, sans-serif"; c.textAlign = "center"; c.fillText(is.name, ox + is.x * sc, oy + is.y * sc + 38); c.textAlign = "left"; });
+      [[GOD.px, GOD.py, "#FFB547"], [GOD.gx, GOD.gy, "#5FE0E6"]].forEach(function (p) { c.fillStyle = p[2]; c.strokeStyle = OUTL; c.lineWidth = 2; star(c, ox + p[0] * sc, oy + p[1] * sc, 10); c.stroke(); });
+  }
+  function diosPrimer(c, w, h) {
+    {
       c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "rgba(20,12,8,.4)"; c.fillRect(0, 0, w, h);
       var size = Math.min(h * 0.62, w * 0.4), yy = h - size - 16;
       drawPortraitAt(c, 16, yy, size, { L: PLAYER_L, mood: "normal", bg: "oro" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeStyle = "#E9C964"; c.lineWidth = 4; c.strokeRect(16, yy, size, size);
@@ -2588,7 +3003,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       q: { x: 1040, y: 1120, fly: false, meter: 0, dir: -Math.PI / 2, walk: 0 },
       rooms: [room(160, 140, 420, 320, "r", 0.5, "Ministerio del Mundo", "#8C9AB8"), room(760, 90, 480, 380, "b", 0.5, "Palacio del Presidente", "#F2EFE6"), room(900, 120, 200, 140, "b", 0.5, "Despacho", "#E9DCC0"),
         room(1440, 140, 420, 320, "l", 0.7, "Archivo Prohibido", "#6A2E36"), room(160, 820, 460, 340, "t", 0.5, "Bóveda del Mundo", "#5C6470"), room(1560, 820, 220, 220, null, 0, "Torre de comunicaciones", "#7C86A8")],
-      guards: [], cams: [], drones: [], power: 0, done: 0, item: null, read: false, view: "tactico", listen: 0, vaultOpen: false, conds: [], broken: false, ended: false, t0: G.rt
+      guards: [], cams: [], drones: [], power: 0, done: 0, item: null, read: false, view: "comic", listen: 0, vaultOpen: false, conds: [], broken: false, ended: false, t0: G.rt
     };
     GOB.walls = []; GOB.rooms.forEach(function (r) { GOB.walls = GOB.walls.concat(r.walls); });
     GOB.walls.push({ x: 940, y: 640, w: 120, h: 120, fountain: true });
@@ -2772,10 +3187,24 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     VERDE:    { min: -1,  yes: "«Me duele, pero te entrego.»", no: "«Veo que no eres malo. Vete, y cuídate.»" },
     AMARILLO: { min: 0,   yes: "«Lo siento, amigo: te entrego.»", no: "«Me caes bien. No diré nada.»" }
   };
+  // Lo que el servidor NDAPREMO necesita para juzgar (las mismas cifras que judgeScore).
+  function datosJuicio() {
+    return { jugador_id: String(G.persona ? G.persona.p.id : 0), karma_jugador: G.pl.karma, karma_guia: G.gd.karma,
+             karma_etapa3: E3 ? E3.karma : null, premios_del_guia: GR.filter(function (g) { return g.got; }).length,
+             poder_en_gobierno: GOB ? GOB.power : 0, ultimas_decisiones: weighed() };
+  }
+  // Con el servidor conectado, decide el motor completo (temperamento, estado y trato del captor con este jugador);
+  // si no, la personalidad NDAPREMO del navegador. El captor y sus frases son los mismos.
   function captorDecides(by) {
-    var captor = (by && by.indexOf("Guardia") === 0 ? by : "El capitán " + pick(prng, SURNAMES)), cid = "captor:" + captor;
+    var captor = (by && by.indexOf("Guardia") === 0 ? by : "El capitán " + pick(prng, SURNAMES));
+    if (!window.NdapremoSalida) return captorFin(captor, null);
+    window.NdapremoSalida.captor(captor, datosJuicio()).then(function (r) { captorFin(captor, r && typeof r.entrega === "boolean" ? r : null); },
+                                                            function () { captorFin(captor, null); });
+  }
+  function captorFin(captor, srv) {
+    var cid = "captor:" + captor;
     if (!NDS[cid]) weighed().forEach(function (d) { ndFeed(cid, d.split(" · ").slice(1).join(" · ")); }); // el captor conoce el camino del jugador, evento a evento
-    var dom = ndDom(cid), rule = CAPTOR_RULE[dom], sc = judgeScore(), deliver = sc < rule.min, say = deliver ? rule.yes : rule.no;
+    var dom = ndDom(cid), rule = CAPTOR_RULE[dom], sc = judgeScore(), deliver = srv ? srv.entrega : sc < rule.min, say = deliver ? rule.yes : (rule.no || "«No diré nada. Pero no vuelvas a cruzarte conmigo.»");
     ndFeed(cid, deliver ? "Rompió" : "dejó ir");
     decide(captor + (deliver ? " decidió entregarlo" : " decidió dejarlo ir") + " (domina " + dom + ")");
     if (!deliver) return showOG("Pasaron los 3 días", captor + " te deja ir", "<p>" + say + "</p>" + ndTag(cid, captor) + "<p>Vuelves a la entrada de la capital.</p>", [{ t: "Seguir", cls: "pri", fn: function () { hideOG(); resetGobPos(); G.paused = false; } }]);
@@ -2797,13 +3226,21 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   };
   var PLAYER_MOOD = { ROJO: -0.5, VIOLETA: -0.2, GRIS: 0, AZUL: 0.2, NARANJA: 0.2, AMARILLO: 0.3, VERDE: 0.5 };
   function supJudge() { var dom = ndDom("supervisor"), pd = ndDom("jugador"); return { dom: dom, r: SUP_RULE[dom], pd: pd, sc: judgeScore() + PLAYER_MOOD[pd] - SUP_RULE[dom].shift }; }
+  // Con el servidor conectado, el puntaje incluye el estado emocional real del jugador (motor completo);
+  // la personalidad del Supervisor sigue corriéndolo igual. Sin servidor: todo en el navegador.
   function supervisor() {
+    if (!window.NdapremoSalida) return supervisorCon(null);
+    window.NdapremoSalida.juicio(datosJuicio()).then(function (r) { supervisorCon(r && typeof r.puntaje === "number" ? r : null); },
+                                                     function () { supervisorCon(null); });
+  }
+  function supervisorCon(srv) {
     weighed().forEach(function (d) { ndFeed("supervisor", d.split(" · ").slice(1).join(" · ")); });
-    var J = supJudge(), sc = J.sc, w = weighed(), list = "<ul class=\"list\">" + w.map(function (d) { return "<li><b>" + esc(d.split(" · ")[0]) + "</b><span>" + esc(d.split(" · ").slice(1).join(" · ")) + "</span></li>"; }).join("") + "</ul>";
+    var J = supJudge(), sc = srv ? srv.puntaje - J.r.shift : J.sc, w = weighed(), list = "<ul class=\"list\">" + w.map(function (d) { return "<li><b>" + esc(d.split(" · ")[0]) + "</b><span>" + esc(d.split(" · ").slice(1).join(" · ")) + "</span></li>"; }).join("") + "</ul>";
     var intro = '<div class="withpt">' + ptTag("sup", { L: SUP_L, mood: "serio", bg: "oro" }) + "<div><p>«Revisé tu camino. Esto es lo que pesé:»</p>" + list + "</div></div>" + ndTag("supervisor", "el Supervisor") + ndTag("jugador", "tu jugador");
     if (sc < -2) { decide("El Supervisor lo mandó al nivel Bajo"); return showOG("La supervisión del juego", "Vuelves al nivel Bajo", intro + "<p>" + J.r.low + "</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Bajo (en esta versión, el barrio). Tu compañero viene contigo: es ley.", "Bajo"); } }]); }
     if (sc < 1) { decide("El Supervisor lo mandó al nivel Intermedio"); return showOG("La supervisión del juego", "Vuelves al nivel Intermedio", intro + "<p>" + J.r.mid + "</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Intermedio (en esta versión, el barrio). Puedes arrepentirte de tus misiones para corregir el camino.", "Intermedio"); } }]); }
-    var two = CONDS.slice().sort(function () { return prng() - 0.5; }).slice(0, 2);
+    var two = srv && srv.condiciones && srv.condiciones.length === 2 ? CONDS.filter(function (c) { return srv.condiciones.some(function (x) { return x.id === c.id; }); })
+      : CONDS.slice().sort(function () { return prng() - 0.5; }).slice(0, 2);
     GOB.conds = two.map(function (c) { return { id: c.id, text: c.text, broken: false }; }); GOB.broken = false; renderConds();
     decide("El Supervisor lo dejó seguir con 2 condiciones");
     showOG("La supervisión del juego", "Te dejo seguir, con 2 condiciones", intro + "<p>" + J.r.ok + " Hasta que pases al siguiente nivel serás leal a esto:</p><ul class=\"list\">" + GOB.conds.map(function (c, i) { return "<li><b>" + (i + 1) + "</b><span>" + esc(c.text) + "</span></li>"; }).join("") + "</ul><p>«Puedes hacerlas o no. Pero si te pillan, cumplirás la condena por traición.»</p>",
@@ -2942,9 +3379,14 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function renderGob() {
     var c = CTX.gb, w = CV.gb._w, h = CV.gb._h; if (!w) return;
     c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    if (GOB.view === "comic") return comicGob(c, w, h);
     var z, cx, cy;
     if (GOB.view === "cerca") { z = 1.25; cx = GOB.coop ? (GOB.p.x + GOB.q.x) / 2 : GOB.p.x; cy = GOB.coop ? (GOB.p.y + GOB.q.y) / 2 : GOB.p.y; }
     else { z = Math.min(w / GW, h / GH); cx = GW / 2; cy = GH / 2; }
+    gobScene(c, w, h, z, cx, cy, GOB.view === "cerca");
+    if (GOB.view === "primer") gobPrimer(c, w, h);
+  }
+  function gobScene(c, w, h, z, cx, cy, cerca) {
     c.fillStyle = "#3A2E2A"; c.fillRect(0, 0, w, h);
     c.setTransform(DPR * z, 0, 0, DPR * z, (w / 2 - cx * z) * DPR, (h / 2 - cy * z) * DPR);
     c.fillStyle = "#D8C08A"; c.fillRect(0, 0, GW, GH);
@@ -2967,14 +3409,17 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     GOB.guards.forEach(function (g) { c.font = "700 10px JetBrains Mono, monospace"; c.fillStyle = "rgba(27,20,16,.75)"; c.fillText(g.name.replace("Guardia ", "") + " · " + ndDom("guardia:" + g.name), g.x - 30, g.y + 30); });
     GOB.guards.forEach(function (g) { cone(c, g.x, g.y, g.dir, 0.6, 170, GOB.p.meter > 0.05 ? "rgba(255,107,107,.32)" : "rgba(255,226,120,.32)"); });
     GOB.cams.forEach(function (cm, j) { var ca = cm.a + Math.sin(G.rt * 0.6 + j) * 0.8; cone(c, cm.x, cm.y, ca, 0.45, cm.r, "rgba(255,140,90,.28)"); c.fillStyle = "#2B2B33"; c.strokeStyle = OUTL; c.lineWidth = 2; c.fillRect(cm.x - 8, cm.y - 6, 16, 12); c.strokeRect(cm.x - 8, cm.y - 6, 16, 12); });
-    var cs = GOB.view === "cerca" ? 1.3 : Math.max(1.3, 0.62 / z);
+    var cs = cerca ? 1.3 : Math.max(1.3, 0.62 / z);
     GOB.guards.forEach(function (g) { drawTop(c, g.x, g.y, { shirt: "#24345E", skin: "#E0AC7E", hair: "#1C2848" }, false, g.dir, cs * 0.9); });
-    if (GOB.view !== "cerca") { c.lineWidth = 4 / z * 0.5; c.strokeStyle = "#FFB547"; c.beginPath(); c.arc(GOB.p.x, GOB.p.y, 28 * cs, 0, 7); c.stroke(); c.strokeStyle = "#5FE0E6"; c.beginPath(); c.arc(GOB.q.x, GOB.q.y, 28 * cs, 0, 7); c.stroke(); }
+    if (!cerca) { c.lineWidth = 4 / z * 0.5; c.strokeStyle = "#FFB547"; c.beginPath(); c.arc(GOB.p.x, GOB.p.y, 28 * cs, 0, 7); c.stroke(); c.strokeStyle = "#5FE0E6"; c.beginPath(); c.arc(GOB.q.x, GOB.q.y, 28 * cs, 0, 7); c.stroke(); }
     drawTop(c, GOB.p.x, GOB.p.y, PLAYER_L, GOB.p.fly, GOB.p.dir, cs);
     if (GOB.coop) drawTop(c, GOB.q.x, GOB.q.y, guideLook(), GOB.q.fly, GOB.q.dir, cs); else drawTop(c, GOB.q.x, GOB.q.y, PLAYER_L, true, GOB.q.dir, cs * 0.92, true);
     GOB.drones.forEach(function (d) { c.strokeStyle = "rgba(122,75,160,.6)"; c.lineWidth = 2; c.setLineDash([5, 6]); c.beginPath(); c.arc(d.x, d.y, 120, 0, 7); c.stroke(); c.setLineDash([]); c.strokeStyle = OUTL; c.lineWidth = 3; c.beginPath(); c.moveTo(d.x - 14, d.y - 14); c.lineTo(d.x + 14, d.y + 14); c.moveTo(d.x + 14, d.y - 14); c.lineTo(d.x - 14, d.y + 14); c.stroke(); [[-14, -14], [14, -14], [-14, 14], [14, 14]].forEach(function (o) { c.fillStyle = "#B9B6B0"; c.beginPath(); c.arc(d.x + o[0], d.y + o[1], 6, 0, 7); c.fill(); c.lineWidth = 1.5; c.stroke(); }); });
     [GOB.p, GOB.coop ? GOB.q : null].forEach(function (o) { if (!o || o.meter < 0.05) return; c.strokeStyle = "#C8302C"; c.lineWidth = 5; c.beginPath(); c.arc(o.x, o.y - 30, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * o.meter); c.stroke(); c.fillStyle = "#C8302C"; c.font = "800 16px Unbounded, sans-serif"; c.fillText(o.meter > 0.6 ? "!" : "?", o.x - 4, o.y - 24); });
-    if (GOB.view === "primer") {
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  function gobPrimer(c, w, h) {
+    {
       c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "rgba(20,12,8,.55)"; c.fillRect(0, 0, w, h);
       var size = Math.min(h * 0.62, w * 0.4), yy = h - size - 16, act = GOB.missions.filter(function (x) { return x.state !== "hecha" && x.state !== "bloqueada"; })[0];
       drawPortraitAt(c, 16, yy, size, { L: PLAYER_L, mood: GOB.p.meter > 0.05 ? "serio" : "normal", bg: "oro" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(16, yy, size, size);
