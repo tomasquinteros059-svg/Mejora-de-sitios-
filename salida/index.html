@@ -335,6 +335,29 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     </div>
   </section>
 
+  <section class="view libre" id="gob" hidden aria-label="El gobierno que dirige el mundo">
+    <div class="vhead">
+      <h2><i style="background:var(--coral)"></i>Etapa 3 · El gobierno que dirige el mundo</h2>
+      <small>Jugador <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · volar <kbd>F</kbd> · correr <kbd>Shift</kbd> · compañero <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd></small>
+    </div>
+    <div class="canvasbox">
+      <canvas class="vc" id="cvGob" aria-label="La capital del mundo"></canvas>
+      <div class="overlaytxt"><span id="gbState">A pie</span><span id="gbAlert">Nadie te ve</span></div>
+      <div class="subs" id="subsGb"></div>
+    </div>
+    <div class="panel">
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwGob"><button type="button" data-v="tactico" aria-pressed="true">Plano táctico</button><button type="button" data-v="cerca" aria-pressed="false">Cerca</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div class="kv">
+        <div><small>Poder en el gobierno</small><b id="gobPower">0</b></div>
+        <div><small>Órdenes cumplidas</small><b id="gobDone">0 de 3</b></div>
+      </div>
+      <div class="row"><button class="btn pri" id="btnFlyP" type="button">Volar (F)</button><button class="btn cy" id="btnFlyQ" type="button">Compañero: volar (L)</button><span class="hint" id="gobPartner"></span></div>
+      <p class="hint">Conos amarillos: guardias (ven a pie y en el aire). Conos naranjos: cámaras. Círculos morados: drones (solo ven a quien vuela). Los muros tapan la vista a los que van a pie.</p>
+      <div id="gobMis" style="display:grid;gap:8px"></div>
+      <div class="card"><span class="tag r">Condiciones de lealtad del Supervisor</span><ul class="list gr" id="gobCond"></ul></div>
+    </div>
+  </section>
+
   <section class="world" aria-labelledby="wTitle">
     <h2 id="wTitle">Mundo Ndapremo · 200.000.000 de personas</h2>
     <p class="hint" style="font-size:14px;max-width:80ch">Cada persona del mundo se genera al instante desde su número, siempre igual, sin guardarla. En la ciudad solo se simulan en detalle las 1.500 del barrio donde están los jugadores. Busca a cualquiera por su número o mira cómo se reparten.</p>
@@ -373,6 +396,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <button class="persona" type="button" data-life="seguir" aria-pressed="true"><b>Sigo mi vida</b><small>Partes desde tu casa con tu puntaje completo y tus rutinas.</small></button>
       <button class="persona" type="button" data-life="dejar" aria-pressed="false"><b>Dejo mi vida atrás</b><small>Partes desde la plaza con menos puntaje y te llegan más misiones sorpresa.</small></button>
     </div>
+    <div class="row"><span class="hint">Modo demo · saltar directo a:</span><button class="btn" type="button" data-demo="21">Nivel 2.1</button><button class="btn" type="button" data-demo="e3">Del Cielo al Infierno</button><button class="btn" type="button" data-demo="dios">Nivel Dios</button><button class="btn" type="button" data-demo="gob">El gobierno</button></div>
     <div class="row"><button class="btn pri" id="btnStart" type="button" style="font-size:16px;padding:10px 18px">Entrar a la ciudad</button><span class="hint">Datos y personajes generados al azar. Los niños del juego están protegidos: nadie puede dañarlos.</span></div>
   </div>
 </div>
@@ -414,6 +438,15 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       <button class="persona" type="button" id="btnTalk"><b>Hablar</b><small>Se dicen quiénes son y pueden conversar durante todo el viaje.</small></button>
       <button class="persona" type="button" id="btnSilent"><b>Seguir sin hablar</b><small>Viajan juntos, pero solo se comunican con señas.</small></button>
     </div>
+  </div>
+</div>
+<!-- Gobierno: captura, Supervisor y condena -->
+<div class="ov" id="ovGob" hidden>
+  <div class="ovbox">
+    <span class="tag r" id="ogTag"></span>
+    <h2 id="ogTitle"></h2>
+    <div id="ogBody" style="display:grid;gap:10px"></div>
+    <div class="row" id="ogBtns"></div>
   </div>
 </div>
 <!-- Fin de etapa -->
@@ -688,7 +721,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function sub(where, text, cls, ms) {
-    var box = $({ p: "subsP", l: "subsL", e: "subsE", d: "subsD" }[where] || "subsG"), el = document.createElement("div");
+    var box = $({ p: "subsP", l: "subsL", e: "subsE", d: "subsD", gb: "subsGb" }[where] || "subsG"), el = document.createElement("div");
     el.className = "sub " + (cls || "s"); el.textContent = text; box.appendChild(el);
     while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(function () { if (el.parentNode) el.remove(); }, ms || 6000);
@@ -1190,9 +1223,9 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   // =========================================================
   //  Dibujo
   // =========================================================
-  var CV = { p: $("cvP"), g: $("cvG"), l: $("cvL"), e: $("cvE"), d: $("cvD") }, CTX = { p: CV.p.getContext("2d"), g: CV.g.getContext("2d"), l: CV.l.getContext("2d"), e: CV.e.getContext("2d"), d: CV.d.getContext("2d") };
+  var CV = { p: $("cvP"), g: $("cvG"), l: $("cvL"), e: $("cvE"), d: $("cvD"), gb: $("cvGob") }, CTX = { p: CV.p.getContext("2d"), g: CV.g.getContext("2d"), l: CV.l.getContext("2d"), e: CV.e.getContext("2d"), d: CV.d.getContext("2d"), gb: CV.gb.getContext("2d") };
   var DPR = Math.min(2, window.devicePixelRatio || 1);
-  function fit() { ["p", "g", "l", "e", "d"].forEach(function (k) { var c = CV[k], r = c.getBoundingClientRect(); c.width = Math.round(r.width * DPR); c.height = Math.round(r.height * DPR); c._w = r.width; c._h = r.height; }); }
+  function fit() { ["p", "g", "l", "e", "d", "gb"].forEach(function (k) { var c = CV[k], r = c.getBoundingClientRect(); c.width = Math.round(r.width * DPR); c.height = Math.round(r.height * DPR); c._w = r.width; c._h = r.height; }); }
   window.addEventListener("resize", fit); fit();
   G.viewP = "lateral"; G.viewG = "libro";
   function bindViews(id, fn) {
@@ -2134,7 +2167,9 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
   $("rumbos").addEventListener("click", function (e) { var b = e.target.closest("[data-rb]"); if (!b) return; if (b.getAttribute("data-rb") === "p") GOD.rP = +b.getAttribute("data-i"); else GOD.rG = +b.getAttribute("data-i"); renderRumbos(); });
   $("btnRumbo").addEventListener("click", function () {
-    var a = RUMBOS[GOD.rP], b = RUMBOS[GOD.rG]; G.paused = true; decide("Tomaron su rumbo: jugador → " + a + "; guía → " + b);
+    var a = RUMBOS[GOD.rP], b = RUMBOS[GOD.rG]; decide("Tomaron su rumbo: jugador → " + a + "; guía → " + b);
+    if (GOD.rP === 2 || GOD.rG === 2) { startGob(GOD.rP === 2 && GOD.rG === 2); return; }
+    G.paused = true;
     stageEnd("Tomaron su rumbo", GOD.rP === GOD.rG ? "Van juntos: " + a + ". Como en el Nivel Dios lo saben todo, nadie los podrá engañar, pero sí ver: en los rumbos de la Etapa 3 la misión es que nadie los vea. Esta etapa se construye en la próxima versión." :
       "El jugador va a «" + a + "» y el guía a «" + b + "». Sus caminos se separan, pero la ley los une: si uno pasa, pasan los dos. Estas etapas se construyen en la próxima versión.");
   });
@@ -2210,6 +2245,303 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   $("stOk").addEventListener("click", function () { $("ovStage").hidden = true; G.paused = false; });
 
   // =========================================================
+  //  Rumbo: El gobierno que dirige el mundo
+  //  Regla: que nadie te vea. Si te ven: vuelves al Nivel 1 o te dejas atrapar.
+  // =========================================================
+  var GW = 2000, GH = 1300, GOB = null, LAW0 = document.querySelector(".law").innerHTML;
+  var PRES_L = { skin: "#E0AC7E", shirt: "#2B2B33", hair: "#D9D2C5", hairStyle: 0, old: true };
+  var SUP_L = { skin: "#C68A5E", shirt: "#F4F1E6", hair: "#1E1A18", hairStyle: 0 };
+  function room(x, y, w, h, side, pos, name, col) {
+    var t = 14, dw = 76, out = [], dpos;
+    function hseg(yy, gap) { if (gap) { dpos = x + w * pos - dw / 2; out.push({ x: x, y: yy, w: dpos - x, h: t }, { x: dpos + dw, y: yy, w: x + w - dpos - dw, h: t }); } else out.push({ x: x, y: yy, w: w, h: t }); }
+    function vseg(xx, gap) { if (gap) { dpos = y + h * pos - dw / 2; out.push({ x: xx, y: y, w: t, h: dpos - y }, { x: xx, y: dpos + dw, w: t, h: y + h - dpos - dw }); } else out.push({ x: xx, y: y, w: t, h: h }); }
+    hseg(y, side === "t"); hseg(y + h - t, side === "b"); vseg(x, side === "l"); vseg(x + w - t, side === "r");
+    return { x: x, y: y, w: w, h: h, name: name, col: col, walls: out };
+  }
+  function startGob(coop, who) {
+    GOB = {
+      coop: coop, who: who || "p",
+      p: { x: 980, y: 1120, fly: false, meter: 0, dir: -Math.PI / 2, walk: 0 },
+      q: { x: 1040, y: 1120, fly: false, meter: 0, dir: -Math.PI / 2, walk: 0 },
+      rooms: [room(160, 140, 420, 320, "r", 0.5, "Ministerio del Mundo", "#8C9AB8"), room(760, 90, 480, 380, "b", 0.5, "Palacio del Presidente", "#F2EFE6"), room(900, 120, 200, 140, "b", 0.5, "Despacho", "#E9DCC0"),
+        room(1440, 140, 420, 320, "l", 0.7, "Archivo Prohibido", "#6A2E36"), room(160, 820, 460, 340, "t", 0.5, "Bóveda del Mundo", "#5C6470"), room(1560, 820, 220, 220, null, 0, "Torre de comunicaciones", "#7C86A8")],
+      guards: [], cams: [], drones: [], power: 0, done: 0, item: null, read: false, view: "tactico", listen: 0, vaultOpen: false, conds: [], broken: false, ended: false, t0: G.rt
+    };
+    GOB.walls = []; GOB.rooms.forEach(function (r) { GOB.walls = GOB.walls.concat(r.walls); });
+    GOB.walls.push({ x: 940, y: 640, w: 120, h: 120, fountain: true });
+    var gp = [[[700, 600], [1300, 600], [1300, 820], [700, 820]], [[880, 530], [1120, 530]], [[800, 320], [1200, 320]], [[220, 200], [520, 200], [520, 400], [220, 400]],
+      [[1500, 400], [1800, 400], [1800, 220]], [[250, 770], [560, 770]], [[1400, 600], [1400, 1150], [1900, 1150], [1900, 600]]];
+    gp.forEach(function (pts, i) { GOB.guards.push({ pts: pts.map(function (p) { return { x: p[0], y: p[1] }; }), i: 1, x: pts[0][0], y: pts[0][1], dir: 0, wait: 0, name: "Guardia " + SURNAMES[(i * 7) % SURNAMES.length] }); });
+    GOB.cams = [{ x: 1000, y: 486, a: Math.PI / 2, r: 150 }, { x: 1470, y: 170, a: Math.PI * 0.6, r: 170 }, { x: 390, y: 850, a: Math.PI / 2, r: 160 }];
+    GOB.drones = [{ pts: [[1500, 760], [1850, 760], [1850, 1100], [1500, 1100]], i: 1, x: 1500, y: 760 }, { pts: [[780, 60], [1220, 60], [1220, 480], [780, 480]], i: 1, x: 780, y: 60 }];
+    GOB.drones.forEach(function (d) { d.pts = d.pts.map(function (p) { return { x: p[0], y: p[1] }; }); });
+    GOB.missions = [
+      { id: "decreto", title: "El decreto sellado", order: "Recoge el decreto en mi despacho y archívalo en el Archivo Prohibido. Nadie debe verte.", state: "activa", step: 0 },
+      { id: "escucha", title: "La reunión secreta", order: "En el Ministerio se reúnen sin mí. Quédate en la sala de escucha 6 segundos y cuéntame qué dicen.", state: "activa" },
+      { id: "torre", title: "La torre", order: "La torre no tiene puertas. Llega volando y manda mi mensaje al mundo.", state: "activa" },
+      { id: "boveda", title: "La bóveda del mundo", order: coop ? "La bóveda se abre si dos personas pisan sus placas a la vez. Tráiganme la llave del mundo." : "La bóveda se abre solo con dos personas. Sin tu compañero, no puedes.", state: coop ? "activa" : "bloqueada" }
+    ];
+    G.mode = "gob"; G.paused = false; window.__gob = GOB;
+    ["libre", "cielo", "dios"].forEach(function (id) { $(id).hidden = true; }); document.querySelector(".stage").hidden = true; $("gob").hidden = false;
+    $("lvlTxt").textContent = "Etapa 3 · El gobierno que dirige el mundo";
+    document.querySelector(".law").innerHTML = '<b>Regla de este rumbo:</b> que nadie te vea. Si te ven, eliges: vuelves al Nivel 1 o te dejas atrapar. Cumple 3 misiones del presidente para ser parte del gobierno. <span id="lawTxt" hidden></span>';
+    $("gobPartner").textContent = coop ? "Tu compañero también eligió este rumbo: juegan los dos (flechas, vuela con L)." : "Tu compañero tomó otro rumbo: te acompaña como voz invisible (flechas). Nadie lo ve.";
+    fit(); renderGobMis(); renderConds();
+    decide("Entraron al gobierno que dirige el mundo" + (coop ? ", juntos" : ""));
+    sub("gb", "El presidente te espera. Vuela con F. Volar te hace más rápido y pasas sobre los muros, pero los drones te ven en el aire.", "s", 9000);
+    $("gob").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (lockedUntil() > Date.now()) showLock();
+  }
+  function lockedUntil() { try { return +(localStorage.getItem("salida-captura") || 0); } catch (e) { return 0; } }
+  function setLock(t) { try { if (t) localStorage.setItem("salida-captura", String(t)); else localStorage.removeItem("salida-captura"); } catch (e) {} G.lockAt = t; }
+  function renderGobMis() {
+    $("gobMis").innerHTML = GOB.missions.map(function (m) {
+      var btns = "";
+      if (m.id === "decreto" && GOB.item === "decreto" && !GOB.read) btns = '<button class="btn" type="button" data-gob="leer">Leer el decreto</button>';
+      if (m.choice) btns = m.choice.map(function (c, i) { return '<button class="btn' + (i === 0 ? " pri" : "") + '" type="button" data-gob="' + m.id + ':' + i + '">' + esc(c[0]) + "</button>"; }).join("");
+      return '<div class="card ' + (m.state === "hecha" ? "envio" : m.state === "bloqueada" ? "" : "offer") + ' withpt">' + ptTag("pres" + m.id + (m.state), { L: PRES_L, mood: "serio", bg: "rojo" }) +
+        '<div><span class="tag ' + (m.state === "hecha" ? "g" : "") + '">El presidente · ' + esc(m.state === "hecha" ? "cumplida" : m.state === "bloqueada" ? "necesita a los dos" : "orden") + "</span><h3>" + esc(m.title) + "</h3><p>«" + esc(m.note || m.order) + "»</p>" + (btns ? '<div class="row">' + btns + "</div>" : "") + "</div></div>";
+    }).join("");
+    paintPortraits($("gobMis"));
+    $("gobPower").textContent = GOB.power; $("gobDone").textContent = GOB.done + " de 3";
+  }
+  $("gobMis").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-gob]"); if (!b) return; var v = b.getAttribute("data-gob");
+    if (v === "leer") { GOB.read = true; breakCond("noleer"); var m0 = GOB.missions[0]; m0.note = "Leíste el decreto: «Vigilar a todos los habitantes del Barrio Medio, día y noche». Ahora llévalo al Archivo Prohibido."; decide("Leyó el decreto sellado"); renderGobMis(); return; }
+    var parts = v.split(":"), m = GOB.missions.filter(function (x) { return x.id === parts[0]; })[0], c = m && m.choice ? m.choice[+parts[1]] : null; if (!c) return;
+    GOB.power += c[1]; G.pl.karma += c[2]; m.choice = null; m.state = "hecha"; m.note = c[3]; GOB.done++; sfx("ok"); decide(m.title + ": " + c[0]);
+    renderGobMis(); if (GOB.done >= 3 && !GOB.ended) { GOB.ended = true; setTimeout(gobFinale, 900); }
+  });
+  var CONDS = [
+    { id: "novolar", text: "No vueles hasta pasar al siguiente nivel" },
+    { id: "noarchivo", text: "No vuelvas a entrar al Archivo Prohibido" },
+    { id: "noleer", text: "No leas ningún documento sellado" },
+    { id: "nocorrer", text: "No corras (Shift) dentro de la capital" }
+  ];
+  function renderConds() {
+    $("gobCond").innerHTML = GOB.conds.length ? GOB.conds.map(function (c) { return "<li><b>" + (c.broken ? "ROTA" : "LEAL") + "</b><span>" + esc(c.text) + "</span></li>"; }).join("") : "<li><span>Sin condiciones. Si el Supervisor te deja seguir, aquí verás las 2 cosas a las que debes ser leal.</span></li>";
+  }
+  function breakCond(id) {
+    var c = GOB.conds.filter(function (x) { return x.id === id && !x.broken; })[0]; if (!c) return;
+    c.broken = true; GOB.broken = true; renderConds(); decide("Rompió la condición: " + c.text);
+    var near = GOB.guards.some(function (g) { return dist(g, GOB.p) < 260; });
+    if (near) { setTimeout(treason, 400); }
+    else sub("gb", "Rompiste una condición. Nadie te vio… por ahora. Si te ven, será traición.", "d", 7000);
+  }
+  function inRoom(o, name) { var r = GOB.rooms.filter(function (x) { return x.name === name; })[0]; return o.x > r.x && o.x < r.x + r.w && o.y > r.y && o.y < r.y + r.h; }
+  function segRect(x1, y1, x2, y2, r) {
+    var dx = x2 - x1, dy = y2 - y1, p = [-dx, dx, -dy, dy], q = [x1 - r.x, r.x + r.w - x1, y1 - r.y, r.y + r.h - y1], u1 = 0, u2 = 1;
+    for (var i = 0; i < 4; i++) { if (p[i] === 0) { if (q[i] < 0) return false; } else { var t = q[i] / p[i]; if (p[i] < 0) { if (t > u1) u1 = t; } else if (t < u2) u2 = t; } }
+    return u1 <= u2;
+  }
+  function los(a, b) { for (var i = 0; i < GOB.walls.length; i++) if (segRect(a.x, a.y, b.x, b.y, GOB.walls[i])) return false; return true; }
+  function gBlocked(x, y) { if (x < 10 || y < 10 || x > GW - 10 || y > GH - 10) return true; for (var i = 0; i < GOB.walls.length; i++) { var w = GOB.walls[i]; if (x > w.x - 9 && x < w.x + w.w + 9 && y > w.y - 9 && y < w.y + w.h + 9) return true; } return false; }
+  function angDiff(a, b) { var d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return Math.abs(d); }
+  function seenBy(o) {
+    for (var i = 0; i < GOB.guards.length; i++) { var g = GOB.guards[i], d = dist(g, o), rr = o.fly ? 210 : 170; if (d < rr && angDiff(Math.atan2(o.y - g.y, o.x - g.x), g.dir) < 0.6 && (o.fly || los(g, o))) return g.name; }
+    for (var j = 0; j < GOB.cams.length; j++) { var c = GOB.cams[j], ca = c.a + Math.sin(G.rt * 0.6 + j) * 0.8; if (dist(c, o) < c.r && angDiff(Math.atan2(o.y - c.y, o.x - c.x), ca) < 0.45 && los({ x: c.x + Math.cos(ca) * 16, y: c.y + Math.sin(ca) * 16 }, o)) return "una cámara"; }
+    if (o.fly) for (var k = 0; k < GOB.drones.length; k++) if (dist(GOB.drones[k], o) < 120) return "un dron";
+    return null;
+  }
+  function moveChar(o, ax, ay, dt, run) {
+    var len = Math.hypot(ax, ay); if (!len) return;
+    ax /= Math.max(1, len); ay /= Math.max(1, len); var sp = (o.fly ? 210 : run ? 190 : 125) * dt, nx = o.x + ax * sp, ny = o.y + ay * sp;
+    if (o.fly) { o.x = clamp(nx, 10, GW - 10); o.y = clamp(ny, 10, GH - 10); } else { if (!gBlocked(nx, o.y)) o.x = nx; if (!gBlocked(o.x, ny)) o.y = ny; }
+    o.dir = Math.atan2(ay, ax); o.walk += sp * 0.1;
+  }
+  function updateGob(dt) {
+    G.rt += dt;
+    var run = keys["shift"], ax = 0, ay = 0, pad = readPad();
+    if (!typing()) { if (keys["a"]) ax -= 1; if (keys["d"]) ax += 1; if (keys["w"]) ay -= 1; if (keys["s"]) ay += 1; }
+    if (pad) { ax += pad.x; ay += pad.y; }
+    moveChar(GOB.p, ax, ay, dt, run);
+    if ((ax || ay) && run && !GOB.p.fly) breakCond("nocorrer");
+    if (GOB.p.fly) breakCond("novolar");
+    var bx = 0, by = 0; if (!typing()) { if (keys["arrowleft"]) bx -= 1; if (keys["arrowright"]) bx += 1; if (keys["arrowup"]) by -= 1; if (keys["arrowdown"]) by += 1; }
+    if (GOB.coop) moveChar(GOB.q, bx, by, dt, false); else if (bx || by) { var ln = Math.hypot(bx, by); GOB.q.x = clamp(GOB.q.x + bx / ln * 300 * dt, 10, GW - 10); GOB.q.y = clamp(GOB.q.y + by / ln * 300 * dt, 10, GH - 10); }
+    if (inRoom(GOB.p, "Archivo Prohibido") && GOB.missions[0].state === "hecha") breakCond("noarchivo");
+    // guardias, drones
+    GOB.guards.forEach(function (g) {
+      if (g.wait > 0) { g.wait -= dt; g.dir += dt * 1.4 * (g.i % 2 ? 1 : -1); return; }
+      var t = g.pts[g.i], dx = t.x - g.x, dy = t.y - g.y, d = Math.hypot(dx, dy), s = 55 * dt;
+      var want = Math.atan2(dy, dx), dd = want - g.dir; while (dd > Math.PI) dd -= Math.PI * 2; while (dd < -Math.PI) dd += Math.PI * 2; g.dir += dd * Math.min(1, dt * 4);
+      if (d <= s) { g.x = t.x; g.y = t.y; g.i = (g.i + 1) % g.pts.length; g.wait = 1.2; } else { g.x += dx / d * s; g.y += dy / d * s; }
+    });
+    GOB.drones.forEach(function (d) { var t = d.pts[d.i], dx = t.x - d.x, dy = t.y - d.y, l = Math.hypot(dx, dy), s = 90 * dt; if (l <= s) { d.x = t.x; d.y = t.y; d.i = (d.i + 1) % d.pts.length; } else { d.x += dx / l * s; d.y += dy / l * s; } });
+    // detección
+    var watchers = [GOB.p]; if (GOB.coop) watchers.push(GOB.q);
+    for (var i = 0; i < watchers.length; i++) {
+      var o = watchers[i], by2 = seenBy(o);
+      if (by2) o.meter = Math.min(1, o.meter + dt * 0.95); else o.meter = Math.max(0, o.meter - dt * 0.6);
+      if (o.meter >= 1) { o.meter = 0; caught(o === GOB.p ? "Tú" : "Tu compañero", by2); return; }
+    }
+    // misiones
+    var m = GOB.missions;
+    if (m[0].state === "activa" && !GOB.item && m[0].step === 0 && dist(GOB.p, { x: 1000, y: 185 }) < 40) { GOB.item = "decreto"; m[0].step = 1; m[0].note = "Tienes el decreto. Llévalo al Archivo Prohibido. Puedes leerlo, pero no deberías."; sfx("voice"); renderGobMis(); }
+    if (m[0].state === "activa" && GOB.item === "decreto" && dist(GOB.p, { x: 1720, y: 240 }) < 44 && !m[0].choice) { GOB.item = null; m[0].choice = [["Archivarlo como ordenó", 2, -1, "Archivaste el decreto. El Barrio Medio será vigilado. El presidente confía en ti."], ["Destruirlo", 1, 2, "Destruiste el decreto. Nadie sabrá que existió… por ahora."]]; m[0].note = "Estás frente al archivo. ¿Qué haces con el decreto?"; sfx("offer"); renderGobMis(); }
+    if (m[1].state === "activa") { if (dist(GOB.p, { x: 330, y: 300 }) < 46) { GOB.listen += dt; if (GOB.listen >= 6) { m[1].choice = [["Contárselo al presidente", 2, -1, "Le contaste todo. El presidente sabe ahora que en el Ministerio conocen la dimensión secreta."], ["Guardar el secreto", 1, 1, "Guardaste el secreto: en el Ministerio saben que existe una dimensión que ni el gobierno controla."]]; m[1].state = "elegir"; m[1].note = "Escuchaste: «La dimensión secreta existe y el presidente no la controla»."; sfx("offer"); renderGobMis(); } } }
+    if (m[2].state === "activa" && dist(GOB.p, { x: 1670, y: 930 }) < 50) { m[2].choice = [["Repetir lo que ordena el presidente", 2, -1, "El mundo escuchó la voz del presidente en tu boca."], ["Decir la verdad", 1, 2, "Dijiste la verdad al mundo entero. El presidente lo sabrá pronto."]]; m[2].state = "elegir"; m[2].note = "Estás en la cima de la torre, frente al micrófono del mundo."; sfx("offer"); renderGobMis(); }
+    if (m[3].state === "activa" && GOB.coop && !GOB.vaultOpen && dist(GOB.p, { x: 300, y: 1060 }) < 34 && dist(GOB.q, { x: 480, y: 1060 }) < 34 || (m[3].state === "activa" && GOB.coop && !GOB.vaultOpen && dist(GOB.q, { x: 300, y: 1060 }) < 34 && dist(GOB.p, { x: 480, y: 1060 }) < 34)) { GOB.vaultOpen = true; sfx("ok"); m[3].note = "La bóveda se abrió. La llave del mundo brilla al fondo."; renderGobMis(); }
+    if (m[3].state === "activa" && GOB.vaultOpen && (dist(GOB.p, { x: 390, y: 900 }) < 40 || dist(GOB.q, { x: 390, y: 900 }) < 40)) { m[3].choice = [["Entregársela al presidente", 2, -1, "El presidente tiene ahora la llave del mundo."], ["Quedársela", 2, 0, "Ustedes tienen la llave del mundo. Nadie lo sabe."]]; m[3].state = "elegir"; renderGobMis(); }
+  }
+  function showOG(tag, title, body, btns) {
+    $("ogTag").textContent = tag; $("ogTitle").textContent = title; $("ogBody").innerHTML = body;
+    var row = $("ogBtns"); row.innerHTML = "";
+    btns.forEach(function (b) { var el = document.createElement("button"); el.type = "button"; el.className = "btn " + (b.cls || ""); el.textContent = b.t; el.onclick = function () { b.fn(); }; row.appendChild(el); });
+    $("ovGob").hidden = false; paintPortraits($("ovGob"));
+  }
+  function hideOG() { $("ovGob").hidden = true; }
+  function caught(who, by) {
+    G.paused = true; sfx("bad");
+    if (GOB.broken) { decide("Lo vieron después de romper una condición"); return treason(); }
+    decide(who + (who === "Tú" ? " fuiste visto" : " fue visto") + " por " + by);
+    showOG("Te vieron", who === "Tú" ? "Te vio " + by : "A tu compañero lo vio " + by,
+      "<p>En este rumbo la misión era que nadie te viera. Ahora tienes que decidir.</p>",
+      [{ t: "Volver al Nivel 1", fn: function () { hideOG(); decide("Eligió volver al Nivel 1"); backToLevel1("Vuelves al Nivel 1, al barrio, con lo que aprendiste. Tu compañero también vuelve: es ley."); } },
+       { t: "Dejarme atrapar", cls: "pri", fn: function () { hideOG(); decide("Se dejó atrapar"); setLock(Date.now() + 3 * 24 * 3600 * 1000); showLock(by); } }]);
+  }
+  var lockTimer = null;
+  function showLock(by) {
+    G.paused = true;
+    function tick() {
+      var left = Math.max(0, lockedUntil() - Date.now()), d = Math.floor(left / 864e5), h = Math.floor(left / 36e5) % 24, mi = Math.floor(left / 6e4) % 60, s = Math.floor(left / 1e3) % 60;
+      var el = $("lockClock"); if (el) el.textContent = d + " días " + String(h).padStart(2, "0") + ":" + String(mi).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+      if (left <= 0) { clearInterval(lockTimer); setLock(0); captorDecides(by); }
+    }
+    showOG("Atrapado", "No puedes jugar con este personaje", '<p>Te atraparon' + (by ? " (" + esc(by) + ")" : "") + '. Durante 3 días no sabrás qué pasará contigo.</p><p style="font-family:var(--f-mono);font-size:26px;color:var(--ink)" id="lockClock"></p><p class="hint">Puedes cerrar el juego: la cuenta sigue en este navegador.</p>',
+      [{ t: "Modo prueba: adelantar los 3 días", fn: function () { setLock(Date.now() - 1); tick(); } }]);
+    clearInterval(lockTimer); lockTimer = setInterval(tick, 1000); tick();
+  }
+  function judgeScore() { return G.pl.karma + G.gd.karma * 0.5 + (E3 ? E3.karma * 0.3 : 0) + GR.filter(function (g) { return g.got; }).length * 0.4 - GOB.power * 0.3; }
+  function captorDecides(by) {
+    var captor = (by && by.indexOf("Guardia") === 0 ? by : "El capitán " + pick(prng, SURNAMES)), deliver = judgeScore() < 2 || prng() < 0.55;
+    decide(captor + (deliver ? " decidió entregarlo" : " decidió dejarlo ir"));
+    if (!deliver) return showOG("Pasaron los 3 días", captor + " te deja ir", "<p>«No diré nada. Pero no vuelvas a cruzarte conmigo.» Vuelves a la entrada de la capital.</p>", [{ t: "Seguir", cls: "pri", fn: function () { hideOG(); resetGobPos(); G.paused = false; } }]);
+    showOG("Pasaron los 3 días", captor + " decidió entregarte", "<p>Pasas a la supervisión del juego. El Supervisor va a juzgarte según todo lo que hiciste antes.</p>", [{ t: "Ir con el Supervisor", cls: "pri", fn: supervisor }]);
+  }
+  function weighed() {
+    var all = (G.allDec || []), key = all.filter(function (d) { return /Rechaz|cedió|Firmar|arrepinti|protegi|asaltaron|Destru|verdad|Archiv|tentación|Mandarla|Guiarla|Leyó/.test(d); });
+    return (key.length ? key : all).slice(-3);
+  }
+  function supervisor() {
+    var sc = judgeScore(), w = weighed(), list = "<ul class=\"list\">" + w.map(function (d) { return "<li><b>" + esc(d.split(" · ")[0]) + "</b><span>" + esc(d.split(" · ").slice(1).join(" · ")) + "</span></li>"; }).join("") + "</ul>";
+    var intro = '<div class="withpt">' + ptTag("sup", { L: SUP_L, mood: "serio", bg: "oro" }) + "<div><p>«Revisé tu camino. Esto es lo que pesé:»</p>" + list + "</div></div>";
+    if (sc < -2) { decide("El Supervisor lo mandó al nivel Bajo"); return showOG("La supervisión del juego", "Vuelves al nivel Bajo", intro + "<p>«Tus decisiones te hunden. Empiezas de nuevo desde abajo.»</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Bajo (en esta versión, el barrio). Tu compañero viene contigo: es ley.", "Bajo"); } }]); }
+    if (sc < 1) { decide("El Supervisor lo mandó al nivel Intermedio"); return showOG("La supervisión del juego", "Vuelves al nivel Intermedio", intro + "<p>«No eres malo, pero tampoco confiable. Te pongo en el Intermedio para que corrijas tu camino.»</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Intermedio (en esta versión, el barrio). Puedes arrepentirte de tus misiones para corregir el camino.", "Intermedio"); } }]); }
+    var two = CONDS.slice().sort(function () { return prng() - 0.5; }).slice(0, 2);
+    GOB.conds = two.map(function (c) { return { id: c.id, text: c.text, broken: false }; }); GOB.broken = false; renderConds();
+    decide("El Supervisor lo dejó seguir con 2 condiciones");
+    showOG("La supervisión del juego", "Te dejo seguir, con 2 condiciones", intro + "<p>«Sigue, pero hasta que pases al siguiente nivel serás leal a esto:»</p><ul class=\"list\">" + GOB.conds.map(function (c, i) { return "<li><b>" + (i + 1) + "</b><span>" + esc(c.text) + "</span></li>"; }).join("") + "</ul><p>«Puedes hacerlas o no. Pero si te pillan, cumplirás la condena por traición.»</p>",
+      [{ t: "Acepto", cls: "pri", fn: function () { hideOG(); GOB.p.fly = false; GOB.q.fly = false; resetGobPos(); G.paused = false; } }]);
+  }
+  function treason() {
+    G.paused = true; sfx("bad");
+    showOG("Condena por traición", "El Supervisor te hace una sola pregunta", '<div class="withpt">' + ptTag("sup2", { L: SUP_L, mood: "serio", bg: "rojo" }) + '<div><p>«Te dije que fueras leal a dos cosas, y te pillaron.»</p><p style="font-family:var(--f-display);font-size:28px;color:var(--ink)">¿Te arrepientes?</p></div></div>',
+      [{ t: "Sí, me arrepiento", cls: "pri", fn: function () { verdict(true); } }, { t: "No", fn: function () { verdict(false); } }]);
+  }
+  function verdict(yes) {
+    var sc = judgeScore(); decide("Ante la pregunta del Supervisor respondió: " + (yes ? "sí, me arrepiento" : "no"));
+    if (yes && sc >= 0) showOG("La condena", "«Te creo»", "<p>Vuelves a la capital sin condiciones, pero el gobierno te quita la mitad de tu poder.</p>", [{ t: "Seguir", cls: "pri", fn: function () { GOB.power = Math.floor(GOB.power / 2); GOB.conds = []; GOB.broken = false; renderConds(); renderGobMis(); hideOG(); resetGobPos(); G.paused = false; } }]);
+    else if (yes) showOG("La condena", "«Tus actos dicen otra cosa»", "<p>Tu arrepentimiento no alcanza. Vuelves al nivel Bajo.</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Condenado por traición: empiezas en el nivel Bajo (en esta versión, el barrio).", "Bajo"); } }]);
+    else if (sc >= 3) showOG("La condena", "«Al menos eres honesto»", "<p>Sigues en la capital, pero el gobierno ya no confía en ti: pierdes todo el poder que ganaste.</p>", [{ t: "Seguir", cls: "pri", fn: function () { GOB.power = 0; GOB.conds = []; GOB.broken = false; renderConds(); renderGobMis(); hideOG(); resetGobPos(); G.paused = false; } }]);
+    else showOG("La condena", "Condena completa", "<p>Nivel Bajo y 3 días más sin poder jugar con este personaje.</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); setLock(Date.now() + 3 * 24 * 3600 * 1000); backToLevel1("Condenado: nivel Bajo y 3 días sin jugar con este personaje.", "Bajo"); } }]);
+  }
+  function resetGobPos() { GOB.p.x = 980; GOB.p.y = 1120; GOB.q.x = 1040; GOB.q.y = 1120; GOB.p.meter = 0; GOB.q.meter = 0; }
+  function backToLevel1(msg, label) {
+    G.mode = null; $("gob").hidden = true; document.querySelector(".stage").hidden = false;
+    document.querySelector(".law").innerHTML = LAW0;
+    G.day++; G.minute = 420; G.decisions = []; G.threats = []; G.visionPlanned = null; G.nextThreatAt = G.rt + 35; G.passed = false; G.pl.done = 0;
+    G.offers = []; renderOffers(); G.missions = genMissions(G.day); renderActive();
+    G.gd.connected = true; G.gd.disc = 0; $("gConnected").hidden = false; $("gAway").hidden = true; $("gAway").style.display = "none"; $("gPlane").textContent = "Plano 1 · con tu jugador"; $("ndTxt").textContent = "2 jugadores";
+    NPCS.forEach(function (n) { n.x = n.home.door.x; n.y = n.home.door.y; n.inside = true; n.dest = "home"; n.path = []; });
+    placePlayerStart(); fit();
+    $("lvlTxt").textContent = "Nivel " + (label || "Medio") + " · Plano 1 terrenal · Día " + G.day;
+    G.paused = false; sub("p", msg, "s", 10000);
+    document.querySelector(".stage").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (lockedUntil() > Date.now()) { sub("p", "Este personaje sigue bajo condena: en la versión completa no podrías jugarlo hasta que pasen los 3 días.", "d", 10000); }
+  }
+  function gobFinale() {
+    G.paused = true; decide("Llegaron a ser parte del gobierno que dirige el mundo");
+    var DEC = [["Abrir las fronteras entre el Cielo y el Infierno", "Desde hoy, las almas pueden cruzar entre planos."], ["Prohibir los contratos de los demonios", "Ningún jugador podrá firmar sin leer."], ["Dar más recompensas a los guías", "Los guías invisibles ganarán el doble en su recorrido."]];
+    showOG("Cumpliste 3 órdenes", "Eres parte del gobierno que dirige el mundo", '<div class="withpt">' + ptTag("presf", { L: PRES_L, mood: "normal", bg: "oro" }) + "<div><p>«Bienvenido. Desde ahora tienes control sobre todo. Firma tu primer decreto.»</p><p class=\"hint\">Poder acumulado: " + GOB.power + ". Ojo: el gobierno sigue sin saber nada de la dimensión secreta.</p></div></div>",
+      DEC.map(function (d) { return { t: d[0], fn: function () { decide("Firmó el decreto: " + d[0]); showOG("Decreto firmado", d[0], "<p>" + esc(d[1]) + " Lo que pase en el mundo con esto se construye en la próxima versión.</p>", [{ t: "Seguir recorriendo la capital", cls: "pri", fn: function () { hideOG(); G.paused = false; } }]); } }; }));
+  }
+  bindViews("vwGob", function (v) { if (GOB) GOB.view = v; });
+  $("btnFlyP").addEventListener("click", function () { if (GOB) toggleFly(GOB.p); });
+  $("btnFlyQ").addEventListener("click", function () { if (GOB && GOB.coop) toggleFly(GOB.q); });
+  function toggleFly(o) { if (o.fly && gBlocked(o.x, o.y)) { sub("gb", "No puedes aterrizar sobre un muro.", "d"); return; } o.fly = !o.fly; tone(o.fly ? 880 : 440, 0.1, 0, "sine"); }
+  window.addEventListener("keydown", function (e) {
+    if (G.mode !== "gob" || typing() || G.paused) return;
+    var k = e.key.toLowerCase(); if (k === "f") toggleFly(GOB.p); if (k === "l" && GOB.coop) toggleFly(GOB.q);
+  });
+  function hudGob() {
+    $("gobPower").textContent = GOB.power;
+    $("gbState").textContent = GOB.p.fly ? "Volando" : "A pie"; $("gbAlert").textContent = GOB.p.meter > 0.05 || GOB.q.meter > 0.05 ? "¡Te están viendo!" : "Nadie te ve";
+    $("btnFlyP").textContent = GOB.p.fly ? "Aterrizar (F)" : "Volar (F)"; $("btnFlyQ").hidden = !GOB.coop; $("btnFlyQ").textContent = GOB.q.fly ? "Compañero: aterrizar (L)" : "Compañero: volar (L)";
+  }
+  function drawTop(c, x, y, L, fly, dir, sc, ghost) {
+    if (fly) { c.fillStyle = "rgba(27,20,16,.25)"; c.beginPath(); c.ellipse(x + 10 * sc, y + 16 * sc, 12 * sc, 7 * sc, 0, 0, 7); c.fill(); y -= 10 * sc; sc *= 1.18; }
+    c.save(); if (ghost) c.globalAlpha = 0.65; c.strokeStyle = ghost ? "#1F5F99" : OUTL; c.lineWidth = 2.2;
+    if (fly) { c.fillStyle = "rgba(255,255,255,.85)"; c.beginPath(); c.ellipse(x - 12 * sc, y, 12 * sc, 6 * sc, -0.5, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.ellipse(x + 12 * sc, y, 12 * sc, 6 * sc, 0.5, 0, 7); c.fill(); c.stroke(); }
+    c.fillStyle = ghost ? ghostCol(null, 1) : L.shirt; c.beginPath(); c.ellipse(x, y, 11 * sc, 8 * sc, dir, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = ghost ? ghostCol(null, 0) : L.skin; c.beginPath(); c.arc(x + Math.cos(dir) * 2 * sc, y + Math.sin(dir) * 2 * sc, 6.5 * sc, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = ghost ? ghostCol(null, 2) : L.hair; c.beginPath(); c.arc(x - Math.cos(dir) * 1 * sc, y - Math.sin(dir) * 1 * sc, 5 * sc, 0, 7); c.fill();
+    c.restore();
+  }
+  function renderGob() {
+    var c = CTX.gb, w = CV.gb._w, h = CV.gb._h; if (!w) return;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    var z, cx, cy;
+    if (GOB.view === "cerca") { z = 1.25; cx = GOB.coop ? (GOB.p.x + GOB.q.x) / 2 : GOB.p.x; cy = GOB.coop ? (GOB.p.y + GOB.q.y) / 2 : GOB.p.y; }
+    else { z = Math.min(w / GW, h / GH); cx = GW / 2; cy = GH / 2; }
+    c.fillStyle = "#3A2E2A"; c.fillRect(0, 0, w, h);
+    c.setTransform(DPR * z, 0, 0, DPR * z, (w / 2 - cx * z) * DPR, (h / 2 - cy * z) * DPR);
+    c.fillStyle = "#D8C08A"; c.fillRect(0, 0, GW, GH);
+    c.strokeStyle = "rgba(27,20,16,.12)"; c.lineWidth = 1; for (var gx = 0; gx < GW; gx += 50) { c.beginPath(); c.moveTo(gx, 0); c.lineTo(gx, GH); c.stroke(); } for (var gy = 0; gy < GH; gy += 50) { c.beginPath(); c.moveTo(0, gy); c.lineTo(GW, gy); c.stroke(); }
+    GOB.rooms.forEach(function (r) { c.fillStyle = r.name === "Despacho" ? "#C9A66B" : shadeL(r.col); c.fillRect(r.x, r.y, r.w, r.h); });
+    GOB.walls.forEach(function (wl) {
+      if (wl.fountain) { c.fillStyle = "#7FB7D8"; c.strokeStyle = OUTL; c.lineWidth = 3; c.beginPath(); c.arc(wl.x + 60, wl.y + 60, 60, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#B9B6B0"; c.beginPath(); c.arc(wl.x + 60, wl.y + 60, 16, 0, 7); c.fill(); c.stroke(); return; }
+      c.fillStyle = "#4A3A30"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.fillRect(wl.x, wl.y, wl.w, wl.h); c.strokeRect(wl.x, wl.y, wl.w, wl.h);
+    });
+    GOB.rooms.forEach(function (r) { c.font = "800 15px Unbounded, sans-serif"; c.fillStyle = OUTL; c.fillText(r.name.toUpperCase(), r.x + 20, r.y + (r.name === "Despacho" ? 70 : 38), r.w - 30); });
+    c.font = "800 14px Unbounded, sans-serif"; c.fillText("ENTRADA", 950, 1185);
+    // objetivos
+    var m = GOB.missions, tg = [];
+    if (m[0].state === "activa") tg.push(GOB.item ? { x: 1720, y: 240 } : { x: 1000, y: 185 });
+    if (m[1].state === "activa") { tg.push({ x: 330, y: 300 }); c.fillStyle = "rgba(95,224,230,.25)"; c.beginPath(); c.arc(330, 300, 46, 0, 7); c.fill(); c.fillStyle = "#1F5F99"; c.beginPath(); c.arc(330, 300, 46, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (GOB.listen / 6)); c.lineTo(330, 300); c.fill(); }
+    if (m[2].state === "activa") tg.push({ x: 1670, y: 930 });
+    if (m[3].state === "activa") { [[300, 1060], [480, 1060]].forEach(function (pp) { c.fillStyle = GOB.vaultOpen ? "#6EDC9A" : "#B9B6B0"; c.strokeStyle = OUTL; c.lineWidth = 2; c.fillRect(pp[0] - 22, pp[1] - 22, 44, 44); c.strokeRect(pp[0] - 22, pp[1] - 22, 44, 44); }); if (GOB.vaultOpen) tg.push({ x: 390, y: 900 }); }
+    tg.forEach(function (t) { c.fillStyle = "#FFB547"; c.strokeStyle = OUTL; c.lineWidth = 2; star(c, t.x, t.y + Math.sin(G.rt * 4) * 3, 14); c.stroke(); });
+    // conos de visión
+    GOB.guards.forEach(function (g) { cone(c, g.x, g.y, g.dir, 0.6, 170, GOB.p.meter > 0.05 ? "rgba(255,107,107,.32)" : "rgba(255,226,120,.32)"); });
+    GOB.cams.forEach(function (cm, j) { var ca = cm.a + Math.sin(G.rt * 0.6 + j) * 0.8; cone(c, cm.x, cm.y, ca, 0.45, cm.r, "rgba(255,140,90,.28)"); c.fillStyle = "#2B2B33"; c.strokeStyle = OUTL; c.lineWidth = 2; c.fillRect(cm.x - 8, cm.y - 6, 16, 12); c.strokeRect(cm.x - 8, cm.y - 6, 16, 12); });
+    var cs = GOB.view === "cerca" ? 1.3 : Math.max(1.3, 0.62 / z);
+    GOB.guards.forEach(function (g) { drawTop(c, g.x, g.y, { shirt: "#24345E", skin: "#E0AC7E", hair: "#1C2848" }, false, g.dir, cs * 0.9); });
+    if (GOB.view !== "cerca") { c.lineWidth = 4 / z * 0.5; c.strokeStyle = "#FFB547"; c.beginPath(); c.arc(GOB.p.x, GOB.p.y, 28 * cs, 0, 7); c.stroke(); c.strokeStyle = "#5FE0E6"; c.beginPath(); c.arc(GOB.q.x, GOB.q.y, 28 * cs, 0, 7); c.stroke(); }
+    drawTop(c, GOB.p.x, GOB.p.y, PLAYER_L, GOB.p.fly, GOB.p.dir, cs);
+    if (GOB.coop) drawTop(c, GOB.q.x, GOB.q.y, guideLook(), GOB.q.fly, GOB.q.dir, cs); else drawTop(c, GOB.q.x, GOB.q.y, PLAYER_L, true, GOB.q.dir, cs * 0.92, true);
+    GOB.drones.forEach(function (d) { c.strokeStyle = "rgba(122,75,160,.6)"; c.lineWidth = 2; c.setLineDash([5, 6]); c.beginPath(); c.arc(d.x, d.y, 120, 0, 7); c.stroke(); c.setLineDash([]); c.strokeStyle = OUTL; c.lineWidth = 3; c.beginPath(); c.moveTo(d.x - 14, d.y - 14); c.lineTo(d.x + 14, d.y + 14); c.moveTo(d.x + 14, d.y - 14); c.lineTo(d.x - 14, d.y + 14); c.stroke(); [[-14, -14], [14, -14], [-14, 14], [14, 14]].forEach(function (o) { c.fillStyle = "#B9B6B0"; c.beginPath(); c.arc(d.x + o[0], d.y + o[1], 6, 0, 7); c.fill(); c.lineWidth = 1.5; c.stroke(); }); });
+    [GOB.p, GOB.coop ? GOB.q : null].forEach(function (o) { if (!o || o.meter < 0.05) return; c.strokeStyle = "#C8302C"; c.lineWidth = 5; c.beginPath(); c.arc(o.x, o.y - 30, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * o.meter); c.stroke(); c.fillStyle = "#C8302C"; c.font = "800 16px Unbounded, sans-serif"; c.fillText(o.meter > 0.6 ? "!" : "?", o.x - 4, o.y - 24); });
+    if (GOB.view === "primer") {
+      c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "rgba(20,12,8,.55)"; c.fillRect(0, 0, w, h);
+      var size = Math.min(h * 0.62, w * 0.4), yy = h - size - 16, act = GOB.missions.filter(function (x) { return x.state !== "hecha" && x.state !== "bloqueada"; })[0];
+      drawPortraitAt(c, 16, yy, size, { L: PLAYER_L, mood: GOB.p.meter > 0.05 ? "serio" : "normal", bg: "oro" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(16, yy, size, size);
+      drawPortraitAt(c, w - size - 16, yy, size, { L: PRES_L, mood: "serio", bg: "rojo" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeRect(w - size - 16, yy, size, size);
+      speechBubble(c, w - size / 2 - 16, yy - 6, act ? act.title : "Bienvenido al gobierno");
+      speechBubble(c, 16 + size / 2, yy - 6, GOB.p.meter > 0.05 ? "Me están viendo…" : "Nadie me ve");
+    }
+  }
+  function shadeL(hex) { var n = parseInt(hex.slice(1), 16), r = (n >> 16), g = (n >> 8) & 255, b = n & 255; r = r + (255 - r) * 0.45; g = g + (255 - g) * 0.45; b = b + (255 - b) * 0.45; return "rgb(" + (r | 0) + "," + (g | 0) + "," + (b | 0) + ")"; }
+  function cone(c, x, y, a, half, r, col) { c.fillStyle = col; c.beginPath(); c.moveTo(x, y); c.arc(x, y, r, a - half, a + half); c.closePath(); c.fill(); }
+
+  document.querySelectorAll("[data-demo]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var t = b.getAttribute("data-demo"); $("btnStart").click(); decide("Modo demo: saltó directo a otra etapa");
+      if (t === "21") openMeet(); else if (t === "e3") startE3(); else if (t === "dios") startDios(); else startGob(true);
+    });
+  });
+
+  // =========================================================
   //  Panel: actualizar números (4 veces por segundo)
   // =========================================================
   function hud() {
@@ -2271,6 +2603,12 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   var last = 0, lastHud = 0;
   function frame(ts) {
     var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts;
+    if (G.mode === "gob") {
+      if (!G.paused) updateGob(dt);
+      renderGob();
+      if (ts - lastHud > 250) { lastHud = ts; hudGob(); }
+      requestAnimationFrame(frame); return;
+    }
     if (G.mode === "cielo" || G.mode === "dios") {
       var isE = G.mode === "cielo";
       if (!G.paused) (isE ? updateE3 : updateDios)(dt);
