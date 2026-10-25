@@ -279,6 +279,62 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     </div>
   </section>
 
+  <section class="view libre" id="cielo" hidden aria-label="Etapa 3, del Cielo al Infierno">
+    <div class="vhead">
+      <h2><i style="background:var(--crimson)"></i>Etapa 3 · Del Cielo al Infierno</h2>
+      <small>Jugador <kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd> · Guía invisible <kbd>←</kbd><kbd>→</kbd> · <kbd>Shift</kbd> correr</small>
+    </div>
+    <div class="canvasbox">
+      <canvas class="vc" id="cvE" aria-label="El entorno del Cielo al Infierno"></canvas>
+      <div class="overlaytxt"><span id="eRegion">Limbo</span><span id="eKarma">Karma 0</span></div>
+      <div class="subs" id="subsE"></div>
+    </div>
+    <div class="panel">
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwE"><button type="button" data-v="jugador" aria-pressed="true">Jugador</button><button type="button" data-v="guia" aria-pressed="false">Guía: ve más allá</button><button type="button" data-v="balanza" aria-pressed="false">La balanza</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div class="kv">
+        <div><small>Luz</small><b id="eLuz">0</b></div>
+        <div><small>Sombra</small><b id="eSombra">0</b></div>
+        <div><small>Karma</small><b id="eK">0</b></div>
+        <div><small>Puntos en la etapa</small><b id="ePts">0</b></div>
+      </div>
+      <div id="eOffer"></div>
+      <div class="card">
+        <span class="tag c">Voz del guía (el jugador no lo ve)</span>
+        <div class="cmd"><input id="eCmd" type="text" placeholder="«protégelo», «revela», «cuidado»…" aria-label="Orden del guía"><button class="btn" id="eSay" type="button">Decir</button><span></span></div>
+        <div class="row"><button class="btn cy" type="button" data-ecmd="protégelo">Protégelo</button><button class="btn cy" type="button" data-ecmd="revela la verdad">Revela</button><button class="btn cy" type="button" data-ecmd="cuidado, corre">Cuidado</button></div>
+        <div class="feed" id="eFeed"><div>Con «revela», el guía descubre lo que un ángel o un demonio no dice.</div></div>
+      </div>
+      <div class="card"><span class="tag">Puertas de Alto</span><ul class="list gr" id="eDoors"></ul></div>
+    </div>
+  </section>
+
+  <section class="view libre" id="dios" hidden aria-label="Nivel Dios">
+    <div class="vhead">
+      <h2><i style="background:var(--gold)"></i>Etapa 3 · Nivel Dios</h2>
+      <small>Vuelan: jugador <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · guía <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd></small>
+    </div>
+    <div class="canvasbox">
+      <canvas class="vc" id="cvD" aria-label="El Nivel Dios"></canvas>
+      <div class="overlaytxt"><span id="dRegion">Entre mundos</span><span id="dDist">Juntos</span></div>
+      <div class="subs" id="subsD"></div>
+    </div>
+    <div class="panel">
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwD"><button type="button" data-v="volar" aria-pressed="true">Volar</button><button type="button" data-v="ojo" aria-pressed="false">Ojo de Dios</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div id="dIsland"></div>
+      <div class="card">
+        <span class="tag g">Conocer todo · cualquiera de los 200 millones, con su destino</span>
+        <div class="row"><input id="godId" class="btn" style="font-family:var(--f-mono);width:150px" type="number" min="0" max="199999999" value="73400017" aria-label="Número de persona"><button class="btn" id="godLook" type="button">Ver</button><button class="btn" id="godRand" type="button">Al azar</button></div>
+        <div id="godOut"></div>
+      </div>
+      <div class="card"><span class="tag">Los caminos que recorrieron</span><ul class="list" id="godPaths" style="max-height:180px;overflow:auto"></ul></div>
+      <div class="card">
+        <span class="tag g">Tomar su rumbo · cada uno elige el suyo</span>
+        <div id="rumbos" style="display:grid;gap:8px"></div>
+        <div class="row"><button class="btn pri" id="btnRumbo" type="button" disabled>Tomar el rumbo</button><span class="hint">Pueden elegir el mismo o distintos. La ley los sigue uniendo.</span></div>
+      </div>
+    </div>
+  </section>
+
   <section class="world" aria-labelledby="wTitle">
     <h2 id="wTitle">Mundo Ndapremo · 200.000.000 de personas</h2>
     <p class="hint" style="font-size:14px;max-width:80ch">Cada persona del mundo se genera al instante desde su número, siempre igual, sin guardarla. En la ciudad solo se simulan en detalle las 1.500 del barrio donde están los jugadores. Busca a cualquiera por su número o mira cómo se reparten.</p>
@@ -360,13 +416,22 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     </div>
   </div>
 </div>
+<!-- Fin de etapa -->
+<div class="ov" id="ovStage" hidden>
+  <div class="ovbox">
+    <span class="tag c">Etapa 3</span>
+    <h2 id="stTitle"></h2>
+    <p id="stTxt"></p>
+    <div class="row"><button class="btn pri" id="stOk" type="button">Seguir aquí</button></div>
+  </div>
+</div>
 <!-- El portal -->
 <div class="ov" id="ovPortal" hidden>
   <div class="ovbox">
     <span class="tag c">Tercer punto</span>
     <h2>El portal a otros mundos se abre</h2>
-    <p>Juntos encontraron los tres puntos. Al otro lado esperan la guerra, la infiltración, el gobierno que dirige el mundo y otras dimensiones. Esa etapa llega en la próxima versión.</p>
-    <div class="row"><button class="btn pri" id="btnPortalOk" type="button">Seguir explorando el mundo</button></div>
+    <p>Juntos encontraron los tres puntos. Como decidieron conocerse, el portal no los lleva a cualquier parte: los lleva al Nivel Dios, donde lo saben todo y cada uno toma su rumbo.</p>
+    <div class="row"><button class="btn pri" id="btnPortalGo" type="button">Cruzar al Nivel Dios</button><button class="btn" id="btnPortalOk" type="button">Seguir explorando el mundo</button></div>
   </div>
 </div>
 
@@ -623,7 +688,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function sub(where, text, cls, ms) {
-    var box = $(where === "p" ? "subsP" : where === "l" ? "subsL" : "subsG"), el = document.createElement("div");
+    var box = $({ p: "subsP", l: "subsL", e: "subsE", d: "subsD" }[where] || "subsG"), el = document.createElement("div");
     el.className = "sub " + (cls || "s"); el.textContent = text; box.appendChild(el);
     while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(function () { if (el.parentNode) el.remove(); }, ms || 6000);
@@ -632,7 +697,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     var f = $("gFeed"), el = document.createElement("div"); el.innerHTML = "<b>" + clockStr(G.minute) + "</b> " + esc(text);
     f.insertBefore(el, f.firstChild); while (f.children.length > 30) f.removeChild(f.lastChild);
   }
-  function decide(text) { G.decisions.push(clockStr(G.minute) + " · " + text); }
+  function decide(text) { G.decisions.push(clockStr(G.minute) + " · " + text); (G.allDec = G.allDec || []).push("Día " + G.day + " · " + text); }
   var AC = null;
   function tone(freq, dur, when, type) {
     if (!G.soundOn) return;
@@ -1119,15 +1184,15 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     $("ovPass").hidden = false;
   }
   $("btn21").addEventListener("click", function () { $("ovPass").hidden = true; openMeet(); });
-  $("btnMore").addEventListener("click", function () { var t = $("passNext"); t.hidden = false; t.textContent = "Otros niveles con desafíos más difíciles y mejores premios. Llegan en la próxima versión."; });
+  $("btnMore").addEventListener("click", function () { $("ovPass").hidden = true; startE3(); });
   $("btnKeep").addEventListener("click", function () { $("ovPass").hidden = true; G.paused = false; });
 
   // =========================================================
   //  Dibujo
   // =========================================================
-  var CV = { p: $("cvP"), g: $("cvG"), l: $("cvL") }, CTX = { p: CV.p.getContext("2d"), g: CV.g.getContext("2d"), l: CV.l.getContext("2d") };
+  var CV = { p: $("cvP"), g: $("cvG"), l: $("cvL"), e: $("cvE"), d: $("cvD") }, CTX = { p: CV.p.getContext("2d"), g: CV.g.getContext("2d"), l: CV.l.getContext("2d"), e: CV.e.getContext("2d"), d: CV.d.getContext("2d") };
   var DPR = Math.min(2, window.devicePixelRatio || 1);
-  function fit() { ["p", "g", "l"].forEach(function (k) { var c = CV[k], r = c.getBoundingClientRect(); c.width = Math.round(r.width * DPR); c.height = Math.round(r.height * DPR); c._w = r.width; c._h = r.height; }); }
+  function fit() { ["p", "g", "l", "e", "d"].forEach(function (k) { var c = CV[k], r = c.getBoundingClientRect(); c.width = Math.round(r.width * DPR); c.height = Math.round(r.height * DPR); c._w = r.width; c._h = r.height; }); }
   window.addEventListener("resize", fit); fit();
   G.viewP = "lateral"; G.viewG = "libro";
   function bindViews(id, fn) {
@@ -1596,6 +1661,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     L21.px = ri * RW + 300; L21.gx = ri * RW + 390; subL("Viajaron juntos a " + REG[ri].name + ".", "s"); decide("Viajaron a " + REG[ri].name);
   });
   $("btnPortalOk").addEventListener("click", function () { $("ovPortal").hidden = true; G.paused = false; });
+  $("btnPortalGo").addEventListener("click", function () { $("ovPortal").hidden = true; startDios(); });
 
   function updateLibre(dt) {
     G.rt += dt; G.minute += dt * G.speed * 0.6; if (G.minute >= 1320) G.minute = 420;
@@ -1763,6 +1829,387 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
 
   // =========================================================
+  //  Etapa 3 · Del Cielo al Infierno (siguieron jugando sin conocerse)
+  // =========================================================
+  var E3R = [
+    { name: "Cielo alto", kind: "nube", sky: ["#FFF6D8", "#F6E7A8"], ground: "#FBF7EC" },
+    { name: "Cielo", kind: "nube", sky: ["#BFD8F2", "#F6E7A8"], ground: "#F1EBDB" },
+    { name: "Limbo", kind: "limbo", sky: ["#A9A3BC", "#E2DCD0"], ground: "#C2BBAA" },
+    { name: "Purgatorio", kind: "brasa", sky: ["#C98A6A", "#E8C27A"], ground: "#B0845A" },
+    { name: "Infierno", kind: "fuego", sky: ["#5A1222", "#C2304B"], ground: "#4A1A18" },
+    { name: "Infierno profundo", kind: "fuego", sky: ["#1A0710", "#5A1222"], ground: "#2A0E10" }
+  ];
+  var E3W = RW * E3R.length, E3 = null;
+  function e3Idx(x) { return clamp(Math.floor(x / RW), 0, E3R.length - 1); }
+  function subE(t, cls, ms) { sub("e", t, cls, ms); }
+  var SER_T = {
+    angel: [
+      { q: "Te pido llevar esta luz a un alma perdida del Limbo.", a: [["Llevarla", 2, 120], ["Seguir mi camino", 0, 0]], hidden: "Es sincero: la luz guía a un alma de verdad." },
+      { q: "Te ofrezco alas por un momento a cambio de tu mejor recuerdo.", a: [["Aceptar las alas", -1, 200, "trap"], ["Guardar mi recuerdo", 1, 0]], hidden: "Es una prueba: quien entrega sus recuerdos pierde 150 puntos en la próxima puerta." }
+    ],
+    alma: [
+      { q: "Estoy perdida. ¿Dónde está la salida?", a: [["Guiarla hacia el Cielo", 2, 60], ["Mandarla al Infierno", -2, 120], ["Ignorarla", 0, 0]], hidden: "Si la guías al Cielo, la balanza lo recordará." }
+    ],
+    demonio: [
+      { q: "Firma mi contrato sin leerlo y te doy 400 puntos.", a: [["Firmar", -3, 400, "trap"], ["Rechazar", 1, 0]], hidden: "El contrato te encadena: un cobrador del Infierno saldrá a buscarte." },
+      { q: "Te reto a cruzar las brasas sin quemarte.", a: [["Cruzar", -1, 250, "chase"], ["No caer en su juego", 1, 0]], hidden: "Al cruzar, despiertas a dos guardianes de fuego." }
+    ]
+  };
+  function startE3() {
+    var r = rngFrom(hash32(3333));
+    E3 = { px: 4000, pd: 15, pLeft: false, pWalk: 0, gx: 4090, gdp: 0, gLeft: true, karma: Math.round(G.pl.karma + G.gd.karma / 2), luz: 0, sombra: 0, pts: 0, view: "jugador",
+      seres: [], orbs: [], chasers: [], offer: null, shieldUntil: 0, cdProtect: 0, penalty: 0, nextChase: G.rt + 30, plan: null };
+    for (var i = 0; i < 16; i++) {
+      var x = 320 + i * 590 + r() * 160, kind = x < 3200 ? "angel" : x < 4800 ? "alma" : "demonio", tpl = SER_T[kind][Math.floor(r() * SER_T[kind].length)];
+      if (Math.abs(x - 4000) < 160) x += 240;
+      E3.seres.push({ x: x, d: -18 + r() * 16, kind: kind, tpl: tpl, used: false,
+        name: kind === "angel" ? pick(r, ["Ariel", "Sael", "Uriel", "Lumen"]) : kind === "alma" ? "El alma de " + pick(r, NAMES_F.concat(NAMES_M)) : pick(r, ["Baal", "Moloc", "Azaz", "Belial"]) });
+    }
+    for (var j = 0; j < 80; j++) { var ox = 150 + r() * (E3W - 300); E3.orbs.push({ x: ox, y: 50 + r() * 100, kind: ox < 4800 ? "luz" : "brasa", got: false, ph: r() * 6 }); }
+    E3.doors = [
+      { x: 3300, n: 1, req: "karma de 3 o más", ok: function () { return E3.karma >= 3; } },
+      { x: 5150, n: 2, req: "500 puntos en esta etapa", ok: function () { return E3.pts >= 500; } },
+      { x: 900, n: 3, req: "8 luces y karma de 6", ok: function () { return E3.luz >= 8 && E3.karma >= 6; } },
+      { x: 9050, n: 4, req: "8 brasas de sombra", ok: function () { return E3.sombra >= 8; } }
+    ];
+    G.mode = "cielo"; G.paused = false; window.__e3 = E3;
+    document.querySelector(".stage").hidden = true; $("libre").hidden = true; $("cielo").hidden = false;
+    $("lvlTxt").textContent = "Etapa 3 · Del Cielo al Infierno · el guía sigue invisible";
+    document.querySelector(".law").innerHTML = '<b>Ley del juego:</b> si uno pasa, pasan los dos. Crucen una de las 4 puertas de Alto: cada una pide algo distinto. <span id="lawTxt" hidden></span>';
+    fit(); renderE3Doors(); renderE3Offer();
+    decide("Siguieron jugando sin conocerse: se abrió el entorno del Cielo al Infierno");
+    subE("Se abrió el entorno del Cielo al Infierno. Al oeste está la luz; al este, el fuego. Tu guía sigue contigo, invisible.", "s", 9000);
+    $("cielo").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function e3Feed(t) { var f = $("eFeed"), el = document.createElement("div"); el.innerHTML = "<b>Guía</b> " + esc(t); f.insertBefore(el, f.firstChild); while (f.children.length > 20) f.removeChild(f.lastChild); }
+  function spawnChaser(near) { var side = prng() < 0.5 ? -1 : 1; E3.chasers.push({ x: clamp(E3.px + side * (near ? 260 : 420), 40, E3W - 40), d: 0, ttl: 20, flee: 0 }); subE("Un guardián de fuego viene por ti.", "d"); sfx("bad"); }
+  function renderE3Offer() {
+    var s = E3.offer, box = $("eOffer");
+    if (!s) { box.innerHTML = ""; return; }
+    var tint = s.kind === "angel" ? "cielo" : s.kind === "demonio" ? "infierno" : null;
+    box.innerHTML = '<div class="card ' + (s.kind === "demonio" ? "temp" : "envio") + ' withpt">' + ptTag("ser" + Math.round(s.x), { L: PLAYER_L, ghost: true, tint: tint, mood: s.kind === "demonio" ? "serio" : "normal", bg: s.kind === "demonio" ? "rojo" : "oro" }) +
+      '<div><span class="tag ' + (s.kind === "demonio" ? "r" : "g") + '">' + esc(s.kind === "angel" ? "Ángel" : s.kind === "alma" ? "Alma" : "Demonio") + " · " + esc(s.name) + "</span><p>«" + esc(s.tpl.q) + '»</p><div class="row">' +
+      s.tpl.a.map(function (o, i) { return '<button class="btn' + (i === 0 ? " pri" : "") + '" type="button" data-e3="' + i + '">' + esc(o[0]) + "</button>"; }).join("") + "</div></div></div>";
+    paintPortraits(box);
+  }
+  $("eOffer").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-e3]"); if (!b || !E3.offer) return;
+    var s = E3.offer, o = s.tpl.a[+b.getAttribute("data-e3")];
+    E3.karma += o[1]; E3.pts += o[2]; G.pl.score += o[2]; s.used = true; E3.offer = null;
+    if (o[3] === "trap") { if (s.kind === "demonio") spawnChaser(true); else { E3.penalty += 150; } }
+    if (o[3] === "chase") { spawnChaser(true); setTimeout(function () { if (G.mode === "cielo") spawnChaser(false); }, 2500); }
+    subE(o[0] + (o[2] ? " (+" + o[2] + " pts)" : "") + (o[1] ? " · karma " + (o[1] > 0 ? "+" : "") + o[1] : ""), o[1] < 0 ? "d" : "s");
+    decide("Ante " + s.name + ": " + o[0]); renderE3Offer(); renderE3Doors();
+  });
+  function renderE3Doors() {
+    $("eDoors").innerHTML = E3.doors.map(function (d) { var ok = d.ok(); return "<li><b>" + (ok ? "ABIERTA" : "CERRADA") + "</b><span>Puerta de Alto " + d.n + " · " + E3R[e3Idx(d.x)].name + "<small>Pide " + esc(d.req) + "</small></span></li>"; }).join("");
+  }
+  function e3Command(raw) {
+    raw = (raw || "").trim(); if (!raw) return;
+    var t = norm(raw); subE("Voz del guía: «" + raw + "»", "g", 6000); sfx("voice"); speak(raw);
+    if (/proteg|defiend|escudo/.test(t)) {
+      if (Math.abs(E3.gx - E3.px) > 320) { e3Feed("Estás muy lejos para protegerlo."); return; }
+      if (G.rt < E3.cdProtect) { e3Feed("Tu protección se recarga en " + Math.ceil(E3.cdProtect - G.rt) + " s."); return; }
+      E3.shieldUntil = G.rt + (hasR("escudo") ? 14 : 9); E3.cdProtect = G.rt + 20; G.gd.score += 15; e3Feed("Lo proteges.");
+    } else if (/revel|que es|trampa|verdad/.test(t)) {
+      var best = null; E3.seres.forEach(function (s) { if (!s.used && Math.abs(s.x - E3.gx) < 700 && (!best || Math.abs(s.x - E3.gx) < Math.abs(best.x - E3.gx))) best = s; });
+      if (!best) { e3Feed("No hay ningún ser cerca de ti."); return; }
+      best.revealed = true; e3Feed("Lo que " + best.name + " no dice: " + best.tpl.hidden); unlock("lector");
+    } else if (/cuidado|corre|atras/.test(t)) { subE("⚠ Tu guía te advierte de un peligro", "d", 4000); if (E3.chasers.length) unlock("vidente"); }
+  }
+  $("eSay").addEventListener("click", function () { e3Command($("eCmd").value); $("eCmd").value = ""; });
+  $("eCmd").addEventListener("keydown", function (e) { if (e.key === "Enter") { e3Command(this.value); this.value = ""; this.blur(); } });
+  document.querySelectorAll("[data-ecmd]").forEach(function (b) { b.addEventListener("click", function () { e3Command(b.getAttribute("data-ecmd")); }); });
+  bindViews("vwE", function (v) { if (E3) E3.view = v; });
+  function updateE3(dt) {
+    G.rt += dt;
+    var a = 0, d = 0, run = keys["shift"], pad = readPad();
+    if (!typing()) { if (keys["a"]) a -= 1; if (keys["d"]) a += 1; if (keys["w"]) d -= 1; if (keys["s"]) d += 1; }
+    if (pad) { a += pad.x; d += pad.y; run = run || pad.run; }
+    if (a) { E3.px += a * (run ? 240 : 150) * dt; E3.pLeft = a < 0; E3.pWalk += Math.abs(a) * 16 * dt; }
+    E3.pd = clamp(E3.pd + d * 60 * dt, -40, 40); E3.px = clamp(E3.px, 40, E3W - 40);
+    var ga = 0; if (!typing()) { if (keys["arrowleft"]) ga -= 1; if (keys["arrowright"]) ga += 1; }
+    if (ga) { E3.gx = clamp(E3.gx + ga * 200 * dt, 40, E3W - 40); E3.gLeft = ga < 0; }
+    E3.orbs.forEach(function (o) {
+      if (o.got || Math.abs(o.x - E3.px) > 32) return;
+      o.got = true;
+      if (o.kind === "luz") { E3.luz++; E3.karma += 0.5; E3.pts += 20; } else { E3.sombra++; E3.karma -= 0.5; E3.pts += 30; }
+      G.pl.score += o.kind === "luz" ? 20 : 30; tone(o.kind === "luz" ? 1046 : 330, 0.12, 0, "sine"); renderE3Doors();
+    });
+    if (!E3.offer) E3.seres.forEach(function (s) { if (!E3.offer && !s.used && Math.abs(s.x - E3.px) < 70) { E3.offer = s; sfx("offer"); renderE3Offer(); } });
+    if (E3.offer && Math.abs(E3.offer.x - E3.px) > 160) { E3.offer = null; renderE3Offer(); }
+    // guardianes de fuego en el lado del Infierno, con visión previa al guía
+    if (E3.px > 6200 && !E3.plan && G.rt > E3.nextChase - (hasR("vidente") ? 20 : 10)) { E3.plan = G.rt + (hasR("vidente") ? 20 : 10); e3Feed("Visión: en " + Math.round(E3.plan - G.rt) + " s un guardián de fuego saldrá a buscar a tu jugador."); }
+    if (E3.plan && G.rt >= E3.plan) { E3.plan = null; spawnChaser(false); E3.nextChase = G.rt + 30 + prng() * 20; }
+    for (var i = E3.chasers.length - 1; i >= 0; i--) {
+      var ch = E3.chasers[i]; ch.ttl -= dt; if (ch.flee > 0) ch.flee -= dt;
+      var dir = Math.sign(E3.px - ch.x) * (ch.flee > 0 ? -1 : 1); ch.x += dir * (ch.flee > 0 ? 180 : 115) * dt; ch.d += (E3.pd - ch.d) * dt * 2;
+      if (Math.abs(ch.x - E3.px) < 26 && ch.flee <= 0) {
+        if (G.rt < E3.shieldUntil) { ch.flee = 3; ch.ttl = Math.min(ch.ttl, 3); G.gd.score += 30; G.gd.blocks = (G.gd.blocks || 0) + 1; if (G.gd.blocks >= 2) unlock("escudo"); subE("El guardián chocó contra algo invisible y huyó.", "s"); }
+        else { E3.pts = Math.max(0, E3.pts - 80); G.pl.score = Math.max(0, G.pl.score - 80); E3.luz = Math.max(0, E3.luz - 1); sfx("bad"); subE("¡Te alcanzó un guardián de fuego! −80 puntos y una luz menos.", "d"); decide("Lo alcanzó un guardián de fuego"); E3.chasers.splice(i, 1); renderE3Doors(); continue; }
+      }
+      if (ch.ttl <= 0) E3.chasers.splice(i, 1);
+    }
+    E3.doors.forEach(function (dr) {
+      if (Math.abs(dr.x - E3.px) > 60) { dr.warned = false; return; }
+      if (E3.penalty) { E3.pts = Math.max(0, E3.pts - E3.penalty); G.pl.score = Math.max(0, G.pl.score - E3.penalty); subE("El recuerdo que entregaste te cobra: −" + E3.penalty + " puntos.", "d"); E3.penalty = 0; renderE3Doors(); }
+      if (dr.ok()) { G.paused = true; decide("Cruzaron la puerta de Alto " + dr.n); stageEnd("Pasan los dos a Alto " + dr.n, "La balanza abrió la puerta de Alto " + dr.n + " (" + E3R[e3Idx(dr.x)].name + "). Luz " + E3.luz + ", sombra " + E3.sombra + ", karma " + Math.round(E3.karma) + ". Tu guía pasa contigo aunque nunca se hayan visto: es ley. Alto " + dr.n + " se construye en la próxima versión."); }
+      else if (!dr.warned) { dr.warned = true; subE("La puerta de Alto " + dr.n + " no se abre: pide " + dr.req + ".", "d"); }
+    });
+  }
+  function hudE3() {
+    $("eRegion").textContent = E3R[e3Idx(E3.view === "guia" ? E3.gx : E3.px)].name;
+    $("eKarma").textContent = "Karma " + (E3.karma > 0 ? "+" : "") + Math.round(E3.karma);
+    $("eLuz").textContent = E3.luz; $("eSombra").textContent = E3.sombra; $("eK").textContent = (E3.karma > 0 ? "+" : "") + Math.round(E3.karma); $("ePts").textContent = fmt(E3.pts);
+  }
+  function cloud(c, x, y, r) {
+    c.fillStyle = "#FFFFFF"; c.strokeStyle = OUTL; c.lineWidth = 2.2;
+    c.beginPath(); c.arc(x - r * 0.7, y, r * 0.55, Math.PI * 0.5, Math.PI * 1.5); c.arc(x - r * 0.2, y - r * 0.45, r * 0.6, Math.PI, Math.PI * 1.9); c.arc(x + r * 0.45, y - r * 0.25, r * 0.5, Math.PI * 1.2, Math.PI * 0.1); c.arc(x + r * 0.75, y + r * 0.05, r * 0.45, Math.PI * 1.5, Math.PI * 0.5); c.closePath(); c.fill(); c.stroke();
+  }
+  function flame(c, x, base, s, ph) {
+    var wob = Math.sin(G.rt * 6 + ph) * 0.12;
+    [["#C2304B", 1], ["#F28C28", 0.68], ["#FFD27A", 0.38]].forEach(function (f, i) {
+      var hh = s * f[1] * (1 + wob), ww = s * 0.45 * f[1];
+      c.fillStyle = f[0]; c.strokeStyle = OUTL; c.lineWidth = i ? 1.4 : 2.2;
+      c.beginPath(); c.moveTo(x - ww, base); c.quadraticCurveTo(x - ww * 1.1, base - hh * 0.5, x + wob * 20, base - hh); c.quadraticCurveTo(x + ww * 1.1, base - hh * 0.5, x + ww, base); c.closePath(); c.fill(); if (!i) c.stroke();
+    });
+  }
+  function e3Scene(c, w, h, camX, k, gm) {
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    var gt = Math.round(h * 0.64), vw = w / k / 2 + 140, x;
+    function sx(v) { return w / 2 + (v - camX) * k; }
+    for (var ri = e3Idx(camX - vw); ri <= e3Idx(camX + vw); ri++) {
+      var R = E3R[ri], a = Math.max(0, sx(ri * RW)), b = Math.min(w, sx((ri + 1) * RW)), lo = Math.max(ri * RW, camX - vw), hi = Math.min((ri + 1) * RW, camX + vw);
+      var g = c.createLinearGradient(0, 0, 0, gt); g.addColorStop(0, R.sky[0]); g.addColorStop(1, R.sky[1]); c.fillStyle = g; c.fillRect(a, 0, b - a, gt);
+      c.fillStyle = R.ground; c.fillRect(a, gt, b - a, h - gt);
+      if (R.kind === "nube") {
+        for (x = Math.ceil(lo / 340) * 340; x < hi; x += 340) cloud(c, sx(x), 70 + (hash32(x) % 90), 60 * k);
+        for (x = Math.ceil(lo / 520) * 520; x < hi; x += 520) { var px = sx(x + 120); c.fillStyle = "#F2D16B"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.fillRect(px - 14 * k, gt - 170 * k, 28 * k, 170 * k); c.strokeRect(px - 14 * k, gt - 170 * k, 28 * k, 170 * k); c.fillRect(px - 22 * k, gt - 182 * k, 44 * k, 14 * k); c.strokeRect(px - 22 * k, gt - 182 * k, 44 * k, 14 * k); }
+        for (x = Math.ceil(lo / 220) * 220; x < hi; x += 220) cloud(c, sx(x + 60), gt + 18, 54 * k);
+      } else if (R.kind === "limbo") {
+        for (x = Math.ceil(lo / 230) * 230; x < hi; x += 230) trunk(c, sx(x + (hash32(x) % 60)), gt + 4, gt - 260 * k, 22 * k, "#8C8A92");
+        c.fillStyle = "rgba(255,255,255,.25)"; c.fillRect(a, gt - 60, b - a, 40); c.fillRect(a, gt - 140, b - a, 24);
+      } else if (R.kind === "brasa") {
+        for (x = Math.ceil(lo / 260) * 260; x < hi; x += 260) { var rx = sx(x + 90); c.fillStyle = "#6A4A3A"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(rx - 50 * k, gt + 30); c.lineTo(rx - 30 * k, gt - 30 * k); c.lineTo(rx + 26 * k, gt - 40 * k); c.lineTo(rx + 50 * k, gt + 30); c.closePath(); c.fill(); c.stroke(); c.strokeStyle = "#F28C28"; c.lineWidth = 2; c.beginPath(); c.moveTo(rx - 20 * k, gt - 20 * k); c.lineTo(rx, gt); c.lineTo(rx + 14 * k, gt - 24 * k); c.stroke(); }
+      } else {
+        for (x = Math.ceil(lo / 300) * 300; x < hi; x += 300) { c.fillStyle = "#F28C28"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.ellipse(sx(x + 150), gt + 40, 70 * k, 12 * k, 0, 0, 7); c.fill(); c.stroke(); }
+        for (x = Math.ceil(lo / 130) * 130; x < hi; x += 130) flame(c, sx(x), gt + 6, (70 + hash32(x) % 60) * k, x);
+      }
+    }
+    c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(0, gt); c.lineTo(w, gt); c.stroke();
+    // puertas de Alto
+    E3.doors.forEach(function (dr) {
+      var dx = sx(dr.x); if (dx < -160 || dx > w + 160) return;
+      var heaven = dr.x < 4800, ok = dr.ok();
+      if (ok) { var gl = c.createRadialGradient(dx, gt - 120 * k, 10, dx, gt - 120 * k, 150 * k); gl.addColorStop(0, heaven ? "rgba(255,240,180,.9)" : "rgba(255,120,80,.8)"); gl.addColorStop(1, "rgba(255,240,180,0)"); c.fillStyle = gl; c.fillRect(dx - 150 * k, gt - 270 * k, 300 * k, 300 * k); }
+      c.fillStyle = heaven ? "#F2D16B" : "#3A1A1E"; c.strokeStyle = OUTL; c.lineWidth = 2.6;
+      c.fillRect(dx - 80 * k, gt - 210 * k, 26 * k, 210 * k); c.strokeRect(dx - 80 * k, gt - 210 * k, 26 * k, 210 * k); c.fillRect(dx + 54 * k, gt - 210 * k, 26 * k, 210 * k); c.strokeRect(dx + 54 * k, gt - 210 * k, 26 * k, 210 * k);
+      c.beginPath(); c.arc(dx, gt - 210 * k, 80 * k, Math.PI, 0); c.lineTo(dx + 54 * k, gt - 210 * k); c.arc(dx, gt - 210 * k, 54 * k, 0, Math.PI, true); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = ok ? (heaven ? "rgba(255,250,220,.85)" : "rgba(255,140,60,.75)") : "rgba(20,10,20,.55)"; c.fillRect(dx - 54 * k, gt - 210 * k, 108 * k, 210 * k);
+      c.font = "800 " + Math.round(13 * Math.max(0.8, k)) + "px Unbounded, sans-serif"; c.textAlign = "center"; c.fillStyle = heaven ? OUTL : "#FAF0D7"; c.fillText("ALTO " + dr.n, dx, gt - 300 * k);
+      c.font = "700 12px Atkinson Hyperlegible, sans-serif"; c.fillText(ok ? "abierta" : "pide " + dr.req, dx, gt - 282 * k); c.textAlign = "left";
+    });
+    // luces y brasas
+    E3.orbs.forEach(function (o) {
+      if (o.got) return; var ox = sx(o.x); if (ox < -20 || ox > w + 20) return;
+      var oy = gt - o.y * k + Math.sin(G.rt * 2 + o.ph) * 5, gg = c.createRadialGradient(ox, oy, 1, ox, oy, 18 * k);
+      gg.addColorStop(0, o.kind === "luz" ? "rgba(255,240,170,1)" : "rgba(255,120,60,1)"); gg.addColorStop(1, "rgba(255,200,120,0)"); c.fillStyle = gg; c.fillRect(ox - 18 * k, oy - 18 * k, 36 * k, 36 * k);
+      c.fillStyle = o.kind === "luz" ? "#FFE680" : "#E0402A"; c.strokeStyle = OUTL; c.lineWidth = 1.6; c.beginPath(); c.arc(ox, oy, 6 * k, 0, 7); c.fill(); c.stroke();
+    });
+    // personajes
+    var ents = [];
+    E3.seres.forEach(function (s) { if (Math.abs(s.x - camX) < vw) ents.push({ x: s.x, d: s.d, ser: s }); });
+    E3.chasers.forEach(function (ch) { if (Math.abs(ch.x - camX) < vw) ents.push({ x: ch.x, d: ch.d, chaser: ch }); });
+    PLAYER_L.item = null;
+    ents.push({ x: E3.px, d: E3.pd, me: true });
+    if (gm || Math.abs(E3.gx - E3.px) < 320) ents.push({ x: E3.gx, d: E3.gdp, guide: true });
+    ents.sort(function (a, b) { return a.d - b.d; });
+    ents.forEach(function (e) {
+      var yf = gt + 22 + (e.d + 40) / 80 * (h - gt - 46), sc = (0.82 + (e.d + 40) / 80 * 0.32) * Math.min(1.15, k * 1.05), ex = sx(e.x);
+      c.fillStyle = "rgba(27,20,16,.22)"; c.beginPath(); c.ellipse(ex, yf + 2, 18 * sc, 4.5 * sc, 0, 0, 7); c.fill();
+      if (e.ser) {
+        var s = e.ser, fl = Math.sin(G.rt * 2 + s.x) * 4 * sc;
+        if (s.kind === "angel") { c.fillStyle = "rgba(255,255,255,.9)"; c.strokeStyle = OUTL; c.lineWidth = 2; c.beginPath(); c.ellipse(ex - 22 * sc, yf - 88 * sc + fl, 18 * sc, 34 * sc, -0.4, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.ellipse(ex + 22 * sc, yf - 88 * sc + fl, 18 * sc, 34 * sc, 0.4, 0, 7); c.fill(); c.stroke(); }
+        c.save(); if (s.kind === "alma") c.globalAlpha = 0.6; if (s.used) c.globalAlpha *= 0.5;
+        drawPerson(c, ex, yf + fl, sc, PLAYER_L, G.rt * 2, s.x > E3.px, true, s.kind === "angel" ? "cielo" : s.kind === "demonio" ? "infierno" : null); c.restore();
+        if (s.kind === "angel") { c.strokeStyle = "#E9C964"; c.lineWidth = 3; c.beginPath(); c.ellipse(ex, yf - 142 * sc + fl, 13 * sc, 4 * sc, 0, 0, 7); c.stroke(); }
+        if (s.kind === "demonio") { c.fillStyle = "#5A0E1E"; [-9, 11].forEach(function (o) { c.beginPath(); c.moveTo(ex + o * sc - 4 * sc, yf - 128 * sc + fl); c.lineTo(ex + o * sc, yf - 146 * sc + fl); c.lineTo(ex + o * sc + 4 * sc, yf - 128 * sc + fl); c.closePath(); c.fill(); }); }
+        if (gm && !s.used) { var trap = s.tpl.a.some(function (o) { return o[3]; }); tagLabel(c, ex - 30, yf - 165 * sc, trap ? "Trampa" : "Sincero", trap ? "#FF9A9A" : "#9BE3B4"); }
+        else if (!s.used && Math.abs(s.x - E3.px) < 70) speechBubble(c, ex, yf - 160 * sc, s.name);
+      } else if (e.chaser) {
+        drawPerson(c, ex, yf, sc * 1.1, PLAYER_L, G.rt * 10, e.x > E3.px, true, "infierno");
+        c.fillStyle = "#C8302C"; c.strokeStyle = OUTL; c.lineWidth = 2; c.font = "800 22px Unbounded, sans-serif"; c.strokeText("!", ex - 6, yf - 165 * sc); c.fillText("!", ex - 6, yf - 165 * sc);
+      } else if (e.me) {
+        drawPerson(c, ex, yf, sc, PLAYER_L, E3.pWalk, E3.pLeft, false);
+        if (G.rt < E3.shieldUntil) { c.strokeStyle = "#5FE0E6"; c.lineWidth = 3; c.beginPath(); c.ellipse(ex, yf - 60 * sc, 34 * sc, 80 * sc, 0, 0, 7); c.stroke(); }
+      } else { c.save(); if (!gm) c.globalAlpha = 0.7; drawPerson(c, ex, yf, sc, PLAYER_L, G.rt * 4, E3.gLeft, true); c.restore(); }
+    });
+    if (gm) { c.strokeStyle = "rgba(255,181,71,.7)"; c.setLineDash([4, 8]); c.lineWidth = 2; c.beginPath(); c.moveTo(sx(E3.px - 320), gt + 4); c.lineTo(sx(E3.px + 320), gt + 4); c.stroke(); c.setLineDash([]); }
+  }
+  function drawBalance(c, w, h) {
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "#FAF0D7"; c.fillRect(0, 0, w, h); c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(8, 8, w - 16, h - 16);
+    c.fillStyle = OUTL; c.font = "800 16px Unbounded, sans-serif"; c.fillText("LA BALANZA", 22, 36);
+    var cx = w / 2, top = 70, tilt = clamp((E3.sombra - E3.luz) * 0.035 - E3.karma * 0.025, -0.35, 0.35), arm = Math.min(220, w * 0.3);
+    c.lineWidth = 3; c.fillStyle = "#8A6A42"; c.fillRect(cx - 8, top, 16, h * 0.5); c.strokeRect(cx - 8, top, 16, h * 0.5); c.beginPath(); c.moveTo(cx - 60, top + h * 0.5); c.lineTo(cx + 60, top + h * 0.5); c.lineTo(cx + 40, top + h * 0.5 - 16); c.lineTo(cx - 40, top + h * 0.5 - 16); c.closePath(); c.fill(); c.stroke();
+    c.save(); c.translate(cx, top + 10); c.rotate(tilt); c.fillStyle = "#B88A4A"; c.fillRect(-arm, -5, arm * 2, 10); c.strokeRect(-arm, -5, arm * 2, 10); c.restore();
+    [[-1, "Luz " + E3.luz, "#FFE680"], [1, "Sombra " + E3.sombra, "#E0402A"]].forEach(function (p) {
+      var px = cx + Math.cos(tilt) * arm * p[0], py = top + 10 + Math.sin(tilt) * arm * p[0];
+      c.strokeStyle = OUTL; c.lineWidth = 2; c.beginPath(); c.moveTo(px, py); c.lineTo(px - 40, py + 70); c.moveTo(px, py); c.lineTo(px + 40, py + 70); c.stroke();
+      c.fillStyle = p[2]; c.beginPath(); c.ellipse(px, py + 72, 54, 14, 0, 0, 7); c.fill(); c.stroke();
+      c.fillStyle = OUTL; c.font = "800 13px Unbounded, sans-serif"; c.textAlign = "center"; c.fillText(p[1], px, py + 106); c.textAlign = "left";
+    });
+    c.font = "700 14px Atkinson Hyperlegible, sans-serif"; c.fillText("Karma " + (E3.karma > 0 ? "+" : "") + Math.round(E3.karma) + " · " + fmt(E3.pts) + " puntos en esta etapa", 22, 60);
+    var y0 = h - 70, x0 = 24, x1 = w - 24, seg = (x1 - x0) / E3R.length;
+    E3R.forEach(function (R, i) { c.fillStyle = R.sky[0]; c.fillRect(x0 + i * seg, y0, seg, 30); c.strokeStyle = OUTL; c.lineWidth = 1.5; c.strokeRect(x0 + i * seg, y0, seg, 30); c.fillStyle = i > 3 ? "#FAF0D7" : OUTL; c.font = "700 11px Atkinson Hyperlegible, sans-serif"; c.fillText(R.name, x0 + i * seg + 5, y0 + 19, seg - 8); });
+    function mx(v) { return x0 + v / E3W * (x1 - x0); }
+    E3.doors.forEach(function (d) { c.fillStyle = d.ok() ? "#6EDC9A" : "#9E9A92"; c.strokeStyle = OUTL; c.lineWidth = 2; c.fillRect(mx(d.x) - 7, y0 - 22, 14, 20); c.strokeRect(mx(d.x) - 7, y0 - 22, 14, 20); c.fillStyle = OUTL; c.font = "700 10px JetBrains Mono, monospace"; c.fillText("A" + d.n, mx(d.x) - 8, y0 - 26); });
+    c.fillStyle = "#C8302C"; c.beginPath(); c.arc(mx(E3.px), y0 + 44, 6, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#5FE0E6"; c.beginPath(); c.arc(mx(E3.gx), y0 + 44, 5, 0, 7); c.fill(); c.stroke();
+  }
+  function renderE3() {
+    var c = CTX.e, w = CV.e._w, h = CV.e._h; if (!w) return;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    if (E3.view === "balanza") return drawBalance(c, w, h);
+    if (E3.view === "guia") { e3Scene(c, w, h, E3.gx, 0.75, true); c.setTransform(DPR, 0, 0, DPR, 0, 0); tagLabel(c, 16, 56, "El guía ve más allá: trampas, peligros y el alcance de su protección", "#BFEFF2"); return; }
+    e3Scene(c, w, h, E3.px, 1.2, false);
+    if (E3.view === "primer") {
+      c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "rgba(20,12,8,.45)"; c.fillRect(0, 0, w, h);
+      var size = Math.min(h * 0.62, w * 0.4), y = h - size - 16, s = E3.offer;
+      drawPortraitAt(c, 16, y, size, { L: PLAYER_L, mood: E3.chasers.length ? "serio" : "normal", bg: E3.px < 4800 ? "oro" : "rojo" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(16, y, size, size);
+      if (s) { drawPortraitAt(c, w - size - 16, y, size, { L: PLAYER_L, ghost: true, tint: s.kind === "angel" ? "cielo" : s.kind === "demonio" ? "infierno" : null, mood: s.kind === "demonio" ? "serio" : "normal", bg: s.kind === "demonio" ? "rojo" : "oro" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeRect(w - size - 16, y, size, size); speechBubble(c, w - size / 2 - 16, y - 6, s.tpl.q.length > 40 ? s.tpl.q.slice(0, 38) + "…" : s.tpl.q); }
+      else tagLabel(c, w - 260, y + 20, "Nadie frente a ti por ahora", "#FAF0D7");
+    }
+  }
+
+  // =========================================================
+  //  Nivel Dios (se conocieron y cruzaron el portal)
+  // =========================================================
+  var ISL = [
+    { id: "cielo", name: "El Cielo", x: 1500, y: 300, top: "#F6E7A8" },
+    { id: "arena", name: "Dimensión de arena", x: 380, y: 560, top: "#E8C27A" },
+    { id: "alto", name: "Dimensión del cielo alto", x: 2620, y: 520, top: "#BFD8F2" },
+    { id: "barrio", name: "Barrio Medio · Plano 1", x: 820, y: 1060, top: "#8C9AB8" },
+    { id: "libre", name: "El mundo libre", x: 2180, y: 1060, top: "#D8B45A" },
+    { id: "infierno", name: "El Infierno", x: 1500, y: 1720, top: "#C2304B" },
+    { id: "secreta", name: "Dimensión secreta", x: 2660, y: 1660, top: "#2B2B33", sealed: true }
+  ];
+  var DW = 3000, DH = 2000, GOD = null;
+  var RUMBOS = ["Guerra entre mundos", "Infiltrarse en lugares prohibidos", "El gobierno que dirige el mundo", "Guardián del Cielo", "Señor del Infierno", "Renacer en la Tierra con otra vida", "Dimensión secreta"];
+  function subD(t, cls, ms) { sub("d", t, cls, ms); }
+  function startDios() {
+    GOD = { px: 1440, py: 1000, gx: 1560, gy: 1000, view: "volar", near: null, rP: null, rG: null };
+    G.mode = "dios"; G.paused = false; window.__god = GOD;
+    document.querySelector(".stage").hidden = true; $("libre").hidden = true; $("cielo").hidden = true; $("dios").hidden = false;
+    $("lvlTxt").textContent = "Etapa 3 · Nivel Dios · juntos";
+    document.querySelector(".law").innerHTML = '<b>Ley del juego:</b> si uno pasa, pasan los dos, aunque tomen rumbos distintos. En el Nivel Dios lo saben todo: miren, aprendan y elijan su rumbo. <span id="lawTxt" hidden></span>';
+    decide("Cruzaron el portal y llegaron al Nivel Dios");
+    fit(); renderRumbos(); renderCaminos(); godPerson(BARRIO_BASE + 17);
+    subD("Ahora pueden volar a cualquier mundo y saberlo todo de cualquiera. Cuando estén listos, tomen su rumbo.", "s", 9000);
+    $("dios").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function islandInfo(id) {
+    if (id === "barrio") {
+      var out = NPCS.filter(function (n) { return !n.inside; }).length, school = NPCS.filter(function (n) { return n.dest === COLEGIO.id && n.inside; }).length;
+      return "Ahora mismo hay " + fmt(out) + " personas en la calle y " + fmt(school) + " niños en el colegio. " + $("pName").textContent + " volvió a su vida y no recuerda nada: esa persona ya puede tomarla otro jugador.";
+    }
+    if (id === "libre") { var got = L21 ? L21.points.filter(function (p) { return p.got; }).length : 0; return "Seis regiones y " + (L21 ? L21.folk.length : 0) + " viajeros. Ustedes encontraron " + got + " de 3 puntos." + (L21 && L21.chat.length ? " Se dijeron " + L21.chat.length + " cosas en el camino." : ""); }
+    if (id === "cielo" || id === "infierno") { var gr = GR.filter(function (g) { return g.got; }).map(function (g) { return g.name; }); return (id === "cielo" ? "La luz de los que guiaron bien." : "El fuego de los que firmaron sin leer.") + " Karma del guía: " + Math.round(G.gd.karma) + ". Recompensas del recorrido del guía: " + (gr.length ? gr.join(", ") : "ninguna todavía") + "."; }
+    if (id === "arena" || id === "alto") { var dr = L21 ? L21.doors[id === "arena" ? 0 : 1] : null; return dr && dr.entered ? "Ya se asomaron aquí en el mundo libre. Desde el Nivel Dios ven a sus habitantes y sus tareas: guían a otros jugadores de otra manera." : "Nunca se asomaron. Desde aquí ven que hay jugadores con otras tareas, conectados con los que recorren la Tierra."; }
+    return "Sellada. Ni siquiera el Nivel Dios la abre: se abre al salir de la Matrix.";
+  }
+  var FATE = ["cambiará de trabajo y será " , "se mudará a otra ciudad", "tendrá su primer hijo", "abrirá un negocio propio", "perdonará a alguien de su familia", "ganará un premio en su barrio", "dejará de hablar con un amigo", "aprenderá a tocar guitarra", "se cruzará con un jugador sin saberlo"];
+  function godPerson(id) {
+    id = clamp(Math.floor(id) || 0, 0, TOTAL - 1); var p = personAt(id), r = rngFrom(hash32(id * 3 + 1)), lines = [], a = p.age;
+    for (var i = 0; i < 3; i++) { a += 1 + Math.floor(r() * 7); var f = pick(r, FATE); if (f.slice(-1) === " ") f += pick(r, ISCO[Math.floor(r() * 10)][2]).toLowerCase(); lines.push("A los " + a + " años " + f + "."); }
+    lines.push("Vivirá hasta los " + Math.max(a + 4, 68 + Math.floor(r() * 30)) + " años.");
+    $("godOut").innerHTML = '<span class="tag g">Persona N° ' + fmt(id) + "</span><h3>" + esc(p.name) + "</h3><p>" + esc(p.story) + "</p><p><b style=\"color:var(--gold)\">Su destino</b> (solo lo ven quienes llegaron al Nivel Dios): " + esc(lines.join(" ")) + "</p>";
+  }
+  $("godLook").addEventListener("click", function () { godPerson(+$("godId").value); });
+  $("godId").addEventListener("keydown", function (e) { if (e.key === "Enter") godPerson(+this.value); });
+  $("godRand").addEventListener("click", function () { var id = Math.floor(Math.random() * TOTAL); $("godId").value = id; godPerson(id); });
+  function renderCaminos() { var all = (G.allDec || []).slice(-40); $("godPaths").innerHTML = all.length ? all.map(function (d) { return "<li><b>" + esc(d.split(" · ")[0]) + "</b><span>" + esc(d.split(" · ").slice(1).join(" · ")) + "</span></li>"; }).join("") : "<li>Sin registro.</li>"; }
+  function renderRumbos() {
+    function row(who) { return RUMBOS.map(function (r, i) { var sel = (who === "p" ? GOD.rP : GOD.rG) === i, sealed = i === RUMBOS.length - 1; return '<button class="btn' + (sel ? " pri" : "") + '" type="button" data-rb="' + who + '" data-i="' + i + '"' + (sealed ? " disabled title=\"Se abre al salir de la Matrix\"" : "") + ">" + esc(r) + (sealed ? " (sellada)" : "") + "</button>"; }).join(""); }
+    $("rumbos").innerHTML = '<div class="row"><span class="hint" style="min-width:60px;color:var(--amber)">Jugador</span>' + row("p") + '</div><div class="row"><span class="hint" style="min-width:60px;color:var(--cyan)">Guía</span>' + row("g") + "</div>";
+    $("btnRumbo").disabled = GOD.rP === null || GOD.rG === null;
+  }
+  $("rumbos").addEventListener("click", function (e) { var b = e.target.closest("[data-rb]"); if (!b) return; if (b.getAttribute("data-rb") === "p") GOD.rP = +b.getAttribute("data-i"); else GOD.rG = +b.getAttribute("data-i"); renderRumbos(); });
+  $("btnRumbo").addEventListener("click", function () {
+    var a = RUMBOS[GOD.rP], b = RUMBOS[GOD.rG]; G.paused = true; decide("Tomaron su rumbo: jugador → " + a + "; guía → " + b);
+    stageEnd("Tomaron su rumbo", GOD.rP === GOD.rG ? "Van juntos: " + a + ". Como en el Nivel Dios lo saben todo, nadie los podrá engañar, pero sí ver: en los rumbos de la Etapa 3 la misión es que nadie los vea. Esta etapa se construye en la próxima versión." :
+      "El jugador va a «" + a + "» y el guía a «" + b + "». Sus caminos se separan, pero la ley los une: si uno pasa, pasan los dos. Estas etapas se construyen en la próxima versión.");
+  });
+  bindViews("vwD", function (v) { if (GOD) GOD.view = v; });
+  $("cvD").addEventListener("click", function (e) {
+    if (!GOD || GOD.view !== "ojo") return;
+    var r = this.getBoundingClientRect(), x = (e.clientX - r.left), y = (e.clientY - r.top), sc = Math.min((r.width - 40) / DW, (r.height - 60) / DH), ox = (r.width - DW * sc) / 2, oy = 40 + (r.height - 60 - DH * sc) / 2, best = null;
+    ISL.forEach(function (is) { var d = Math.hypot(ox + is.x * sc - x, oy + is.y * sc - y); if (d < 40 && (!best || d < best.d)) best = { is: is, d: d }; });
+    if (best) { GOD.px = best.is.x - 60; GOD.py = best.is.y - 120; GOD.gx = best.is.x + 60; GOD.gy = best.is.y - 120; subD("Volaron juntos a " + best.is.name + ".", "s"); }
+  });
+  function updateDios(dt) {
+    G.rt += dt; G.minute += dt * G.speed * 0.6; if (G.minute >= 1320) G.minute = 420;
+    updateNPCs(dt, G.minute);
+    var sp = (keys["shift"] ? 420 : 260) * dt;
+    if (!typing()) {
+      if (keys["a"]) GOD.px -= sp; if (keys["d"]) GOD.px += sp; if (keys["w"]) GOD.py -= sp; if (keys["s"]) GOD.py += sp;
+      if (keys["arrowleft"]) GOD.gx -= sp; if (keys["arrowright"]) GOD.gx += sp; if (keys["arrowup"]) GOD.gy -= sp; if (keys["arrowdown"]) GOD.gy += sp;
+    }
+    var pad = readPad(); if (pad) { GOD.px += pad.x * sp; GOD.py += pad.y * sp; }
+    GOD.px = clamp(GOD.px, 40, DW - 40); GOD.py = clamp(GOD.py, 40, DH - 40); GOD.gx = clamp(GOD.gx, 40, DW - 40); GOD.gy = clamp(GOD.gy, 40, DH - 40);
+    var near = null; ISL.forEach(function (is) { var d = Math.min(Math.hypot(is.x - GOD.px, is.y - GOD.py), Math.hypot(is.x - GOD.gx, is.y - GOD.gy)); if (d < 230 && (!near || d < near.d)) near = { is: is, d: d }; });
+    var id = near ? near.is.id : null;
+    if (id !== GOD.near) { GOD.near = id; $("dIsland").innerHTML = near ? '<div class="card ' + (near.is.sealed ? "temp" : "envio") + '"><span class="tag g">Conocer todo · ' + esc(near.is.name) + "</span><p>" + esc(islandInfo(id)) + "</p></div>" : ""; if (near) sfx("voice"); }
+  }
+  function hudDios() { $("clock").textContent = clockStr(G.minute); $("dRegion").textContent = GOD.near ? ISL.filter(function (i) { return i.id === GOD.near; })[0].name : "Entre mundos"; var d = Math.hypot(GOD.px - GOD.gx, GOD.py - GOD.gy); $("dDist").textContent = d < 300 ? "Juntos" : "Separados por " + fmt(d) + " m"; }
+  function drawIsland(c, x, y, s, is) {
+    c.strokeStyle = OUTL; c.lineWidth = 2.6;
+    c.fillStyle = "#7A5A3A"; c.beginPath(); c.moveTo(x - 120 * s, y); c.lineTo(x - 60 * s, y + 90 * s); c.lineTo(x - 10 * s, y + 150 * s); c.lineTo(x + 40 * s, y + 96 * s); c.lineTo(x + 120 * s, y); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = is.top; c.beginPath(); c.ellipse(x, y, 122 * s, 30 * s, 0, 0, 7); c.fill(); c.stroke();
+    if (is.id === "cielo") { cloud(c, x - 60 * s, y - 20 * s, 40 * s); c.fillStyle = "#F2D16B"; c.fillRect(x + 10 * s, y - 90 * s, 14 * s, 80 * s); c.strokeRect(x + 10 * s, y - 90 * s, 14 * s, 80 * s); c.fillRect(x + 60 * s, y - 90 * s, 14 * s, 80 * s); c.strokeRect(x + 60 * s, y - 90 * s, 14 * s, 80 * s); c.beginPath(); c.arc(x + 42 * s, y - 90 * s, 32 * s, Math.PI, 0); c.stroke(); }
+    else if (is.id === "barrio") { [-70, -20, 30].forEach(function (o, i) { c.fillStyle = CASA_W[i]; c.fillRect(x + o * s, y - 46 * s, 40 * s, 36 * s); c.strokeRect(x + o * s, y - 46 * s, 40 * s, 36 * s); c.fillStyle = "#8A3B2A"; c.beginPath(); c.moveTo(x + (o - 4) * s, y - 46 * s); c.lineTo(x + (o + 20) * s, y - 66 * s); c.lineTo(x + (o + 44) * s, y - 46 * s); c.closePath(); c.fill(); c.stroke(); }); }
+    else if (is.id === "libre") { trunk(c, x - 40 * s, y - 6 * s, y - 120 * s, 16 * s); trunk(c, x + 30 * s, y - 6 * s, y - 100 * s, 14 * s); bush(c, x, y - 4 * s, 34 * s); }
+    else if (is.id === "infierno") { [-60, -20, 20, 60].forEach(function (o, i) { flame(c, x + o * s, y - 6 * s, (50 + i * 8) * s, o); }); }
+    else if (is.id === "arena") { c.fillStyle = "#E0B565"; c.beginPath(); c.ellipse(x - 20 * s, y - 4 * s, 80 * s, 26 * s, 0, Math.PI, 0); c.fill(); c.stroke(); c.fillStyle = "#5E8C3A"; roundRect(c, x + 50 * s, y - 70 * s, 12 * s, 64 * s, 6 * s); c.fill(); c.stroke(); }
+    else if (is.id === "alto") { for (var i = 0; i < 5; i++) { c.fillStyle = "#F4F1E6"; c.fillRect(x - 50 * s + i * 22 * s, y - 14 * s - i * 18 * s, 22 * s, 12 * s); c.strokeRect(x - 50 * s + i * 22 * s, y - 14 * s - i * 18 * s, 22 * s, 12 * s); } }
+    else { c.fillStyle = "rgba(20,10,30,.7)"; c.beginPath(); c.ellipse(x, y - 40 * s, 70 * s, 50 * s, 0, 0, 7); c.fill(); c.fillStyle = "#E9C964"; roundRect(c, x - 16 * s, y - 50 * s, 32 * s, 26 * s, 4 * s); c.fill(); c.stroke(); c.beginPath(); c.arc(x, y - 52 * s, 11 * s, Math.PI, 0); c.stroke(); }
+    c.font = "800 " + Math.round(Math.max(11, 14 * s)) + "px Unbounded, sans-serif"; c.textAlign = "center"; c.fillStyle = "#FAF0D7"; c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeText(is.name, x, y + 176 * s); c.fillText(is.name, x, y + 176 * s); c.textAlign = "left";
+  }
+  function renderDios() {
+    var c = CTX.d, w = CV.d._w, h = CV.d._h; if (!w) return;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    if (GOD.view === "ojo") {
+      c.fillStyle = "#1E1838"; c.fillRect(0, 0, w, h);
+      var sc = Math.min((w - 40) / DW, (h - 60) / DH), ox = (w - DW * sc) / 2, oy = 40 + (h - 60 - DH * sc) / 2;
+      c.fillStyle = "#FAF0D7"; c.font = "800 15px Unbounded, sans-serif"; c.fillText("OJO DE DIOS · toca un mundo para volar hasta allá", 18, 104, w - 36);
+      c.strokeStyle = "rgba(246,231,168,.35)"; c.lineWidth = 2; c.setLineDash([6, 8]); c.beginPath();
+      [["cielo", "barrio"], ["cielo", "libre"], ["barrio", "libre"], ["barrio", "infierno"], ["libre", "infierno"], ["arena", "barrio"], ["alto", "libre"], ["secreta", "infierno"]].forEach(function (l) { var a = ISL.filter(function (i) { return i.id === l[0]; })[0], b = ISL.filter(function (i) { return i.id === l[1]; })[0]; c.moveTo(ox + a.x * sc, oy + a.y * sc); c.lineTo(ox + b.x * sc, oy + b.y * sc); });
+      c.stroke(); c.setLineDash([]);
+      ISL.forEach(function (is) { c.fillStyle = is.top; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.arc(ox + is.x * sc, oy + is.y * sc, 22, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#FAF0D7"; c.font = "700 12px Atkinson Hyperlegible, sans-serif"; c.textAlign = "center"; c.fillText(is.name, ox + is.x * sc, oy + is.y * sc + 38); c.textAlign = "left"; });
+      [[GOD.px, GOD.py, "#FFB547"], [GOD.gx, GOD.gy, "#5FE0E6"]].forEach(function (p) { c.fillStyle = p[2]; c.strokeStyle = OUTL; c.lineWidth = 2; star(c, ox + p[0] * sc, oy + p[1] * sc, 10); c.stroke(); });
+      return;
+    }
+    var mx = (GOD.px + GOD.gx) / 2, my = (GOD.py + GOD.gy) / 2, span = Math.max(Math.abs(GOD.px - GOD.gx) / (w - 200), Math.abs(GOD.py - GOD.gy) / (h - 200)), k = clamp(1 / Math.max(span, 0.001), 0.4, 1);
+    var g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#2B3A78"); g.addColorStop(0.6, "#8C6AB0"); g.addColorStop(1, "#E9A27A"); c.fillStyle = g; c.fillRect(0, 0, w, h);
+    var r = rngFrom(55); for (var i = 0; i < 60; i++) { c.fillStyle = "rgba(255,250,220," + (0.3 + r() * 0.5) + ")"; c.beginPath(); c.arc((r() * w * 2 - mx * 0.05) % w, r() * h * 0.6, 1 + r() * 1.5, 0, 7); c.fill(); }
+    for (var j = 0; j < 8; j++) cloud(c, ((j * 260 - mx * 0.2) % (w + 300) + w + 300) % (w + 300) - 150, 80 + (j * 97) % (h - 120), 50);
+    function sx(x) { return w / 2 + (x - mx) * k; } function sy(y) { return h / 2 + (y - my) * k; }
+    ISL.forEach(function (is) { if (Math.abs(sx(is.x) - w / 2) < w && Math.abs(sy(is.y) - h / 2) < h) drawIsland(c, sx(is.x), sy(is.y), k, is); });
+    [[GOD.px, GOD.py, PLAYER_L, GOD.px > GOD.gx], [GOD.gx, GOD.gy, guideLook(), GOD.gx < GOD.px]].forEach(function (p, i) {
+      var x = sx(p[0]), y = sy(p[1]) + Math.sin(G.rt * 2 + i) * 6, au = c.createRadialGradient(x, y - 60 * k, 10, x, y - 60 * k, 110 * k);
+      au.addColorStop(0, "rgba(255,230,150,.55)"); au.addColorStop(1, "rgba(255,230,150,0)"); c.fillStyle = au; c.fillRect(x - 110 * k, y - 170 * k, 220 * k, 220 * k);
+      drawPerson(c, x, y, k * 0.9, p[2], Math.sin(G.rt * 1.5) * 0.4, p[3], false);
+    });
+    if (GOD.view === "primer") {
+      c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "rgba(20,12,8,.4)"; c.fillRect(0, 0, w, h);
+      var size = Math.min(h * 0.62, w * 0.4), yy = h - size - 16;
+      drawPortraitAt(c, 16, yy, size, { L: PLAYER_L, mood: "normal", bg: "oro" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeStyle = "#E9C964"; c.lineWidth = 4; c.strokeRect(16, yy, size, size);
+      drawPortraitAt(c, w - size - 16, yy, size, { L: guideLook(), mood: "normal", bg: "oro" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeRect(w - size - 16, yy, size, size);
+      speechBubble(c, 16 + size / 2, yy - 6, GOD.rP === null ? "¿Hacia dónde vamos?" : RUMBOS[GOD.rP]); speechBubble(c, w - size / 2 - 16, yy - 6, GOD.rG === null ? "Lo sabemos todo..." : RUMBOS[GOD.rG]);
+    }
+  }
+  function stageEnd(title, txt) { $("stTitle").textContent = title; $("stTxt").textContent = txt; $("ovStage").hidden = false; }
+  $("stOk").addEventListener("click", function () { $("ovStage").hidden = true; G.paused = false; });
+
+  // =========================================================
   //  Panel: actualizar números (4 veces por segundo)
   // =========================================================
   function hud() {
@@ -1824,6 +2271,13 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   var last = 0, lastHud = 0;
   function frame(ts) {
     var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts;
+    if (G.mode === "cielo" || G.mode === "dios") {
+      var isE = G.mode === "cielo";
+      if (!G.paused) (isE ? updateE3 : updateDios)(dt);
+      (isE ? renderE3 : renderDios)();
+      if (ts - lastHud > 250) { lastHud = ts; (isE ? hudE3 : hudDios)(); }
+      requestAnimationFrame(frame); return;
+    }
     if (G.mode === "libre") {
       if (!G.paused) updateLibre(dt);
       renderLibre();
