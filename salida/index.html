@@ -743,7 +743,40 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     var f = $("gFeed"), el = document.createElement("div"); el.innerHTML = "<b>" + clockStr(G.minute) + "</b> " + esc(text);
     f.insertBefore(el, f.firstChild); while (f.children.length > 30) f.removeChild(f.lastChild);
   }
-  function decide(text) { G.decisions.push(clockStr(G.minute) + " · " + text); (G.allDec = G.allDec || []).push("Día " + G.day + " · " + text); }
+  function decide(text) { G.decisions.push(clockStr(G.minute) + " · " + text); (G.allDec = G.allDec || []).push("Día " + G.day + " · " + text); ndFeed("jugador", text); }
+
+  // ── NDAPREMO en el navegador (versión mínima del motor): TODO personaje tiene el suyo ──
+  // 7 nodos, personalidad base fija por personaje y un estado que cambia evento a evento (uno a la vez, como pide el Códice).
+  var ND_NODES = ["ROJO", "AZUL", "AMARILLO", "GRIS", "VERDE", "VIOLETA", "NARANJA"];
+  var ND_LABEL = { ROJO: "Urgencia/Ira", AZUL: "Análisis/Calma", AMARILLO: "Alegría/Creatividad", GRIS: "Neutralidad/Caché", VERDE: "Empatía/Calma Profunda", VIOLETA: "Tensión Creativa/Profundidad", NARANJA: "Energía Activa/Entusiasmo" };
+  var ND_EVENTS = [
+    [/asaltaron|guardián de fuego|atrapar|Rompió|traición|vieron|descubrió|ladrón/i, { ROJO: 1, VIOLETA: 0.3 }],
+    [/protegi|arrepinti|rechazó la tentación|Cumplió|dejó ir|te creo/i, { VERDE: 1, AZUL: 0.3 }],
+    [/Encontraron|desbloqueó|Recibió|Nivel Dios|portal|parte del gobierno/i, { AMARILLO: 1, NARANJA: 0.3 }],
+    [/Firmó|decreto|Leyó|cedió|dilema|duda/i, { VIOLETA: 1, ROJO: 0.2 }],
+    [/Aceptó|Viajaron|Cruzaron|Entraron|rumbo|Siguieron|Se asomaron/i, { NARANJA: 1, AMARILLO: 0.2 }],
+    [/Falló/i, { ROJO: 0.5, VIOLETA: 0.5 }],
+    [/Ante|Supervisor|condiciones|pesó/i, { AZUL: 1 }]
+  ];
+  var NDS = {};
+  function ndOf(id) {
+    if (NDS[id]) return NDS[id];
+    var r = rngFrom(hash32(String(id).split("").reduce(function (a, ch) { return a * 31 + ch.charCodeAt(0) | 0; }, 7))), base = {}, v = {};
+    ND_NODES.forEach(function (n) { base[n] = 0.2 + r() * 0.8; v[n] = 0; });
+    base[ND_NODES[Math.floor(r() * 7)]] += 0.9; // rasgo principal de la personalidad
+    return NDS[id] = { id: id, base: base, v: v, hist: [] };
+  }
+  function ndFeed(id, text) {
+    var st = ndOf(id), push = { GRIS: 0.2 };
+    ND_EVENTS.forEach(function (e) { if (e[0].test(text)) for (var k in e[1]) push[k] = (push[k] || 0) + e[1][k]; });
+    ND_NODES.forEach(function (n) { st.v[n] = st.v[n] * 0.8 + (push[n] || 0) * 0.3; }); // inercia + decaimiento
+    st.hist.push(text); if (st.hist.length > 30) st.hist.shift();
+    return st;
+  }
+  function ndPct(id) { var st = ndOf(id), tot = 0, o = {}; ND_NODES.forEach(function (n) { o[n] = st.base[n] + st.v[n]; tot += o[n]; }); ND_NODES.forEach(function (n) { o[n] = o[n] / tot * 100; }); return o; }
+  function ndDom(id) { var p = ndPct(id); return ND_NODES.slice().sort(function (a, b) { return p[b] - p[a]; })[0]; }
+  function ndTag(id, who) { var d = ndDom(id), p = ndPct(id); return '<p class="hint">NDAPREMO de ' + esc(who) + ': domina <b>' + d + '</b> · ' + ND_LABEL[d] + ' (' + Math.round(p[d]) + ' %)</p>'; }
+
   var AC = null;
   function tone(freq, dur, when, type) {
     if (!G.soundOn) return;
@@ -2702,37 +2735,64 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     clearInterval(lockTimer); lockTimer = setInterval(tick, 1000); tick();
   }
   function judgeScore() { return G.pl.karma + G.gd.karma * 0.5 + (E3 ? E3.karma * 0.3 : 0) + GR.filter(function (g) { return g.got; }).length * 0.4 - GOB.power * 0.3; }
+  // El captor decide según SU personalidad NDAPREMO y responde según su decisión
+  var CAPTOR_RULE = {
+    ROJO:     { min: 99,  yes: "«¡Traidor! Te entrego ahora mismo.»" },
+    GRIS:     { min: 99,  yes: "«La regla es la regla. Te entrego.»" },
+    AZUL:     { min: 1,   yes: "«Revisé lo que hiciste. Los hechos no te ayudan: te entrego.»", no: "«Revisé lo que hiciste. No hay pruebas suficientes: puedes irte.»" },
+    VIOLETA:  { min: 2,   yes: "«Lo dudé mucho… pero te entrego.»", no: "«Lo dudé mucho. Esta vez te dejo ir.»" },
+    NARANJA:  { min: 1,   yes: "«No has demostrado nada con tus actos. Te entrego.»", no: "«Has actuado bien. Sigue, y demuéstralo.»" },
+    VERDE:    { min: -1,  yes: "«Me duele, pero te entrego.»", no: "«Veo que no eres malo. Vete, y cuídate.»" },
+    AMARILLO: { min: 0,   yes: "«Lo siento, amigo: te entrego.»", no: "«Me caes bien. No diré nada.»" }
+  };
   function captorDecides(by) {
-    var captor = (by && by.indexOf("Guardia") === 0 ? by : "El capitán " + pick(prng, SURNAMES)), deliver = judgeScore() < 2 || prng() < 0.55;
-    decide(captor + (deliver ? " decidió entregarlo" : " decidió dejarlo ir"));
-    if (!deliver) return showOG("Pasaron los 3 días", captor + " te deja ir", "<p>«No diré nada. Pero no vuelvas a cruzarte conmigo.» Vuelves a la entrada de la capital.</p>", [{ t: "Seguir", cls: "pri", fn: function () { hideOG(); resetGobPos(); G.paused = false; } }]);
-    showOG("Pasaron los 3 días", captor + " decidió entregarte", "<p>Pasas a la supervisión del juego. El Supervisor va a juzgarte según todo lo que hiciste antes.</p>", [{ t: "Ir con el Supervisor", cls: "pri", fn: supervisor }]);
+    var captor = (by && by.indexOf("Guardia") === 0 ? by : "El capitán " + pick(prng, SURNAMES)), cid = "captor:" + captor;
+    if (!NDS[cid]) weighed().forEach(function (d) { ndFeed(cid, d.split(" · ").slice(1).join(" · ")); }); // el captor conoce el camino del jugador, evento a evento
+    var dom = ndDom(cid), rule = CAPTOR_RULE[dom], sc = judgeScore(), deliver = sc < rule.min, say = deliver ? rule.yes : rule.no;
+    ndFeed(cid, deliver ? "Rompió" : "dejó ir");
+    decide(captor + (deliver ? " decidió entregarlo" : " decidió dejarlo ir") + " (domina " + dom + ")");
+    if (!deliver) return showOG("Pasaron los 3 días", captor + " te deja ir", "<p>" + say + "</p>" + ndTag(cid, captor) + "<p>Vuelves a la entrada de la capital.</p>", [{ t: "Seguir", cls: "pri", fn: function () { hideOG(); resetGobPos(); G.paused = false; } }]);
+    showOG("Pasaron los 3 días", captor + " decidió entregarte", "<p>" + say + "</p>" + ndTag(cid, captor) + "<p>Pasas a la supervisión del juego. El Supervisor va a juzgarte según todo lo que hiciste antes.</p>", [{ t: "Ir con el Supervisor", cls: "pri", fn: supervisor }]);
   }
   function weighed() {
-    var all = (G.allDec || []), key = all.filter(function (d) { return /Rechaz|cedió|Firmar|arrepinti|protegi|asaltaron|Destru|verdad|Archiv|tentación|Mandarla|Guiarla|Leyó/.test(d); });
-    return (key.length ? key : all).slice(-3);
+    var all = (G.allDec || []), key = all.filter(function (d) { return !/decidió (entregarlo|dejarlo)|Modo demo/.test(d) && /Rechaz|cedió|Firmar|arrepinti|protegi|asaltaron|Destru|verdad|Archiv|tentación|Mandarla|Guiarla|Leyó/.test(d); });
+    return (key.length ? key : all.filter(function (d) { return !/decidió (entregarlo|dejarlo)|Modo demo/.test(d); })).slice(-3);
   }
+  // El Supervisor también tiene NDAPREMO: pesa las decisiones una a una y juzga según su personalidad y la del jugador
+  var SUP_RULE = {
+    ROJO:     { shift: 1,    low: "«Tus decisiones me enfurecen. Desde abajo.»", mid: "«No confío en ti. Al Intermedio.»", ok: "«Sigue. Pero te vigilo.»", yesMin: 1,  noMin: 99 },
+    GRIS:     { shift: 0.5,  low: "«Según la regla: nivel Bajo.»", mid: "«Según la regla: nivel Intermedio.»", ok: "«Según la regla: puedes seguir.»", yesMin: 0.5, noMin: 99 },
+    AZUL:     { shift: 0,    low: "«Analicé tu camino: te hunde. Empiezas desde abajo.»", mid: "«No eres malo, pero tampoco confiable. Al Intermedio.»", ok: "«Los hechos te respaldan. Sigue.»", yesMin: 0,  noMin: 2 },
+    VIOLETA:  { shift: 0,    low: "«Hay demasiada contradicción en ti. Desde abajo.»", mid: "«Me dejas dudas. Al Intermedio.»", ok: "«Me dejas dudas, pero sigue.»", yesMin: 0,  noMin: 2 },
+    NARANJA:  { shift: 0,    low: "«Actuaste mal. Desde abajo, y con fuerza.»", mid: "«Te falta acción. Al Intermedio.»", ok: "«¡Vamos! Sigue avanzando.»", yesMin: 0,  noMin: 3 },
+    VERDE:    { shift: -1,   low: "«Me duele, pero debes empezar desde abajo.»", mid: "«Te doy otra oportunidad en el Intermedio.»", ok: "«Te comprendo. Sigue.»", yesMin: -1, noMin: 3 },
+    AMARILLO: { shift: -0.5, low: "«Hoy no fue tu día. Desde abajo.»", mid: "«Al Intermedio, pero con ánimo.»", ok: "«¡Me gusta tu camino! Sigue.»", yesMin: -0.5, noMin: 3 }
+  };
+  var PLAYER_MOOD = { ROJO: -0.5, VIOLETA: -0.2, GRIS: 0, AZUL: 0.2, NARANJA: 0.2, AMARILLO: 0.3, VERDE: 0.5 };
+  function supJudge() { var dom = ndDom("supervisor"), pd = ndDom("jugador"); return { dom: dom, r: SUP_RULE[dom], pd: pd, sc: judgeScore() + PLAYER_MOOD[pd] - SUP_RULE[dom].shift }; }
   function supervisor() {
-    var sc = judgeScore(), w = weighed(), list = "<ul class=\"list\">" + w.map(function (d) { return "<li><b>" + esc(d.split(" · ")[0]) + "</b><span>" + esc(d.split(" · ").slice(1).join(" · ")) + "</span></li>"; }).join("") + "</ul>";
-    var intro = '<div class="withpt">' + ptTag("sup", { L: SUP_L, mood: "serio", bg: "oro" }) + "<div><p>«Revisé tu camino. Esto es lo que pesé:»</p>" + list + "</div></div>";
-    if (sc < -2) { decide("El Supervisor lo mandó al nivel Bajo"); return showOG("La supervisión del juego", "Vuelves al nivel Bajo", intro + "<p>«Tus decisiones te hunden. Empiezas de nuevo desde abajo.»</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Bajo (en esta versión, el barrio). Tu compañero viene contigo: es ley.", "Bajo"); } }]); }
-    if (sc < 1) { decide("El Supervisor lo mandó al nivel Intermedio"); return showOG("La supervisión del juego", "Vuelves al nivel Intermedio", intro + "<p>«No eres malo, pero tampoco confiable. Te pongo en el Intermedio para que corrijas tu camino.»</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Intermedio (en esta versión, el barrio). Puedes arrepentirte de tus misiones para corregir el camino.", "Intermedio"); } }]); }
+    weighed().forEach(function (d) { ndFeed("supervisor", d.split(" · ").slice(1).join(" · ")); });
+    var J = supJudge(), sc = J.sc, w = weighed(), list = "<ul class=\"list\">" + w.map(function (d) { return "<li><b>" + esc(d.split(" · ")[0]) + "</b><span>" + esc(d.split(" · ").slice(1).join(" · ")) + "</span></li>"; }).join("") + "</ul>";
+    var intro = '<div class="withpt">' + ptTag("sup", { L: SUP_L, mood: "serio", bg: "oro" }) + "<div><p>«Revisé tu camino. Esto es lo que pesé:»</p>" + list + "</div></div>" + ndTag("supervisor", "el Supervisor") + ndTag("jugador", "tu jugador");
+    if (sc < -2) { decide("El Supervisor lo mandó al nivel Bajo"); return showOG("La supervisión del juego", "Vuelves al nivel Bajo", intro + "<p>" + J.r.low + "</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Bajo (en esta versión, el barrio). Tu compañero viene contigo: es ley.", "Bajo"); } }]); }
+    if (sc < 1) { decide("El Supervisor lo mandó al nivel Intermedio"); return showOG("La supervisión del juego", "Vuelves al nivel Intermedio", intro + "<p>" + J.r.mid + "</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Empiezas en el nivel Intermedio (en esta versión, el barrio). Puedes arrepentirte de tus misiones para corregir el camino.", "Intermedio"); } }]); }
     var two = CONDS.slice().sort(function () { return prng() - 0.5; }).slice(0, 2);
     GOB.conds = two.map(function (c) { return { id: c.id, text: c.text, broken: false }; }); GOB.broken = false; renderConds();
     decide("El Supervisor lo dejó seguir con 2 condiciones");
-    showOG("La supervisión del juego", "Te dejo seguir, con 2 condiciones", intro + "<p>«Sigue, pero hasta que pases al siguiente nivel serás leal a esto:»</p><ul class=\"list\">" + GOB.conds.map(function (c, i) { return "<li><b>" + (i + 1) + "</b><span>" + esc(c.text) + "</span></li>"; }).join("") + "</ul><p>«Puedes hacerlas o no. Pero si te pillan, cumplirás la condena por traición.»</p>",
+    showOG("La supervisión del juego", "Te dejo seguir, con 2 condiciones", intro + "<p>" + J.r.ok + " Hasta que pases al siguiente nivel serás leal a esto:</p><ul class=\"list\">" + GOB.conds.map(function (c, i) { return "<li><b>" + (i + 1) + "</b><span>" + esc(c.text) + "</span></li>"; }).join("") + "</ul><p>«Puedes hacerlas o no. Pero si te pillan, cumplirás la condena por traición.»</p>",
       [{ t: "Acepto", cls: "pri", fn: function () { hideOG(); GOB.p.fly = false; GOB.q.fly = false; resetGobPos(); G.paused = false; } }]);
   }
   function treason() {
     G.paused = true; sfx("bad");
-    showOG("Condena por traición", "El Supervisor te hace una sola pregunta", '<div class="withpt">' + ptTag("sup2", { L: SUP_L, mood: "serio", bg: "rojo" }) + '<div><p>«Te dije que fueras leal a dos cosas, y te pillaron.»</p><p style="font-family:var(--f-display);font-size:28px;color:var(--ink)">¿Te arrepientes?</p></div></div>',
+    showOG("Condena por traición", "El Supervisor te hace una sola pregunta", '<div class="withpt">' + ptTag("sup2", { L: SUP_L, mood: "serio", bg: "rojo" }) + '<div><p>«Te dije que fueras leal a dos cosas, y te pillaron.»</p><p style="font-family:var(--f-display);font-size:28px;color:var(--ink)">¿Te arrepientes?</p></div></div>' + ndTag("supervisor", "el Supervisor"),
       [{ t: "Sí, me arrepiento", cls: "pri", fn: function () { verdict(true); } }, { t: "No", fn: function () { verdict(false); } }]);
   }
   function verdict(yes) {
-    var sc = judgeScore(); decide("Ante la pregunta del Supervisor respondió: " + (yes ? "sí, me arrepiento" : "no"));
-    if (yes && sc >= 0) showOG("La condena", "«Te creo»", "<p>Vuelves a la capital sin condiciones, pero el gobierno te quita la mitad de tu poder.</p>", [{ t: "Seguir", cls: "pri", fn: function () { GOB.power = Math.floor(GOB.power / 2); GOB.conds = []; GOB.broken = false; renderConds(); renderGobMis(); hideOG(); resetGobPos(); G.paused = false; } }]);
+    ndFeed("supervisor", yes ? "arrepinti" : "traición");
+    var J = supJudge(), sc = J.sc; decide("Ante la pregunta del Supervisor respondió: " + (yes ? "sí, me arrepiento" : "no"));
+    if (yes && sc >= J.r.yesMin) showOG("La condena", "«Te creo»", "<p>Vuelves a la capital sin condiciones, pero el gobierno te quita la mitad de tu poder.</p>", [{ t: "Seguir", cls: "pri", fn: function () { GOB.power = Math.floor(GOB.power / 2); GOB.conds = []; GOB.broken = false; renderConds(); renderGobMis(); hideOG(); resetGobPos(); G.paused = false; } }]);
     else if (yes) showOG("La condena", "«Tus actos dicen otra cosa»", "<p>Tu arrepentimiento no alcanza. Vuelves al nivel Bajo.</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); backToLevel1("Condenado por traición: empiezas en el nivel Bajo (en esta versión, el barrio).", "Bajo"); } }]);
-    else if (sc >= 3) showOG("La condena", "«Al menos eres honesto»", "<p>Sigues en la capital, pero el gobierno ya no confía en ti: pierdes todo el poder que ganaste.</p>", [{ t: "Seguir", cls: "pri", fn: function () { GOB.power = 0; GOB.conds = []; GOB.broken = false; renderConds(); renderGobMis(); hideOG(); resetGobPos(); G.paused = false; } }]);
+    else if (!yes && sc >= J.r.noMin) showOG("La condena", "«Al menos eres honesto»", "<p>Sigues en la capital, pero el gobierno ya no confía en ti: pierdes todo el poder que ganaste.</p>", [{ t: "Seguir", cls: "pri", fn: function () { GOB.power = 0; GOB.conds = []; GOB.broken = false; renderConds(); renderGobMis(); hideOG(); resetGobPos(); G.paused = false; } }]);
     else showOG("La condena", "Condena completa", "<p>Nivel Bajo y 3 días más sin poder jugar con este personaje.</p>", [{ t: "Aceptar", cls: "pri", fn: function () { hideOG(); setLock(Date.now() + 3 * 24 * 3600 * 1000); backToLevel1("Condenado: nivel Bajo y 3 días sin jugar con este personaje.", "Bajo"); } }]);
   }
   function resetGobPos() { GOB.p.x = 980; GOB.p.y = 1120; GOB.q.x = 1040; GOB.q.y = 1120; GOB.p.meter = 0; GOB.q.meter = 0; }
@@ -3002,6 +3062,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   renderActive();
   requestAnimationFrame(frame);
   window.__salida = G; // para pruebas
+  window.__salidaT = { captorDecides: captorDecides, supervisor: supervisor, treason: treason, ndPct: ndPct, ndDom: ndDom };
 })();
 </script>
 
