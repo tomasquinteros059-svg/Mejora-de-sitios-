@@ -136,6 +136,28 @@ kbd { font-family: var(--f-mono); font-size: 11px; background: var(--panel-2); b
 #dlg { position: absolute; top: 40px; left: 10px; right: 10px; display: flex; gap: 10px; align-items: center; background: #FAF0D7; color: #1B1410; border: 3px solid #1B1410; border-radius: 14px; padding: 8px 12px; max-width: 540px; font-size: 15px; box-shadow: 4px 4px 0 #1B1410; }
 #dlg canvas { width: 72px; height: 72px; border-radius: 10px; border: 2px solid #1B1410; flex: none; }
 #dlg b { display: block; font-family: var(--f-display); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+.views { display: flex; flex-wrap: wrap; gap: 4px; background: var(--panel-2); border-radius: 10px; padding: 4px; width: fit-content; max-width: 100%; }
+.views button { border: 0; background: transparent; border-radius: 7px; padding: 5px 10px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.views button[aria-pressed="true"] { background: var(--ink); color: var(--night); }
+.gr li { align-items: start; }
+.gr li b { min-width: 74px; }
+.gr li.got b { color: var(--ok); }
+.gr small { display: block; color: var(--muted); font-size: 12px; }
+.libre canvas.vc { height: 480px; }
+@media (max-width: 640px) { .libre canvas.vc { height: 340px; } }
+.meet { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+.meet canvas { width: 100%; max-width: 220px; height: auto; aspect-ratio: 1; border: 3px solid #1B1410; border-radius: 14px; justify-self: center; }
+.chat { max-height: 150px; overflow: auto; display: grid; gap: 4px; font-size: 14px; }
+.chat div b { color: var(--amber); } .chat div.g b { color: var(--cyan); }
+.chatin { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+@media (max-width: 560px) { .chatin { grid-template-columns: 1fr; } }
+.chatin input { background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.pts3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 560px) { .pts3 { grid-template-columns: 1fr; } }
+.pts3 div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.pts3 div.got { border-color: var(--gold); }
+.pts3 .tag, .pts3 b { display: block; }
+.pts3 small { display: block; color: var(--muted); font-size: 12px; }
 canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(--ground); max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
@@ -174,6 +196,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
         <div class="subs" id="subsP"></div>
       </div>
       <div class="panel">
+        <div class="views" role="group" aria-label="Tipo de vista del jugador" id="vwP"><button type="button" data-v="lateral" aria-pressed="true">Lateral</button><button type="button" data-v="cenital" aria-pressed="false">Desde arriba</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
         <div class="kv">
           <div><small>Persona</small><b id="pName">—</b></div>
           <div><small>Profesión</small><b id="pJob" style="font-size:13px">—</b></div>
@@ -202,6 +225,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
         <div class="subs" id="subsG"></div>
       </div>
       <div class="panel">
+        <div class="views" role="group" aria-label="Tipo de vista del guía" id="vwG"><button type="button" data-v="libro" aria-pressed="true">Libro abierto</button><button type="button" data-v="seguir" aria-pressed="false">Seguir al jugador</button><button type="button" data-v="lateral" aria-pressed="false">Lateral</button><button type="button" data-v="panoramica" aria-pressed="false">Panorámica</button></div>
         <div class="kv">
           <div><small>Puntos del guía</small><b id="gScore">0</b></div>
           <div><small>Karma</small><b id="gKarma">0</b></div>
@@ -222,6 +246,11 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
           <p class="hint" id="micHint">El jugador no te ve: solo escucha tu voz. Para protegerlo o marcarle el camino tienes que estar cerca de él, sin que te descubra el vigía (círculo rojo).</p>
         </div>
         <div id="gTemp"></div>
+        <div class="card">
+          <span class="tag c">Tu recorrido de guía · paralelo al de tu jugador, pero distinto</span>
+          <ul class="list gr" id="grList"></ul>
+          <div class="row"><button class="btn cy" id="btnGhost" type="button" hidden>Paso fantasma: volver junto a tu jugador</button></div>
+        </div>
         <div id="gAway" hidden style="display:grid;gap:8px"></div>
         <div class="card">
           <span class="tag c">Visiones desde otras dimensiones</span>
@@ -230,6 +259,25 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       </div>
     </section>
   </main>
+
+  <section class="view libre" id="libre" hidden aria-label="Nivel 2.1, mundo libre">
+    <div class="vhead">
+      <h2><i style="background:var(--gold)"></i>Nivel 2.1 · Mundo libre, juntos</h2>
+      <small>Jugador <kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd> · Guía <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> · <kbd>Shift</kbd> correr</small>
+    </div>
+    <div class="canvasbox">
+      <canvas class="vc" id="cvL" aria-label="El mundo libre"></canvas>
+      <div class="overlaytxt"><span id="lRegion">Bosque Dorado</span><span id="lDist">Juntos</span></div>
+      <div class="subs" id="subsL"></div>
+    </div>
+    <div class="panel">
+      <div class="views" role="group" aria-label="Tipo de vista" id="vwL"><button type="button" data-v="juntos" aria-pressed="true">Juntos</button><button type="button" data-v="dividida" aria-pressed="false">Pantalla dividida</button><button type="button" data-v="mapa" aria-pressed="false">Mapa del mundo</button><button type="button" data-v="primer" aria-pressed="false">Primer plano</button></div>
+      <div class="pts3" id="lPoints"></div>
+      <div id="lCard"></div>
+      <div class="card" id="lTalk"></div>
+      <p class="hint">En el mapa del mundo puedes tocar un lugar para viajar los dos hasta allá. Los premios en dinero están desactivados en esta versión: necesitan revisión legal antes.</p>
+    </div>
+  </section>
 
   <section class="world" aria-labelledby="wTitle">
     <h2 id="wTitle">Mundo Ndapremo · 200.000.000 de personas</h2>
@@ -296,6 +344,29 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     </div>
     <p id="passNext" hidden style="color:var(--cyan)"></p>
     <div class="row"><button class="btn" id="btnKeep" type="button">Seguir jugando en la ciudad</button></div>
+  </div>
+</div>
+
+<!-- El encuentro -->
+<div class="ov" id="ovMeet" hidden>
+  <div class="ovbox">
+    <span class="tag g">Nivel 2.1 · El encuentro</span>
+    <h2>Por primera vez, frente a frente</h2>
+    <div class="meet"><canvas id="meetP" width="300" height="300" aria-label="El jugador"></canvas><span class="tag">y</span><canvas id="meetG" width="300" height="300" aria-label="El guía"></canvas></div>
+    <p id="meetTxt"></p>
+    <div class="choice">
+      <button class="persona" type="button" id="btnTalk"><b>Hablar</b><small>Se dicen quiénes son y pueden conversar durante todo el viaje.</small></button>
+      <button class="persona" type="button" id="btnSilent"><b>Seguir sin hablar</b><small>Viajan juntos, pero solo se comunican con señas.</small></button>
+    </div>
+  </div>
+</div>
+<!-- El portal -->
+<div class="ov" id="ovPortal" hidden>
+  <div class="ovbox">
+    <span class="tag c">Tercer punto</span>
+    <h2>El portal a otros mundos se abre</h2>
+    <p>Juntos encontraron los tres puntos. Al otro lado esperan la guerra, la infiltración, el gobierno que dirige el mundo y otras dimensiones. Esa etapa llega en la próxima versión.</p>
+    <div class="row"><button class="btn pri" id="btnPortalOk" type="button">Seguir explorando el mundo</button></div>
   </div>
 </div>
 
@@ -552,7 +623,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function sub(where, text, cls, ms) {
-    var box = $(where === "p" ? "subsP" : "subsG"), el = document.createElement("div");
+    var box = $(where === "p" ? "subsP" : where === "l" ? "subsL" : "subsG"), el = document.createElement("div");
     el.className = "sub " + (cls || "s"); el.textContent = text; box.appendChild(el);
     while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(function () { if (el.parentNode) el.remove(); }, ms || 6000);
@@ -625,7 +696,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     if (G.life === "dejar") { G.pl.x = PLAZA.x + PLAZA.w / 2; G.pl.y = PLAZA.y + PLAZA.h / 2; }
     else { G.pl.x = n.home.door.x; G.pl.y = n.home.door.y; }
     G.gd.x = G.pl.x + 120; G.gd.y = G.pl.y - 60;
-    G.pl.trail = [];
+    G.pl.trail = []; G.gd.trail = [];
   }
 
   // =========================================================
@@ -674,18 +745,18 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     if (/proteg|defiend|escudo|cubrel/.test(t)) {
       if (!guideNear()) { sub("g", "Estás muy lejos para protegerlo. Acércate a él.", "d"); return; }
       if (G.rt < G.gd.cdProtect) { sub("g", "Tu protección se está recargando (" + Math.ceil(G.gd.cdProtect - G.rt) + " s).", "d"); return; }
-      G.pl.shieldUntil = G.rt + 9; G.gd.cdProtect = G.rt + 22; G.gd.karma += 1; G.gd.score += 15;
+      G.pl.shieldUntil = G.rt + (hasR("escudo") ? 14 : 9); G.gd.cdProtect = G.rt + 22; G.gd.karma += 1; G.gd.score += 15;
       sub("g", "Lo estás protegiendo durante 9 segundos.", "g"); decide("El guía lo protegió");
     } else if (/camino|ruta|marca|guia|por donde|donde voy/.test(t)) {
       if (!guideNear()) { sub("g", "Estás muy lejos para marcarle el camino.", "d"); return; }
       var tg = currentTarget(); if (!tg) { sub("g", "Tu jugador no tiene una misión activa.", "d"); return; }
-      G.pl.markUntil = G.rt + 12; G.gd.score += 5; sub("g", "Le marcaste el camino a " + placeName(tg.b) + ".", "g");
+      G.pl.markUntil = G.rt + (hasR("brujula") ? 20 : 12); G.gd.markedMission = tg.m.id; G.gd.score += 5; sub("g", "Le marcaste el camino a " + placeName(tg.b) + ".", "g");
     } else if (/cuidado|corre|atras|ojo|escapa|huye/.test(t)) {
-      G.gd.karma += 0.5; sub("p", "⚠ Tu guía te advierte de un peligro", "d", 4000);
+      G.gd.karma += 0.5; sub("p", "⚠ Tu guía te advierte de un peligro", "d", 4000); if (G.threats.length) unlock("vidente");
     } else if (/revel|que es|que dice|sellad/.test(t)) {
       var sealed = G.offers.filter(function (o) { return o.sealed; })[0] || G.missions.filter(function (m) { return m.sealed && m.state !== "completa"; })[0];
       if (!sealed) { sub("g", "No hay ninguna misión sellada a la vista.", "g"); return; }
-      G.gd.revealed[sealed.id] = true; feed("Libro abierto · la misión sellada dice: «" + sealed.secret + "». Aconseja a tu jugador.");
+      G.gd.revealed[sealed.id] = true; unlock("lector"); feed("Libro abierto · la misión sellada dice: «" + sealed.secret + "». Aconseja a tu jugador.");
       sub("g", "Leíste la misión sellada. Mírala en tus visiones.", "g");
     }
   }
@@ -742,7 +813,8 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
   function complete(m) {
     m.state = "completa"; G.pl.done++; G.pl.score += m.reward;
-    if (G.gd.connected) G.gd.score += Math.round(m.reward * 0.3);
+    if (G.gd.connected) G.gd.score += Math.round(m.reward * 0.3 * (hasR("firme") ? 1.25 : 1));
+    if (G.gd.markedMission === m.id) unlock("brujula");
     sfx("ok"); sub("p", "Misión cumplida: +" + m.reward + " puntos", "s"); feed("Tu jugador cumplió «" + m.title + "».");
     decide("Cumplió: " + m.title + " (+" + m.reward + ")");
     renderActive();
@@ -806,6 +878,39 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   $("pActive").addEventListener("click", function (e) { var b = e.target.closest("[data-rep]"); if (b) repent(b.getAttribute("data-rep")); });
 
   // =========================================================
+  //  Recorrido del guía: paralelo al del jugador, con sus propias recompensas
+  // =========================================================
+  var GR = [
+    { id: "sombra", name: "Sombra", how: "Pasa 60 s cerca de tu jugador sin que el vigía te note", reward: "Velo: el vigía tarda más en descubrirte" },
+    { id: "lector", name: "Lector del libro", how: "Lee una misión sellada", reward: "Página extra: sabes qué misiones vienen antes de que lleguen" },
+    { id: "vidente", name: "Ojo del vidente", how: "Advierte a tu jugador mientras un ladrón se acerca", reward: "Visión anticipada: las visiones te llegan 30 s antes" },
+    { id: "escudo", name: "Escudo fiel", how: "Protege a tu jugador de 2 asaltos", reward: "Escudo largo: tu protección dura 14 s" },
+    { id: "brujula", name: "Brújula", how: "Márcale el camino y que cumpla esa misión", reward: "La marca del camino dura 20 s" },
+    { id: "fantasma", name: "Fantasma", how: "Escapa del vigía con el riesgo sobre 70%", reward: "Paso fantasma: una vez al día vuelves junto a tu jugador al instante" },
+    { id: "firme", name: "Corazón firme", how: "Rechaza una tentación", reward: "Alas: ganas 25% más puntos con las misiones de tu jugador" },
+    { id: "mensajero", name: "Mensajero de otro plano", how: "Desde el Cielo o el Infierno, manda 3 envíos", reward: "Portal propio: tus envíos se recargan en 8 s" }
+  ];
+  function hasR(id) { for (var i = 0; i < GR.length; i++) if (GR[i].id === id) return !!GR[i].got; return false; }
+  function unlock(id) {
+    var r = GR.filter(function (g) { return g.id === id; })[0]; if (!r || r.got) return;
+    r.got = true; r.at = clockStr(G.minute); r.day = G.day; G.gd.score += 50; sfx("ok");
+    feed("Recompensa de tu recorrido: " + r.name + ". " + r.reward + ".");
+    sub("g", "Desbloqueaste «" + r.name + "»: " + r.reward, "g", 8000); decide("El guía desbloqueó «" + r.name + "»");
+    renderGR();
+  }
+  function renderGR() {
+    var got = GR.filter(function (g) { return g.got; }).length;
+    $("grList").innerHTML = GR.map(function (g) {
+      return '<li class="' + (g.got ? "got" : "") + '"><b>' + (g.got ? "LOGRADO" : "PENDIENTE") + "</b><span>" + esc(g.name) + "<small>" + esc(g.got ? g.reward : g.how) + "</small></span></li>";
+    }).join("") + '<li><b>' + got + " de " + GR.length + "</b><span>Recompensas de tu camino. Tu jugador no las ve: son solo tuyas.</span></li>";
+  }
+  renderGR();
+  $("btnGhost").addEventListener("click", function () {
+    if (!hasR("fantasma") || G.gd.ghostDay === G.day || !G.gd.connected) return;
+    G.gd.ghostDay = G.day; G.gd.x = G.pl.x + 40; G.gd.y = G.pl.y - 30; sub("g", "Paso fantasma: estás junto a tu jugador.", "g");
+  });
+
+  // =========================================================
   //  Tentación, descubrimiento y la vida del guía en otro plano
   // =========================================================
   function offerTemptation() {
@@ -815,7 +920,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     $("gTemp").innerHTML = '<div class="card temp withpt">' + ptTag("tmp" + G.day, { L: PLAYER_L, ghost: true, tint: tint, mood: "serio", bg: tint === "infierno" ? "rojo" : "oro" }) + '<div><span class="tag r">Tentación</span><h3>' + esc(from) + " te llama</h3><p>«Abandona a " + esc($("pName").textContent) + " y ven conmigo. Te doy " + pts +
       " puntos y un portal a mi plano. La ley se cumple igual: si uno pasa, pasan los dos.»</p><div class=\"row\"><button class=\"btn\" type=\"button\" id=\"tYes\">Abandonarlo e irme</button><button class=\"btn cy\" type=\"button\" id=\"tNo\">Me quedo con mi jugador</button></div></div></div>"; paintPortraits($("gTemp"));
     $("tYes").onclick = function () { G.gd.score += pts; G.gd.karma -= 3; decide("El guía cedió a la tentación y se fue"); $("gTemp").innerHTML = ""; leave("tentación"); };
-    $("tNo").onclick = function () { G.gd.karma += 2; G.gd.score += 40; decide("El guía rechazó la tentación"); $("gTemp").innerHTML = ""; feed("Rechazaste la tentación. Tu karma sube."); };
+    $("tNo").onclick = function () { unlock("firme"); G.gd.karma += 2; G.gd.score += 40; decide("El guía rechazó la tentación"); $("gTemp").innerHTML = ""; feed("Rechazaste la tentación. Tu karma sube."); };
     sfx("offer"); feed(from + " te ofrece algo a cambio de dejar a tu jugador.");
   }
   function leave(why) {
@@ -845,7 +950,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   $("gAway").addEventListener("click", function (e) {
     var b = e.target.closest("[data-send]"); if (!b) return;
     if (G.rt < G.gd.cdSend) { sub("g", "Espera " + Math.ceil(G.gd.cdSend - G.rt) + " s para el próximo envío.", "d"); return; }
-    G.gd.cdSend = G.rt + 15; G.gd.score += 25; sendToPlayer(b.getAttribute("data-send"), "tu guía, desde el " + G.gd.plane); renderAway();
+    G.gd.cdSend = G.rt + (hasR("mensajero") ? 8 : 15); G.gd.score += 25; G.gd.sends = (G.gd.sends || 0) + 1; if (G.gd.sends >= 3) unlock("mensajero"); sendToPlayer(b.getAttribute("data-send"), "tu guía, desde el " + G.gd.plane); renderAway();
   });
   var SEND_TXT = { regalo: "un regalo: +60 puntos", escudo: "una ayuda: un escudo por 10 s", mapa: "una señal que te marca el camino", trampa: "una trampa: vas más lento por 6 s", asalto: "un asalto: un ladrón va por ti", niebla: "una niebla que te nubla la vista" };
   function sendToPlayer(kind, from) {
@@ -884,10 +989,11 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
   function planThreat() {
     var at = spawnPoint(280, 480);
-    G.visionPlanned = { at: at, rt: G.rt + 18 };
+    var lead = hasR("vidente") ? 30 : 18;
+    G.visionPlanned = { at: at, rt: G.rt + lead };
     if (G.gd.connected) {
       var dir = Math.abs(at.x - G.pl.x) > Math.abs(at.y - G.pl.y) ? (at.x > G.pl.x ? "al este" : "al oeste") : (at.y > G.pl.y ? "al sur" : "al norte");
-      feed("Visión de un ser del " + (G.gd.karma >= 0 ? "Cielo" : "Infierno") + ": en unos 18 segundos saldrá un ladrón " + dir + " de tu jugador. Adviértele o protégelo.");
+      feed("Visión de un ser del " + (G.gd.karma >= 0 ? "Cielo" : "Infierno") + ": en unos " + lead + " segundos saldrá un ladrón " + dir + " de tu jugador. Adviértele o protégelo.");
       tone(900, .08, 0, "sine");
     }
   }
@@ -928,7 +1034,12 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     // Vigía de otro jugador más avanzado
     if (walkAlong(G.vig, dt, 48)) { var dd = randomDoor(prng); G.vig.path = route({ x: G.vig.x, y: G.vig.y }, dd); if (Math.abs(G.vig.y - dd.y) < 1 && Math.abs(G.vig.x - dd.x) < 1) G.vig.path = [B[3].door]; }
     if (G.gd.connected) {
-      if (dist(G.gd, G.vig) < 170) G.gd.disc = Math.min(100, G.gd.disc + 30 * dt); else G.gd.disc = Math.max(0, G.gd.disc - 12 * dt);
+      if (dist(G.gd, G.vig) < 170) G.gd.disc = Math.min(100, G.gd.disc + (hasR("sombra") ? 18 : 30) * dt); else G.gd.disc = Math.max(0, G.gd.disc - 12 * dt);
+      if (G.gd.disc >= 70) G.gd.danger = true;
+      if (G.gd.danger && G.gd.disc <= 0) { G.gd.danger = false; unlock("fantasma"); }
+      if (guideNear() && G.gd.disc < 5) { G.gd.nearTime = (G.gd.nearTime || 0) + dt; if (G.gd.nearTime >= 60) unlock("sombra"); }
+      if (!G.gd.trail) G.gd.trail = [];
+      if (!G.gd.trail.length || dist(G.gd.trail[G.gd.trail.length - 1], G.gd) > 24) G.gd.trail.push({ x: G.gd.x, y: G.gd.y });
       if (G.gd.disc >= 100) { decide("El vigía descubrió al guía"); leave("vigia"); }
     }
     // Patrullas
@@ -950,7 +1061,8 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     if (G.gd.connected && !G.tempShown[G.day] && tMin >= 780) { G.tempShown[G.day] = true; offerTemptation(); }
 
     // Amenazas
-    if (!G.visionPlanned && G.rt > G.nextThreatAt - 18 && tMin < 1260) planThreat();
+    if (!G.visionPlanned && G.rt > G.nextThreatAt - (hasR("vidente") ? 30 : 18) && tMin < 1260) planThreat();
+    if (hasR("lector")) G.missions.forEach(function (m) { if (m.state === "pendiente" && !m.previewed && m.at - tMin < 60) { m.previewed = true; feed("Página extra: a las " + clockStr(m.at) + " llegará «" + m.title + "» de " + m.from + "."); } });
     if (G.visionPlanned && G.rt >= G.visionPlanned.rt) { spawnThief(false); G.visionPlanned = null; G.nextThreatAt = G.rt + 70 + prng() * 40; }
     for (var ti = G.threats.length - 1; ti >= 0; ti--) {
       var th = G.threats[ti]; th.ttl -= dt;
@@ -959,7 +1071,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       var tx = th.x + sgn * dx / (d || 1) * tsp, ty = th.y + sgn * dy / (d || 1) * tsp;
       if (!blocked(tx, th.y, 6)) th.x = tx; if (!blocked(th.x, ty, 6)) th.y = ty;
       if (d < 16 && th.flee <= 0) {
-        if (G.rt < G.pl.shieldUntil) { th.flee = 3; th.ttl = Math.min(th.ttl, 3); G.gd.score += 30; sub("p", "El ladrón chocó contra algo invisible y huyó.", "s"); feed("Tu protección funcionó: el ladrón huyó."); decide("Un ladrón no pudo asaltarlo gracias a la protección"); }
+        if (G.rt < G.pl.shieldUntil) { th.flee = 3; th.ttl = Math.min(th.ttl, 3); G.gd.score += 30; G.gd.blocks = (G.gd.blocks || 0) + 1; if (G.gd.blocks >= 2) unlock("escudo"); sub("p", "El ladrón chocó contra algo invisible y huyó.", "s"); feed("Tu protección funcionó: el ladrón huyó."); decide("Un ladrón no pudo asaltarlo gracias a la protección"); }
         else {
           var lost = G.pl.item; G.pl.score = Math.max(0, G.pl.score - 50); sfx("bad");
           if (lost) { G.pl.item = null; activeMissions().forEach(function (m) { var need = m.give || m.steps[0].item; if (need === lost && m.step >= (m.give ? 0 : 1)) fail(m, "te robaron " + lost); }); }
@@ -986,7 +1098,10 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     G.paused = true; G.minute = 1320;
     $("dayTitle").textContent = "Tu recorrido del día " + G.day;
     var done = G.missions.filter(function (m) { return m.state === "completa"; }).length;
-    $("dayList").innerHTML = ["<li><b>PUNTAJE</b><span>" + fmt(G.pl.score) + " puntos · " + done + " misiones cumplidas hoy · guía con " + fmt(G.gd.score) + " puntos" + (G.gd.connected ? "" : " en el " + G.gd.plane) + "</span></li>"]
+    var grDay = GR.filter(function (g) { return g.got && g.day === G.day; }).map(function (g) { return g.name; });
+    $("dayList").innerHTML = ["<li><b>LÍNEAS</b><span>Ámbar: tu recorrido. Celeste punteado: el recorrido paralelo de tu guía.</span></li>",
+      "<li><b>GUÍA</b><span>" + (grDay.length ? "Recompensas de su camino hoy: " + esc(grDay.join(", ")) : "Hoy tu guía no desbloqueó recompensas.") + "</span></li>",
+      "<li><b>PUNTAJE</b><span>" + fmt(G.pl.score) + " puntos · " + done + " misiones cumplidas hoy · guía con " + fmt(G.gd.score) + " puntos" + (G.gd.connected ? "" : " en el " + G.gd.plane) + "</span></li>"]
       .concat(G.decisions.slice(-14).map(function (d) { return "<li><b>" + esc(d.slice(0, 5)) + "</b><span>" + esc(d.slice(8)) + "</span></li>"; })).join("");
     drawTrail(); $("ovDay").hidden = false;
   }
@@ -1003,17 +1118,27 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       " Puntaje del jugador: " + fmt(G.pl.score) + ". Puntos del guía: " + fmt(G.gd.score) + ".";
     $("ovPass").hidden = false;
   }
-  $("btn21").addEventListener("click", function () { var t = $("passNext"); t.hidden = false; t.textContent = "Nivel 2.1: se ven por primera vez y salen a recorrer el mundo libres, con misiones opcionales que llevan a otras dimensiones. Llega en la próxima versión."; });
+  $("btn21").addEventListener("click", function () { $("ovPass").hidden = true; openMeet(); });
   $("btnMore").addEventListener("click", function () { var t = $("passNext"); t.hidden = false; t.textContent = "Otros niveles con desafíos más difíciles y mejores premios. Llegan en la próxima versión."; });
   $("btnKeep").addEventListener("click", function () { $("ovPass").hidden = true; G.paused = false; });
 
   // =========================================================
   //  Dibujo
   // =========================================================
-  var CV = { p: $("cvP"), g: $("cvG") }, CTX = { p: CV.p.getContext("2d"), g: CV.g.getContext("2d") };
+  var CV = { p: $("cvP"), g: $("cvG"), l: $("cvL") }, CTX = { p: CV.p.getContext("2d"), g: CV.g.getContext("2d"), l: CV.l.getContext("2d") };
   var DPR = Math.min(2, window.devicePixelRatio || 1);
-  function fit() { ["p", "g"].forEach(function (k) { var c = CV[k], r = c.getBoundingClientRect(); c.width = Math.round(r.width * DPR); c.height = Math.round(r.height * DPR); c._w = r.width; c._h = r.height; }); }
+  function fit() { ["p", "g", "l"].forEach(function (k) { var c = CV[k], r = c.getBoundingClientRect(); c.width = Math.round(r.width * DPR); c.height = Math.round(r.height * DPR); c._w = r.width; c._h = r.height; }); }
   window.addEventListener("resize", fit); fit();
+  G.viewP = "lateral"; G.viewG = "libro";
+  function bindViews(id, fn) {
+    $(id).addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-v]"); if (!b) return;
+      Array.prototype.forEach.call(this.children, function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+      fn(b.getAttribute("data-v"));
+    });
+  }
+  bindViews("vwP", function (v) { G.viewP = v; });
+  bindViews("vwG", function (v) { G.viewG = v; });
   var HOUSE_C = ["#2C3260", "#323862", "#2A3A5E", "#3A3158"], TYPE_C = { colegio: "#3D4B8C", hospital: "#4B6A88", comisaria: "#2E4A7A", oficina: "#3A3F70", comercio: "#5A4870", plaza: "#1F4A3E", callejon: "#2A1630" };
   function nightK(t) { var h = t / 60; if (h < 18.5) return 0; return Math.min(0.6, (h - 18.5) / 2.5 * 0.6); }
   function drawCity(ctx, cam, w, h, z, isGuide) {
@@ -1118,9 +1243,11 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
   function eyeP(c, x, y) { c.fillStyle = "#FFFFFF"; c.beginPath(); c.moveTo(x - 6, y); c.quadraticCurveTo(x, y - 5, x + 6, y); c.quadraticCurveTo(x, y + 4, x - 6, y); c.fill(); c.lineWidth = 1.6; c.stroke(); c.fillStyle = OUTL; c.beginPath(); c.arc(x, y, 2.7, 0, 7); c.fill(); }
   // Retrato de frente, como los primeros planos de los diálogos
-  function drawPortrait(cv, o) {
-    var c = cv.getContext("2d"), S = cv.width, L = o.L, gh = !!o.ghost;
-    c.setTransform(S / 100, 0, 0, S / 100, 0, 0);
+  function drawPortrait(cv, o) { drawPortraitAt(cv.getContext("2d"), 0, 0, cv.width, o, 1); }
+  function drawPortraitAt(c, px, py, size, o, dpr) {
+    var L = o.L, gh = !!o.ghost;
+    c.setTransform(dpr * size / 100, 0, 0, dpr * size / 100, px * dpr, py * dpr);
+    c.save(); c.beginPath(); c.rect(0, 0, 100, 100); c.clip();
     c.fillStyle = o.bg === "rojo" ? "#F2A65A" : "#F3D477"; c.fillRect(0, 0, 100, 100);
     var tcol = o.bg === "rojo" ? "#8E2A44" : "#7A4A2A";
     [[8, 18], [36, 13], [70, 20], [94, 12]].forEach(function (t) { trunk(c, t[0], 100, 0, t[1], tcol); });
@@ -1148,6 +1275,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     c.lineWidth = 1.5; c.beginPath(); c.moveTo(50, 46); c.lineTo(48, 52); c.lineTo(51, 52); c.stroke();
     c.lineWidth = 1.8; c.beginPath(); if (o.mood === "serio") { c.moveTo(45, 57); c.lineTo(55, 57); } else { c.moveTo(45, 56); c.quadraticCurveTo(50, 59, 55, 56); } c.stroke();
     if (L.old && !gh) { c.lineWidth = 1.2; c.beginPath(); c.moveTo(36, 48); c.lineTo(39, 50); c.moveTo(64, 48); c.lineTo(61, 50); c.stroke(); }
+    c.restore();
   }
   function ptTag(key, o) { PT[key] = o; return '<canvas class="pt" width="128" height="128" data-pt="' + key + '"></canvas>'; }
   function paintPortraits(root) { (root || document).querySelectorAll("canvas[data-pt]").forEach(function (cv) { var o = PT[cv.getAttribute("data-pt")]; if (o && !cv._done) { drawPortrait(cv, o); cv._done = true; } }); }
@@ -1208,9 +1336,10 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       c.strokeStyle = OUTL; c.lineWidth = 2.4;
     }
   }
-  function renderSide(c, w, h) {
-    var s = 0; HY.forEach(function (v, i) { if (Math.abs(v - G.pl.y) < Math.abs(HY[s] - G.pl.y)) s = i; });
-    var sy = HY[s], k = 1.45, camX = G.pl.x, gt = Math.round(h * 0.6);
+  function renderSide(c, w, h, focus, self) {
+    focus = focus || G.pl;
+    var s = 0; HY.forEach(function (v, i) { if (Math.abs(v - focus.y) < Math.abs(HY[s] - focus.y)) s = i; });
+    var sy = HY[s], k = 1.45, camX = focus.x, gt = Math.round(h * 0.6);
     function sx(x) { return w / 2 + (x - camX) * k; }
     var t = G.minute / 60, nk = nightK(G.minute);
     // cielo
@@ -1249,7 +1378,8 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     G.threats.forEach(function (th) { if (Math.abs(th.x - camX) < vw && Math.abs(th.y - sy) <= 100) ents.push({ x: th.x, y: th.y, L: THIEF_L, ph: G.rt * 9, left: th.x > G.pl.x, threat: dist(th, G.pl) < 160 }); });
     PLAYER_L.item = G.pl.item;
     ents.push({ x: G.pl.x, y: G.pl.y, L: PLAYER_L, ph: G.pl.walk, left: G.pl.left, me: true });
-    if (G.gd.connected && dist(G.gd, G.pl) <= 380) ents.push({ x: Math.max(camX - vw + 80, Math.min(camX + vw - 80, G.gd.x)), y: sy + 10, L: PLAYER_L, ph: G.rt * 4, left: G.gd.x > G.pl.x, ghost: true });
+    if (self && G.gd.connected) ents.push({ x: G.gd.x, y: Math.max(sy - 60, Math.min(sy + 60, G.gd.y)), L: PLAYER_L, ph: G.rt * 4, left: G.gd.x > G.pl.x, ghost: true });
+    else if (G.gd.connected && dist(G.gd, G.pl) <= 380) ents.push({ x: Math.max(camX - vw + 80, Math.min(camX + vw - 80, G.gd.x)), y: sy + 10, L: PLAYER_L, ph: G.rt * 4, left: G.gd.x > G.pl.x, ghost: true });
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) {
       var dp = depth(e.y), x = sx(e.x);
@@ -1287,12 +1417,23 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     // Jugador: escena lateral dibujada
     var c = CTX.p, cv = CV.p, w = cv._w, h = cv._h, z, cam;
     c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
-    renderSide(c, w, h);
+    if (G.viewP === "cenital") {
+      z = 1.1; cam = { x: G.pl.x, y: G.pl.y };
+      c.setTransform(DPR * z, 0, 0, DPR * z, (w / 2 - cam.x * z) * DPR, (h / 2 - cam.y * z) * DPR);
+      drawCity(c, cam, w, h, z, false); drawPlayer(c);
+      if (G.rt < G.pl.fogUntil) { c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "rgba(60,10,25,.8)"; c.fillRect(0, 0, w, h); }
+    } else {
+      renderSide(c, w, h, G.pl, false);
+      if (G.viewP === "primer") closeUp(c, w, h);
+    }
     // Guía
     c = CTX.g; cv = CV.g; w = cv._w; h = cv._h;
     c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
-    if (G.gd.connected) {
-      z = 0.8; cam = { x: G.gd.x, y: G.gd.y };
+    if (G.gd.connected && G.viewG === "lateral") renderSide(c, w, h, G.gd, true);
+    else if (G.gd.connected) {
+      if (G.viewG === "panoramica") { z = Math.min(w / W, h / H); cam = { x: W / 2, y: H / 2 }; }
+      else if (G.viewG === "seguir") { z = 0.8; cam = { x: G.pl.x, y: G.pl.y }; }
+      else { z = 0.8; cam = { x: G.gd.x, y: G.gd.y }; }
       c.setTransform(DPR * z, 0, 0, DPR * z, (w / 2 - cam.x * z) * DPR, (h / 2 - cam.y * z) * DPR);
       drawCity(c, cam, w, h, z, true);
       // vigía
@@ -1305,6 +1446,22 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       // presencia del guía
       c.strokeStyle = "#5FE0E6"; c.lineWidth = 2; c.beginPath(); c.arc(G.gd.x, G.gd.y, 12, 0, 7); c.moveTo(G.gd.x - 20, G.gd.y); c.lineTo(G.gd.x + 20, G.gd.y); c.moveTo(G.gd.x, G.gd.y - 20); c.lineTo(G.gd.x, G.gd.y + 20); c.stroke();
     } else drawPlane(c, w, h);
+  }
+  function closeUp(c, w, h) {
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.fillStyle = "rgba(20,12,8,.5)"; c.fillRect(0, 0, w, h);
+    var size = Math.min(h * 0.82, w * 0.5), near = G.gd.connected && dist(G.gd, G.pl) <= 380;
+    drawPortraitAt(c, 14, h - size - 12, size, { L: PLAYER_L, mood: G.threats.length ? "serio" : "normal", bg: G.minute >= 1110 ? "rojo" : "oro" }, DPR);
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(14, h - size - 12, size, size);
+    var tg = currentTarget(), x = size + 32, lines = [
+      ["Hora", clockStr(G.minute)], ["Llevo", G.pl.item || "nada"], ["Objetivo", tg ? placeName(tg.b) : "ninguno"],
+      ["Siento", G.threats.length ? "algo se acerca" : !G.gd.connected ? "estoy solo; me llegan cosas de otro plano" : near ? "mi guía está cerca" : "tranquilidad"]];
+    var bw = Math.max(120, w - x - 14);
+    var bh = 36 + lines.length * 26, by = Math.max(130, Math.round((h - bh) / 2) + 20);
+    c.fillStyle = "#FAF0D7"; c.fillRect(x, by, bw, bh); c.strokeRect(x, by, bw, bh);
+    c.fillStyle = OUTL; c.font = "800 14px Unbounded, sans-serif"; c.fillText($("pName").textContent, x + 12, by + 24, bw - 24);
+    lines.forEach(function (l, i) { c.font = "700 11px JetBrains Mono, monospace"; c.fillText(l[0].toUpperCase(), x + 12, by + 52 + i * 26); c.font = "400 14px Atkinson Hyperlegible, sans-serif"; c.fillText(l[1], x + 92, by + 52 + i * 26, bw - 104); });
   }
   function nearestHY(y) { var best = HY[0]; HY.forEach(function (v) { if (Math.abs(v - y) < Math.abs(best - y)) best = v; }); return best; }
   function drawPlane(c, w, h) {
@@ -1345,6 +1502,264 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     c.strokeStyle = "#FFB547"; c.lineWidth = 8; c.lineJoin = "round"; c.beginPath();
     G.pl.trail.forEach(function (p, i) { if (i) c.lineTo(p.x, p.y); else c.moveTo(p.x, p.y); }); c.stroke();
     if (G.pl.trail.length) { var e = G.pl.trail[G.pl.trail.length - 1]; c.fillStyle = "#FFB547"; c.beginPath(); c.arc(e.x, e.y, 18, 0, 7); c.fill(); }
+    c.strokeStyle = "#5FE0E6"; c.lineWidth = 5; c.setLineDash([18, 14]); c.beginPath();
+    (G.gd.trail || []).forEach(function (p, i) { if (i) c.lineTo(p.x, p.y); else c.moveTo(p.x, p.y); }); c.stroke(); c.setLineDash([]);
+  }
+
+  // =========================================================
+  //  Nivel 2.1 · El encuentro y el mundo libre
+  // =========================================================
+  var REG = [
+    { name: "Bosque Dorado", kind: "oro", sky: ["#F2C35A", "#F7E2A0"], ground: "#D8B45A" },
+    { name: "Bosque Carmesí", kind: "rojo", sky: ["#E9785A", "#F7B86A"], ground: "#C99A52" },
+    { name: "Desierto Claro", kind: "desierto", sky: ["#F4B65A", "#FBE3B0"], ground: "#E8C27A" },
+    { name: "Puerto Austral", kind: "puerto", sky: ["#7FB7D8", "#D7ECF2"], ground: "#C9A66B" },
+    { name: "Cumbres", kind: "cumbres", sky: ["#8FA8D8", "#E4ECF7"], ground: "#B7B29A" },
+    { name: "Ruinas sin nombre", kind: "ruinas", sky: ["#7A5A9A", "#E2A8A0"], ground: "#B59A7A" }
+  ];
+  var RW = 1600, LW = RW * REG.length, L21 = null;
+  function regIdx(x) { return Math.max(0, Math.min(REG.length - 1, Math.floor(x / RW))); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function subL(text, cls, ms) { sub("l", text, cls, ms); }
+  function guideLook() {
+    if (!G.guideL) { var h = hash32((G.persona ? G.persona.p.id : 1) + 99); G.guideL = look(h, { age: 30, fem: h % 2 === 0 }); G.guideL.kid = false; G.guideL.teen = false; }
+    return G.guideL;
+  }
+  function openMeet() {
+    G.paused = true; $("ovMeet").hidden = false;
+    var name = $("pName").textContent;
+    $("meetTxt").textContent = name + " ve por primera vez a quien le habló todo este tiempo. " + (G.gd.connected ? "Su guía nunca se fue." : "Su guía vuelve desde el " + G.gd.plane + ": la ley los reunió.") + " ¿Se hablan?";
+    drawPortrait($("meetP"), { L: PLAYER_L, mood: "normal", bg: "rojo" });
+    drawPortrait($("meetG"), { L: PLAYER_L, ghost: true, mood: "serio", bg: "oro" });
+    setTimeout(function () { drawPortrait($("meetG"), { L: guideLook(), mood: "normal", bg: "oro" }); }, 1400);
+  }
+  $("btnTalk").addEventListener("click", function () { $("ovMeet").hidden = true; startLibre(true); });
+  $("btnSilent").addEventListener("click", function () { $("ovMeet").hidden = true; startLibre(false); });
+  function startLibre(talk) {
+    var r = rngFrom(hash32(2121));
+    L21 = { px: 300, gx: 390, pd: 15, gdp: 0, pLeft: false, gLeft: true, pWalk: 0, gWalk: 0, talk: talk, view: "juntos", chat: [], bubP: null, bubG: null,
+      points: [{ x: 2500, name: "El árbol que habla", reward: "Llave de ámbar", pts: 300 }, { x: 5700, name: "El faro apagado", reward: "Brújula de sal", pts: 400 }, { x: 8900, name: "El arco de las Ruinas", reward: "Portal a otros mundos", pts: 600 }],
+      doors: [{ x: 4100, name: "Espejismo del desierto", dim: "la dimensión de arena" }, { x: 7300, name: "Escalera de las Cumbres", dim: "la dimensión del cielo alto" }],
+      folk: [] };
+    for (var i = 0; i < 18; i++) { var id = BARRIO_BASE + 2000 + i * 13, p = personAt(id); L21.folk.push({ x: 200 + r() * (LW - 400), d: -30 + r() * 60, L: look(id, p), sp: 18 + r() * 24, dir: r() < 0.5 ? -1 : 1, ph: r() * 9 }); }
+    G.mode = "libre"; G.paused = false; guideLook(); window.__l21 = L21;
+    document.querySelector(".stage").hidden = true; $("libre").hidden = false;
+    $("lvlTxt").textContent = "Nivel 2.1 · Mundo libre · Juntos";
+    document.querySelector(".law").innerHTML = '<b>Ley del juego:</b> si uno pasa, pasan los dos. Ahora están juntos: lleguen los dos a los 3 puntos del mundo para abrir el portal. <span id="lawTxt" hidden></span>';
+    fit(); renderTalk(); renderPoints();
+    decide(talk ? "Decidieron conocerse y hablar" : "Decidieron viajar juntos sin hablar");
+    subL("Están en el Bosque Dorado. Al este los esperan tres puntos del mundo, y puertas a otras dimensiones.", "s", 9000);
+    $("libre").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function renderPoints() {
+    $("lPoints").innerHTML = L21.points.map(function (pt, i) {
+      return '<div class="' + (pt.got ? "got" : "") + '"><span class="tag ' + (pt.got ? "g" : "") + '">Punto ' + (i + 1) + " · " + (pt.got ? "encontrado" : regName(pt.x)) + "</span><b>" + esc(pt.name) + "</b><small>" + (pt.got ? "Premio: " + esc(pt.reward) + " (+" + pt.pts + " pts a cada uno)" : "Lleguen los dos para abrirlo") + "</small></div>";
+    }).join("");
+  }
+  function regName(x) { return REG[regIdx(x)].name; }
+  function bubble(who, text) { var b = { text: text, until: G.rt + 5 }; if (who === "p") L21.bubP = b; else L21.bubG = b; sfx("voice"); }
+  function renderTalk() {
+    var box = $("lTalk");
+    if (L21.talk) {
+      box.innerHTML = '<span class="tag">Conversación</span><div class="chat" id="chatLog"><div>Ya saben quiénes son. Lo que se digan queda aquí y aparece sobre su cabeza.</div></div>' +
+        '<div class="chatin"><input id="chatP" type="text" placeholder="El jugador dice… (Enter)" aria-label="Lo que dice el jugador"><input id="chatG" type="text" placeholder="El guía dice… (Enter)" aria-label="Lo que dice el guía"></div>';
+      ["chatP", "chatG"].forEach(function (id) {
+        $(id).addEventListener("keydown", function (e) {
+          if (e.key !== "Enter" || !this.value.trim()) return;
+          var who = id === "chatP" ? "p" : "g", txt = this.value.trim(); this.value = ""; this.blur();
+          bubble(who, txt); L21.chat.push({ who: who, txt: txt });
+          var el = document.createElement("div"); if (who === "g") el.className = "g";
+          el.innerHTML = "<b>" + (who === "p" ? esc($("pName").textContent.split(" ")[0]) : "Guía") + ":</b> " + esc(txt);
+          $("chatLog").appendChild(el); $("chatLog").scrollTop = 1e6;
+        });
+      });
+    } else {
+      var SE = ["Saludar", "Por aquí", "Espera", "¡Cuidado!", "Gracias"];
+      box.innerHTML = '<span class="tag">Señas · decidieron no hablar</span><div class="row"><span class="hint" style="min-width:60px">Jugador</span>' + SE.map(function (s) { return '<button class="btn" type="button" data-se="p" data-t="' + s + '">' + s + "</button>"; }).join("") +
+        '</div><div class="row"><span class="hint" style="min-width:60px">Guía</span>' + SE.map(function (s) { return '<button class="btn cy" type="button" data-se="g" data-t="' + s + '">' + s + "</button>"; }).join("") + "</div>";
+      box.onclick = function (e) { var b = e.target.closest("[data-se]"); if (b) bubble(b.getAttribute("data-se"), "[" + b.getAttribute("data-t") + "]"); };
+    }
+  }
+  function showCardL(html) { $("lCard").innerHTML = html; }
+  $("lCard").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-door]"); if (!b) return;
+    var d = L21.doors[+b.getAttribute("data-door")]; d.entered = true; G.pl.score += 80; G.gd.score += 80; sfx("envio");
+    showCardL('<div class="card envio"><span class="tag g">Misión opcional</span><h3>Asomaron la cabeza a ' + esc(d.dim) + "</h3><p>Vieron otro mundo por un instante (+80 pts cada uno). Esta dimensión se abre por completo en una próxima versión.</p></div>");
+    decide("Se asomaron a " + d.dim);
+  });
+  bindViews("vwL", function (v) { if (L21) L21.view = v; });
+  $("cvL").addEventListener("click", function (e) {
+    if (!L21 || L21.view !== "mapa") return;
+    var r = this.getBoundingClientRect(), x = e.clientX - r.left, w = r.width;
+    if (x < 20 || x > w - 20) return;
+    var ri = clamp(Math.floor((x - 20) / (w - 40) * REG.length), 0, REG.length - 1);
+    L21.px = ri * RW + 300; L21.gx = ri * RW + 390; subL("Viajaron juntos a " + REG[ri].name + ".", "s"); decide("Viajaron a " + REG[ri].name);
+  });
+  $("btnPortalOk").addEventListener("click", function () { $("ovPortal").hidden = true; G.paused = false; });
+
+  function updateLibre(dt) {
+    G.rt += dt; G.minute += dt * G.speed * 0.6; if (G.minute >= 1320) G.minute = 420;
+    var a = 0, d = 0, run = keys["shift"], pad = readPad();
+    if (!typing()) { if (keys["a"]) a -= 1; if (keys["d"]) a += 1; if (keys["w"]) d -= 1; if (keys["s"]) d += 1; }
+    if (pad) { a += pad.x; d += pad.y; run = run || pad.run; }
+    if (a) { L21.px += a * (run ? 240 : 150) * dt; L21.pLeft = a < 0; L21.pWalk += Math.abs(a) * 16 * dt; }
+    L21.pd = clamp(L21.pd + d * 60 * dt, -40, 40);
+    var ga = 0, gdd = 0;
+    if (!typing()) { if (keys["arrowleft"]) ga -= 1; if (keys["arrowright"]) ga += 1; if (keys["arrowup"]) gdd -= 1; if (keys["arrowdown"]) gdd += 1; }
+    if (ga) { L21.gx += ga * (run ? 240 : 150) * dt; L21.gLeft = ga < 0; L21.gWalk += 16 * dt; }
+    L21.gdp = clamp(L21.gdp + gdd * 60 * dt, -40, 40);
+    L21.px = clamp(L21.px, 40, LW - 40); L21.gx = clamp(L21.gx, 40, LW - 40);
+    L21.folk.forEach(function (f) { f.x += f.dir * f.sp * dt; f.ph += f.sp * dt * 0.11; if (f.x < 60 || f.x > LW - 60 || prng() < 0.0015) f.dir *= -1; });
+    L21.points.forEach(function (pt, i) {
+      if (pt.got) return;
+      var pn = Math.abs(L21.px - pt.x) < 140, gn = Math.abs(L21.gx - pt.x) < 140;
+      if (pn && gn) {
+        if (i === 2 && !(L21.points[0].got && L21.points[1].got)) { if (!pt.warned) { pt.warned = true; subL("El arco no responde: faltan los otros dos puntos.", "d"); } return; }
+        pt.got = true; G.pl.score += pt.pts; G.gd.score += pt.pts; sfx("ok"); decide("Encontraron el punto «" + pt.name + "»");
+        subL("¡Punto " + (i + 1) + " encontrado! Premio: " + pt.reward + ".", "s", 8000);
+        showCardL('<div class="card envio"><span class="tag g">Punto ' + (i + 1) + " de 3</span><h3>" + esc(pt.name) + "</h3><p>Premio para los dos: " + esc(pt.reward) + " y +" + pt.pts + " puntos a cada uno." + (i < 2 ? " Sigan hacia el este." : "") + "</p></div>");
+        renderPoints();
+        if (i === 2) { L21.portal = true; setTimeout(function () { G.paused = true; $("ovPortal").hidden = false; }, 1600); }
+      } else if ((pn || gn) && !pt.hint) { pt.hint = true; subL("Para abrir «" + pt.name + "» tienen que llegar los dos.", "s"); }
+    });
+    L21.doors.forEach(function (dr, i) {
+      if (dr.offered || (Math.abs(L21.px - dr.x) > 100 && Math.abs(L21.gx - dr.x) > 100)) return;
+      dr.offered = true; sfx("offer");
+      showCardL('<div class="card sealed"><span class="tag c">Misión opcional · otra dimensión</span><h3>' + esc(dr.name) + "</h3><p>Una puerta que lleva a " + esc(dr.dim) + ". Pueden asomarse o seguir su camino.</p><div class=\"row\"><button class=\"btn cy\" type=\"button\" data-door=\"" + i + "\">Asomarse</button></div></div>");
+    });
+  }
+  function hudLibre() {
+    $("clock").textContent = clockStr(G.minute);
+    var dd = Math.abs(L21.px - L21.gx);
+    $("lRegion").textContent = L21.view === "dividida" ? regName(L21.px) + " | " + regName(L21.gx) : regName((L21.px + L21.gx) / 2);
+    $("lDist").textContent = dd < 260 ? "Juntos" : "Separados por " + fmt(dd) + " m";
+  }
+  function renderLibre() {
+    var c = CTX.l, cv = CV.l, w = cv._w, h = cv._h;
+    if (!w) return;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, w, h);
+    if (L21.view === "mapa") return drawWorldMap(c, w, h);
+    if (L21.view === "primer") return drawFaceToFace(c, w, h);
+    if (L21.view === "dividida") {
+      libreScene(c, 0, w / 2, h, L21.px, 1.05); libreScene(c, w / 2, w / 2, h, L21.gx, 1.05);
+      c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = OUTL; c.fillRect(w / 2 - 2, 0, 4, h);
+      tagLabel(c, 16, 56, "Jugador", "#FFB547"); tagLabel(c, w / 2 + 16, 56, "Guía", "#5FE0E6");
+      return;
+    }
+    var mid = (L21.px + L21.gx) / 2, span = Math.abs(L21.px - L21.gx), k = clamp((w - 220) / Math.max(1, span), 0.55, 1.25);
+    libreScene(c, 0, w, h, mid, k);
+    if (span * 0.55 > w - 220) { c.setTransform(DPR, 0, 0, DPR, 0, 0); tagLabel(c, 16, 56, "Están muy lejos: prueben la pantalla dividida", "#FAF0D7"); }
+  }
+  function tagLabel(c, x, y, t, col) { c.font = "700 12px Atkinson Hyperlegible, sans-serif"; var tw = c.measureText(t).width; c.fillStyle = col; c.strokeStyle = OUTL; c.lineWidth = 2; c.fillRect(x - 6, y - 14, tw + 12, 20); c.strokeRect(x - 6, y - 14, tw + 12, 20); c.fillStyle = OUTL; c.fillText(t, x, y); }
+  function libreScene(c, ox, w, h, camX, k) {
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.save(); c.beginPath(); c.rect(ox, 0, w, h); c.clip(); c.translate(ox, 0);
+    var gt = Math.round(h * 0.62), vw = w / k / 2 + 120, t = G.minute / 60, nk = nightK(G.minute);
+    function sx(x) { return w / 2 + (x - camX) * k; }
+    var r0 = regIdx(camX - vw), r1 = regIdx(camX + vw);
+    for (var ri = r0; ri <= r1; ri++) {
+      var R = REG[ri], a = Math.max(0, sx(ri * RW)), b = Math.min(w, sx((ri + 1) * RW));
+      var g = c.createLinearGradient(0, 0, 0, gt); g.addColorStop(0, R.sky[0]); g.addColorStop(1, R.sky[1]); c.fillStyle = g; c.fillRect(a, 0, b - a, gt);
+      c.fillStyle = R.ground; c.fillRect(a, gt, b - a, h - gt);
+      scenery(c, R.kind, ri * RW, camX, vw, sx, gt, h, k);
+    }
+    c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(0, gt); c.lineTo(w, gt); c.stroke();
+    c.lineWidth = 1.4; c.strokeStyle = "rgba(27,20,16,.5)";
+    for (var cx = Math.floor((camX - vw) / 90) * 90; cx < camX + vw; cx += 90) { var hh = hash32(cx | 0), x = sx(cx), y = gt + 20 + (hh % 40); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 20 * k, y + 6); c.lineTo(x + 38 * k, y + 1); c.stroke(); }
+    // puntos y puertas
+    L21.points.forEach(function (pt, i) {
+      var x = sx(pt.x); if (x < -200 || x > w + 200) return;
+      if (i === 2) {
+        c.fillStyle = "#B9B6B0"; c.strokeStyle = OUTL; c.lineWidth = 2.4;
+        c.fillRect(x - 90 * k, gt - 200 * k, 30 * k, 200 * k); c.strokeRect(x - 90 * k, gt - 200 * k, 30 * k, 200 * k); c.fillRect(x + 60 * k, gt - 200 * k, 30 * k, 200 * k); c.strokeRect(x + 60 * k, gt - 200 * k, 30 * k, 200 * k);
+        c.beginPath(); c.arc(x, gt - 200 * k, 90 * k, Math.PI, 0); c.lineTo(x + 60 * k, gt - 200 * k); c.arc(x, gt - 200 * k, 60 * k, 0, Math.PI, true); c.closePath(); c.fill(); c.stroke();
+        if (L21.portal) { var sw = c.createRadialGradient(x, gt - 130 * k, 5, x, gt - 130 * k, 80 * k); sw.addColorStop(0, "#FFFFFF"); sw.addColorStop(0.4, "#5FE0E6"); sw.addColorStop(1, "rgba(122,75,160,.2)"); c.fillStyle = sw; c.beginPath(); c.ellipse(x, gt - 120 * k, 58 * k, 118 * k, Math.sin(G.rt) * 0.05, 0, 7); c.fill(); }
+      } else {
+        c.fillStyle = "#8A7A66"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.fillRect(x - 22 * k, gt - 50 * k, 44 * k, 50 * k); c.strokeRect(x - 22 * k, gt - 50 * k, 44 * k, 50 * k);
+        var glow = pt.got ? "#9E9A92" : "#F6D35A";
+        if (!pt.got) { var gg = c.createRadialGradient(x, gt - 76 * k, 2, x, gt - 76 * k, 60 * k); gg.addColorStop(0, "rgba(255,230,140,.9)"); gg.addColorStop(1, "rgba(255,230,140,0)"); c.fillStyle = gg; c.fillRect(x - 60 * k, gt - 136 * k, 120 * k, 120 * k); }
+        c.fillStyle = glow; c.beginPath(); c.arc(x, gt - 76 * k + Math.sin(G.rt * 2) * 4, 16 * k, 0, 7); c.fill(); c.stroke();
+      }
+      c.font = "700 " + Math.round(12 * Math.max(0.8, k)) + "px Atkinson Hyperlegible, sans-serif"; c.fillStyle = OUTL; c.textAlign = "center"; c.fillText("Punto " + (i + 1) + " · " + pt.name, x, gt - (i === 2 ? 300 : 110) * k); c.textAlign = "left";
+    });
+    L21.doors.forEach(function (dr) {
+      var x = sx(dr.x); if (x < -120 || x > w + 120) return;
+      c.strokeStyle = "#7A4BA0"; c.lineWidth = 4; c.fillStyle = "rgba(122,75,160," + (0.25 + Math.sin(G.rt * 3) * 0.1) + ")";
+      c.beginPath(); c.ellipse(x, gt - 70 * k, 34 * k, 70 * k, 0, 0, 7); c.fill(); c.stroke();
+      c.font = "700 12px Atkinson Hyperlegible, sans-serif"; c.fillStyle = OUTL; c.textAlign = "center"; c.fillText(dr.name, x, gt - 150 * k); c.textAlign = "left";
+    });
+    // personajes por profundidad
+    var ents = [];
+    L21.folk.forEach(function (f) { if (Math.abs(f.x - camX) < vw) ents.push({ x: f.x, d: f.d, L: f.L, ph: f.ph, left: f.dir < 0 }); });
+    PLAYER_L.item = null;
+    ents.push({ x: L21.px, d: L21.pd, L: PLAYER_L, ph: L21.pWalk, left: L21.pLeft, who: "p" });
+    ents.push({ x: L21.gx, d: L21.gdp, L: guideLook(), ph: L21.gWalk, left: L21.gLeft, who: "g" });
+    ents.sort(function (a, b) { return a.d - b.d; });
+    ents.forEach(function (e) {
+      if (Math.abs(e.x - camX) > vw) return;
+      var yf = gt + 22 + (e.d + 40) / 80 * (h - gt - 46), sc = (0.82 + (e.d + 40) / 80 * 0.32) * Math.min(1.15, k * 1.05), x = sx(e.x);
+      if (e.who === "g") { var au = c.createRadialGradient(x, yf - 70 * sc, 10, x, yf - 70 * sc, 90 * sc); au.addColorStop(0, "rgba(95,224,230,.35)"); au.addColorStop(1, "rgba(95,224,230,0)"); c.fillStyle = au; c.fillRect(x - 90 * sc, yf - 160 * sc, 180 * sc, 180 * sc); }
+      c.fillStyle = "rgba(27,20,16,.22)"; c.beginPath(); c.ellipse(x, yf + 2, 18 * sc, 4.5 * sc, 0, 0, 7); c.fill();
+      drawPerson(c, x, yf, sc, e.L, e.ph, e.left, false);
+      var bub = e.who === "p" ? L21.bubP : e.who === "g" ? L21.bubG : null;
+      if (bub && G.rt < bub.until) speechBubble(c, x, yf - 165 * sc, bub.text);
+    });
+    if (nk > 0) { c.fillStyle = "rgba(14,10,40," + nk * 0.7 + ")"; c.fillRect(0, 0, w, h); }
+    c.restore();
+  }
+  function speechBubble(c, x, y, t) {
+    c.font = "700 13px Atkinson Hyperlegible, sans-serif"; var tw = Math.min(220, c.measureText(t).width), bw = tw + 20;
+    c.fillStyle = "#FAF0D7"; c.strokeStyle = OUTL; c.lineWidth = 2.4;
+    roundRect(c, x - bw / 2, y - 30, bw, 28, 10); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(x - 6, y - 3); c.lineTo(x, y + 8); c.lineTo(x + 6, y - 3); c.fill(); c.stroke();
+    c.fillStyle = OUTL; c.fillText(t, x - tw / 2, y - 11, 220);
+  }
+  function scenery(c, kind, x0, camX, vw, sx, gt, h, k) {
+    var lo = Math.max(x0, camX - vw), hi = Math.min(x0 + RW, camX + vw), i, x;
+    if (kind === "oro" || kind === "rojo") {
+      var tc = kind === "oro" ? "#7A4A2A" : "#8E2A44", bc = kind === "oro" ? "#D9A520" : "#9C9A2A";
+      for (x = Math.ceil(lo / 150) * 150; x < hi; x += 150) trunk(c, sx(x + (hash32(x) % 50)), gt + 4, 0, 36 * k, tc);
+      for (x = Math.ceil(lo / 230) * 230; x < hi; x += 230) bush(c, sx(x + 60), gt + 6, 46 * k, bc);
+      for (x = Math.ceil(lo / 700) * 700; x < hi; x += 700) { var rx = sx(x + 300); c.fillStyle = "#B9B6B0"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(rx - 40 * k, gt + 40); c.lineTo(rx - 28 * k, gt + 8); c.lineTo(rx + 20 * k, gt + 2); c.lineTo(rx + 42 * k, gt + 40); c.closePath(); c.fill(); c.stroke(); }
+    } else if (kind === "desierto") {
+      for (x = Math.ceil(lo / 420) * 420; x < hi; x += 420) { c.fillStyle = "#E0B565"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.ellipse(sx(x), gt, 260 * k, 70 * k, 0, Math.PI, 0); c.fill(); c.stroke(); }
+      for (x = Math.ceil(lo / 260) * 260; x < hi; x += 260) { var cx = sx(x + 90); c.fillStyle = "#5E8C3A"; c.strokeStyle = OUTL; c.lineWidth = 2.4; roundRect(c, cx - 9 * k, gt - 90 * k, 18 * k, 92 * k, 8 * k); c.fill(); c.stroke(); roundRect(c, cx - 30 * k, gt - 62 * k, 12 * k, 30 * k, 6 * k); c.fill(); c.stroke(); roundRect(c, cx + 18 * k, gt - 72 * k, 12 * k, 34 * k, 6 * k); c.fill(); c.stroke(); }
+    } else if (kind === "puerto") {
+      var a = sx(lo), b = sx(hi); c.fillStyle = "#3E7FB0"; c.fillRect(a, gt - 90, b - a, 90); c.strokeStyle = "rgba(255,255,255,.6)"; c.lineWidth = 2;
+      for (i = 0; i < 4; i++) { c.beginPath(); for (x = Math.floor(lo / 40) * 40; x < hi; x += 40) { var y = gt - 76 + i * 20 + Math.sin(x * 0.05 + G.rt * 2 + i) * 3; if (x === Math.floor(lo / 40) * 40) c.moveTo(sx(x), y); else c.lineTo(sx(x), y); } c.stroke(); }
+      for (x = Math.ceil(lo / 520) * 520; x < hi; x += 520) { var bx = sx(x + 150), by = gt - 60 + Math.sin(G.rt + x) * 3; c.fillStyle = "#B85C3A"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(bx - 50 * k, by); c.lineTo(bx + 50 * k, by); c.lineTo(bx + 36 * k, by + 18 * k); c.lineTo(bx - 36 * k, by + 18 * k); c.closePath(); c.fill(); c.stroke(); c.beginPath(); c.moveTo(bx, by); c.lineTo(bx, by - 60 * k); c.stroke(); c.fillStyle = "#F4F1E6"; c.beginPath(); c.moveTo(bx + 2, by - 58 * k); c.lineTo(bx + 34 * k, by - 6); c.lineTo(bx + 2, by - 6); c.closePath(); c.fill(); c.stroke(); }
+      for (x = Math.ceil(lo / 60) * 60; x < hi; x += 60) { c.strokeStyle = "rgba(27,20,16,.4)"; c.lineWidth = 2; c.beginPath(); c.moveTo(sx(x), gt); c.lineTo(sx(x), gt + 40); c.stroke(); }
+      if (5700 >= lo - 200 && 5700 <= hi + 200) { var lx = sx(5700 + 160); c.fillStyle = "#F4F1E6"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(lx - 30 * k, gt); c.lineTo(lx - 18 * k, gt - 220 * k); c.lineTo(lx + 18 * k, gt - 220 * k); c.lineTo(lx + 30 * k, gt); c.closePath(); c.fill(); c.stroke(); c.fillStyle = "#C8302C"; c.fillRect(lx - 24 * k, gt - 120 * k, 48 * k, 22 * k); c.strokeRect(lx - 24 * k, gt - 120 * k, 48 * k, 22 * k); c.fillStyle = L21.points[1].got ? "#FFD27A" : "#5A5A5A"; c.fillRect(lx - 16 * k, gt - 250 * k, 32 * k, 30 * k); c.strokeRect(lx - 16 * k, gt - 250 * k, 32 * k, 30 * k); }
+    } else if (kind === "cumbres") {
+      for (x = Math.ceil(lo / 500) * 500; x < hi; x += 500) { var mx = sx(x + 200); c.fillStyle = "#7C86A8"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(mx - 260 * k, gt); c.lineTo(mx, gt - 260 * k); c.lineTo(mx + 260 * k, gt); c.closePath(); c.fill(); c.stroke(); c.fillStyle = "#F4F1E6"; c.beginPath(); c.moveTo(mx - 60 * k, gt - 200 * k); c.lineTo(mx, gt - 260 * k); c.lineTo(mx + 60 * k, gt - 200 * k); c.lineTo(mx + 20 * k, gt - 210 * k); c.lineTo(mx, gt - 196 * k); c.lineTo(mx - 24 * k, gt - 212 * k); c.closePath(); c.fill(); c.stroke(); }
+      for (x = Math.ceil(lo / 180) * 180; x < hi; x += 180) { var px = sx(x + 40); c.fillStyle = "#2F5A3A"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.beginPath(); c.moveTo(px - 30 * k, gt); c.lineTo(px, gt - 110 * k); c.lineTo(px + 30 * k, gt); c.closePath(); c.fill(); c.stroke(); }
+    } else if (kind === "ruinas") {
+      for (x = Math.ceil(lo / 240) * 240; x < hi; x += 240) { if (Math.abs(x + 80 - 8900) < 200) continue; var cx2 = sx(x + 80), ch = (120 + hash32(x) % 90) * k; c.fillStyle = "#B9B6B0"; c.strokeStyle = OUTL; c.lineWidth = 2.4; c.fillRect(cx2 - 16 * k, gt - ch, 32 * k, ch); c.strokeRect(cx2 - 16 * k, gt - ch, 32 * k, ch); c.beginPath(); c.moveTo(cx2 - 22 * k, gt - ch); c.lineTo(cx2 - 10 * k, gt - ch - 14 * k); c.lineTo(cx2 + 4 * k, gt - ch - 4 * k); c.lineTo(cx2 + 22 * k, gt - ch); c.closePath(); c.fill(); c.stroke(); }
+    }
+  }
+  function drawWorldMap(c, w, h) {
+    c.fillStyle = "#FAF0D7"; c.fillRect(0, 0, w, h);
+    c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(8, 8, w - 16, h - 16);
+    c.fillStyle = OUTL; c.font = "800 16px Unbounded, sans-serif"; c.fillText("MAPA DEL MUNDO · toca un lugar para viajar", 22, 36, w - 44);
+    var x0 = 20, x1 = w - 20, y0 = 60, y1 = h - 70, seg = (x1 - x0) / REG.length;
+    REG.forEach(function (R, i) {
+      var a = x0 + i * seg, g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, R.sky[0]); g.addColorStop(1, R.ground); c.fillStyle = g; c.fillRect(a, y0, seg, y1 - y0); c.strokeStyle = OUTL; c.lineWidth = 2; c.strokeRect(a, y0, seg, y1 - y0);
+      c.fillStyle = OUTL; c.font = "700 " + (seg < 110 ? 10 : 13) + "px Atkinson Hyperlegible, sans-serif"; c.fillText(R.name, a + 6, y1 - 10, seg - 10);
+    });
+    function mx(x) { return x0 + x / LW * (x1 - x0); }
+    L21.points.forEach(function (pt, i) { c.fillStyle = pt.got ? "#9E9A92" : "#F6D35A"; c.strokeStyle = OUTL; c.lineWidth = 2; star(c, mx(pt.x), (y0 + y1) / 2 - 20, 12); c.stroke(); c.fillStyle = OUTL; c.font = "700 11px JetBrains Mono, monospace"; c.fillText("P" + (i + 1), mx(pt.x) - 8, (y0 + y1) / 2 + 6); });
+    L21.doors.forEach(function (d) { c.strokeStyle = "#7A4BA0"; c.lineWidth = 3; c.beginPath(); c.ellipse(mx(d.x), (y0 + y1) / 2 + 40, 7, 14, 0, 0, 7); c.stroke(); });
+    [[L21.px, "#C8302C", "Jugador"], [L21.gx, "#5FE0E6", "Guía"]].forEach(function (e, i) { var x = mx(e[0]), y = y0 + 22 + i * 22; c.fillStyle = e[1]; c.strokeStyle = OUTL; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 7, 0, 7); c.fill(); c.stroke(); c.fillStyle = OUTL; c.font = "700 11px Atkinson Hyperlegible, sans-serif"; c.fillText(e[2], x + 10, y + 4); });
+    c.font = "400 12px Atkinson Hyperlegible, sans-serif"; c.fillStyle = OUTL; c.fillText("Estrellas: los 3 puntos del mundo. Óvalos morados: puertas a otras dimensiones.", 22, h - 26, w - 44);
+  }
+  function drawFaceToFace(c, w, h) {
+    libreScene(c, 0, w, h, (L21.px + L21.gx) / 2, 1);
+    c.setTransform(DPR, 0, 0, DPR, 0, 0); c.fillStyle = "rgba(20,12,8,.45)"; c.fillRect(0, 0, w, h);
+    var size = Math.min(h * 0.62, w * 0.4), y = h - size - 16;
+    drawPortraitAt(c, 16, y, size, { L: PLAYER_L, mood: "normal", bg: "rojo" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(16, y, size, size);
+    drawPortraitAt(c, w - size - 16, y, size, { L: guideLook(), mood: "normal", bg: "oro" }, DPR); c.setTransform(DPR, 0, 0, DPR, 0, 0); c.strokeRect(w - size - 16, y, size, size);
+    var lastP = L21.chat.filter(function (m) { return m.who === "p"; }).slice(-1)[0], lastG = L21.chat.filter(function (m) { return m.who === "g"; }).slice(-1)[0];
+    var tp = L21.talk ? (lastP ? lastP.txt : "…") : (L21.bubP ? L21.bubP.text : "[mira en silencio]"), tg = L21.talk ? (lastG ? lastG.txt : "…") : (L21.bubG ? L21.bubG.text : "[asiente]");
+    speechBubble(c, 16 + size / 2, y - 6, tp); speechBubble(c, w - size / 2 - 16, y - 6, tg);
   }
 
   // =========================================================
@@ -1352,6 +1767,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   // =========================================================
   function hud() {
     $("clock").textContent = clockStr(G.minute);
+    $("btnGhost").hidden = !(hasR("fantasma") && G.gd.connected); $("btnGhost").disabled = G.gd.ghostDay === G.day;
     $("pScore").textContent = fmt(G.pl.score);
     $("gScore").textContent = fmt(G.gd.score);
     $("gKarma").textContent = (G.gd.karma > 0 ? "+" : "") + Math.round(G.gd.karma);
@@ -1408,6 +1824,12 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   var last = 0, lastHud = 0;
   function frame(ts) {
     var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts;
+    if (G.mode === "libre") {
+      if (!G.paused) updateLibre(dt);
+      renderLibre();
+      if (ts - lastHud > 250) { lastHud = ts; hudLibre(); }
+      requestAnimationFrame(frame); return;
+    }
     if (G.started && !G.paused) update(dt);
     else if (!G.started) { G.minute = 420; updateNPCs(dt, 470); G.pl.x = PLAZA.x + PLAZA.w / 2; G.pl.y = PLAZA.y + PLAZA.h / 2; G.gd.x = G.pl.x + 140; G.gd.y = G.pl.y; }
     render();
