@@ -849,8 +849,8 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   function command(raw) {
     raw = (raw || "").trim(); if (!raw || !G.started) return;
     if (!G.gd.connected) { sub("g", "Ya no estás en el plano de tu jugador. Desde aquí solo puedes mandarle envíos.", "d"); return; }
-    var t = norm(raw);
-    showDlg("Tu guía (solo lo escuchas)", "«" + raw + "»", { L: PLAYER_L, ghost: true, mood: /cuidado|corre|proteg|atras/.test(t) ? "serio" : "normal", bg: "oro" }); sfx("voice"); speak(raw);
+    var t = norm(raw); G.voiceAt = G.rt;
+    showDlg("Una voz (no ves a nadie)", "«" + raw + "»", { voice: true }); sfx("voice"); speak(raw);
     if (/proteg|defiend|escudo|cubrel/.test(t)) {
       if (!guideNear()) { sub("g", "Estás muy lejos para protegerlo. Acércate a él.", "d"); return; }
       if (G.rt < G.gd.cdProtect) { sub("g", "Tu protección se está recargando (" + Math.ceil(G.gd.cdProtect - G.rt) + " s).", "d"); return; }
@@ -1397,7 +1397,11 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
   }
   var dlgTimer = null;
   function showDlg(who, text, o) {
-    var cv = $("dlgPt"); cv._done = false; drawPortrait(cv, o);
+    var cv = $("dlgPt"); cv._done = false;
+    if (o.voice) { var vc = cv.getContext("2d"), S = cv.width; vc.setTransform(S / 100, 0, 0, S / 100, 0, 0); vc.fillStyle = "#F3D477"; vc.fillRect(0, 0, 100, 100); vc.strokeStyle = OUTL; vc.lineCap = "round";
+      for (var r = 0; r < 4; r++) { vc.lineWidth = 4 - r * 0.6; vc.globalAlpha = 1 - r * 0.2; vc.beginPath(); vc.arc(30, 50, 14 + r * 14, -0.9, 0.9); vc.stroke(); } vc.globalAlpha = 1;
+      vc.fillStyle = OUTL; vc.beginPath(); vc.arc(26, 50, 7, 0, 7); vc.fill(); }
+    else drawPortrait(cv, o);
     $("dlgWho").textContent = who; $("dlgTxt").textContent = text; $("dlg").hidden = false;
     clearTimeout(dlgTimer); dlgTimer = setTimeout(function () { $("dlg").hidden = true; }, 6500);
   }
@@ -1488,7 +1492,8 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     PLAYER_L.item = G.pl.item;
     ents.push({ x: G.pl.x, y: G.pl.y, L: PLAYER_L, ph: G.pl.walk, left: G.pl.left, me: true });
     if (self && G.gd.connected) ents.push({ x: G.gd.x, y: Math.max(sy - 60, Math.min(sy + 60, G.gd.y)), L: PLAYER_L, ph: G.rt * 4, left: G.gd.x > G.pl.x, ghost: true });
-    else if (G.gd.connected && dist(G.gd, G.pl) <= 380) ents.push({ x: Math.max(camX - vw + 80, Math.min(camX + vw - 80, G.gd.x)), y: sy + 10, L: PLAYER_L, ph: G.rt * 4, left: G.gd.x > G.pl.x, ghost: true });
+    // Dos entornos: el jugador nunca ve guías. Solo la vista del guía los dibuja (el propio y los de otros jugadores).
+    if (self) otherGuides().forEach(function (og) { if (Math.abs(og.x - camX) < vw && Math.abs(og.y - sy) <= 100) ents.push({ x: og.x, y: og.y, L: PLAYER_L, ph: G.rt * 3, left: false, ghost: true }); });
     ents.sort(function (a, b) { return a.y - b.y; });
     ents.forEach(function (e) {
       var dp = depth(e.y), x = sx(e.x);
@@ -1545,6 +1550,11 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
       else { z = 0.8; cam = { x: G.gd.x, y: G.gd.y }; }
       c.setTransform(DPR * z, 0, 0, DPR * z, (w / 2 - cam.x * z) * DPR, (h / 2 - cam.y * z) * DPR);
       drawCity(c, cam, w, h, z, true);
+      otherGuides().forEach(function (og) {
+        c.strokeStyle = "rgba(95,224,230,.85)"; c.lineWidth = 2; c.beginPath(); c.arc(og.x, og.y, 9, 0, 7); c.moveTo(og.x - 14, og.y); c.lineTo(og.x + 14, og.y); c.moveTo(og.x, og.y - 14); c.lineTo(og.x, og.y + 14); c.stroke();
+        c.strokeStyle = "rgba(95,224,230,.35)"; c.setLineDash([3, 5]); c.beginPath(); c.moveTo(og.x, og.y); c.lineTo(og.px, og.py); c.stroke(); c.setLineDash([]);
+        if (z > 0.5) { c.fillStyle = "#5FE0E6"; c.font = "700 11px JetBrains Mono, monospace"; c.fillText("GUÍA DE " + og.name.split(" ")[0].toUpperCase(), og.x + 12, og.y - 10); }
+      });
       // vigía
       c.fillStyle = "rgba(255,107,107,.10)"; c.strokeStyle = "rgba(255,107,107,.55)"; c.lineWidth = 2; c.beginPath(); c.arc(G.vig.x, G.vig.y, 170, 0, 7); c.fill(); c.stroke();
       c.fillStyle = "#FF6B6B"; c.font = "700 13px JetBrains Mono, monospace"; c.fillText("VIGÍA " + G.vig.name.toUpperCase(), G.vig.x - 40, G.vig.y - 12); c.beginPath(); c.arc(G.vig.x, G.vig.y, 5, 0, 7); c.fill();
@@ -1565,12 +1575,20 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     c.strokeStyle = OUTL; c.lineWidth = 3; c.strokeRect(14, h - size - 12, size, size);
     var tg = currentTarget(), x = size + 32, lines = [
       ["Hora", clockStr(G.minute)], ["Llevo", G.pl.item || "nada"], ["Objetivo", tg ? placeName(tg.b) : "ninguno"],
-      ["Siento", G.threats.length ? "algo se acerca" : !G.gd.connected ? "estoy solo; me llegan cosas de otro plano" : near ? "mi guía está cerca" : "tranquilidad"]];
+      ["Siento", G.threats.length ? "algo se acerca" : !G.gd.connected ? "estoy solo; me llegan cosas de otro plano" : G.rt - (G.voiceAt || -99) < 8 ? "escucho una voz, pero no veo a nadie" : "tranquilidad"]];
     var bw = Math.max(120, w - x - 14);
     var bh = 36 + lines.length * 26, by = Math.max(130, Math.round((h - bh) / 2) + 20);
     c.fillStyle = "#FAF0D7"; c.fillRect(x, by, bw, bh); c.strokeRect(x, by, bw, bh);
     c.fillStyle = OUTL; c.font = "800 14px Unbounded, sans-serif"; c.fillText($("pName").textContent, x + 12, by + 24, bw - 24);
     lines.forEach(function (l, i) { c.font = "700 11px JetBrains Mono, monospace"; c.fillText(l[0].toUpperCase(), x + 12, by + 52 + i * 26); c.font = "400 14px Atkinson Hyperlegible, sans-serif"; c.fillText(l[1], x + 92, by + 52 + i * 26, bw - 104); });
+  }
+  function otherGuides() {
+    if (typeof L1P === "undefined") return [];
+    return L1P.map(function (t, i) {
+      var n = t.n, px = n.inside ? n.home.door.x : n.x, py = n.inside ? n.home.door.y : n.y;
+      if (n.inside && n.dest !== n.home.id && B[n.dest]) { px = B[n.dest].door.x; py = B[n.dest].door.y; }
+      return { x: px + Math.cos(G.rt * 0.4 + i * 1.7) * 90, y: py + Math.sin(G.rt * 0.5 + i) * 50, px: px, py: py, name: t.name };
+    });
   }
   function nearestHY(y) { var best = HY[0]; HY.forEach(function (v) { if (Math.abs(v - y) < Math.abs(best - y)) best = v; }); return best; }
   function drawPlane(c, w, h) {
@@ -2066,7 +2084,7 @@ canvas#trail { width: 100%; height: auto; border-radius: 10px; background: var(-
     E3.chasers.forEach(function (ch) { if (Math.abs(ch.x - camX) < vw) ents.push({ x: ch.x, d: ch.d, chaser: ch }); });
     PLAYER_L.item = null;
     ents.push({ x: E3.px, d: E3.pd, me: true });
-    if (gm || Math.abs(E3.gx - E3.px) < 320) ents.push({ x: E3.gx, d: E3.gdp, guide: true });
+    if (gm) ents.push({ x: E3.gx, d: E3.gdp, guide: true });
     ents.sort(function (a, b) { return a.d - b.d; });
     ents.forEach(function (e) {
       var yf = gt + 22 + (e.d + 40) / 80 * (h - gt - 46), sc = (0.82 + (e.d + 40) / 80 * 0.32) * Math.min(1.15, k * 1.05), ex = sx(e.x);
